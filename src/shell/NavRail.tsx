@@ -1,0 +1,43 @@
+import { NavLink } from 'react-router-dom';
+import { TOOLS, isReady, toolsByGroup } from '../tools/registry';
+import { Mark } from '../brand/Wordmark';
+import { useShell } from './state';
+
+export function NavRail() {
+  const shell = useShell();
+  const collapsed = shell.navCollapsed;
+  return (
+    <nav className={`nav${collapsed ? ' is-collapsed' : ''}`} aria-label="Tools">
+      <button type="button" className="nav__toggle" onClick={shell.toggleNav}
+        aria-expanded={!collapsed} aria-label={collapsed ? 'Expand tool rail' : 'Collapse tool rail'}>
+        {collapsed ? '→' : '←'}
+      </button>
+      <div className="nav__scroll">
+        {toolsByGroup().map(({ group, tools }) => (
+          <div className="nav__group" key={group}>
+            <div className="nav__group-label">{group}</div>
+            <ul className="nav__list">
+              {tools.map(t => {
+                const n = TOOLS.indexOf(t);
+                return (
+                  <li key={t.id}>
+                    <NavLink to={`/t/${t.id}`} className={({ isActive }) => `nav__item${isActive ? ' is-active' : ''}${isReady(t) ? '' : ' is-planned'}`}
+                      title={collapsed ? t.name : t.blurb}>
+                      <span className="nav__abbr" aria-hidden="true">{t.name.slice(0, 2)}</span>
+                      <span className="nav__name">{t.name}</span>
+                      <span className="nav__meta">{isReady(t) ? (n < 9 ? n + 1 : '') : `M${t.milestone}`}</span>
+                    </NavLink>
+                  </li>
+                );
+              })}
+            </ul>
+          </div>
+        ))}
+      </div>
+      <NavLink to="/make" className={({ isActive }) => `nav__make${isActive ? ' is-active' : ''}`} title="Make a tool">
+        <Mark className="nav__make-mark" />
+        <span className="nav__name">Make a tool</span>
+      </NavLink>
+    </nav>
+  );
+}

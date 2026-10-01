@@ -1,0 +1,142 @@
+/* Shared controls: used by the shell (React) and by tool inspectors (vanilla, ui/primitives.ts). */
+
+/* ---- Section ---- */
+.l-section { border-top: var(--hairline) solid var(--hairline-color); padding: var(--s-4) var(--s-4) var(--s-5); }
+.l-section:first-child { border-top: 0; }
+.l-section__title {
+  margin: 0 0 var(--s-4);
+  font-size: var(--fs-ui);
+  font-weight: var(--w-medium);
+  color: var(--ink);
+}
+.l-section__body { display: flex; flex-direction: column; gap: var(--s-4); }
+
+.l-label { color: var(--ink-3); font-size: var(--fs-ui); line-height: var(--lh-ui); }
+.l-note { margin: 0; color: var(--ink-3); font-size: var(--fs-small); line-height: var(--lh-body); }
+.l-group { display: flex; flex-direction: column; gap: var(--s-2); min-width: 0; }
+
+/* ---- Chips: 22.5px, 2.5px radius ---- */
+.l-chip-row { display: flex; flex-wrap: wrap; gap: var(--s-1); align-items: center; }
+.l-chip, .l-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--s-2);
+  height: var(--chip-h);
+  padding: 0 var(--chip-pad-x);
+  border: 0;
+  border-radius: var(--radius);
+  background: var(--fill);
+  color: var(--ink-2);
+  font-size: var(--fs-ui);
+  font-weight: var(--w-regular);
+  line-height: 1;
+  white-space: nowrap;
+  transition: background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.l-chip:hover, .l-btn:hover { color: var(--ink); background: var(--fill-strong); }
+.l-chip.is-active { background: var(--accent); color: var(--on-accent); }
+.l-btn--primary { background: var(--accent); color: var(--on-accent); font-weight: var(--w-medium); }
+.l-btn--primary:hover { background: var(--accent); color: var(--on-accent); }
+.l-btn:disabled, .l-chip:disabled { opacity: var(--o-40); }
+
+/* ---- Rail: 7.5px track, sliding thumb ---- */
+.l-rail { display: grid; grid-template-columns: var(--rail-w) minmax(0, 1fr); gap: var(--s-2); align-items: stretch; }
+.l-rail__track { position: relative; width: var(--rail-w); background: var(--fill); border-radius: var(--radius-pill); }
+.l-rail__thumb {
+  position: absolute; left: 0; top: 0;
+  width: var(--rail-w); height: var(--rail-thumb-h);
+  background: var(--accent); border-radius: var(--radius-pill);
+  transition: transform var(--t-med) var(--ease), height var(--t-med) var(--ease);
+}
+.l-rail__opts { display: flex; flex-direction: column; gap: var(--s-1); }
+.l-rail__opt {
+  border: 0; background: none; padding: 0; text-align: left;
+  color: var(--ink-3); font-size: var(--fs-ui); line-height: var(--lh-ui);
+}
+.l-rail__opt:hover { color: var(--ink-2); }
+.l-rail__opt.is-active { color: var(--ink); }
+
+/* ---- Slider ---- */
+.l-slider { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s-2) var(--s-4); align-items: center; }
+.l-slider__label { color: var(--ink-2); }
+.l-slider__value { color: var(--ink); font-variant-numeric: tabular-nums; text-align: right; }
+.l-slider__input {
+  grid-column: 1 / -1;
+  appearance: none; -webkit-appearance: none;
+  width: 100%; height: var(--rail-w); margin: 0;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(to right, var(--accent) var(--p, 0%), var(--fill) var(--p, 0%));
+}
+.l-slider__input::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: var(--rail-thumb-h); height: var(--rail-thumb-h);
+  border-radius: var(--radius-pill); background: var(--ink); border: 0;
+}
+.l-slider__input::-moz-range-thumb {
+  width: var(--rail-thumb-h); height: var(--rail-thumb-h);
+  border-radius: var(--radius-pill); background: var(--ink); border: 0;
+}
+
+/* ---- Stat rows ---- */
+.l-stats { display: flex; flex-direction: column; }
+.l-stat {
+  display: flex; justify-content: space-between; align-items: baseline; gap: var(--s-4);
+  padding: var(--s-1) 0 var(--s-2);
+  border-bottom: var(--hairline) solid var(--hairline-color);
+  color: var(--ink-3);
+}
+.l-stat__value { color: var(--ink); font-variant-numeric: tabular-nums; text-align: right; overflow-wrap: anywhere; }
+
+/* ---- Fields ---- */
+.l-field { display: flex; flex-direction: column; gap: var(--s-2); }
+.l-input {
+  height: var(--field-h);
+  padding: 0 var(--s-3);
+  border: var(--hairline) solid var(--hairline-color);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.l-input:focus { outline: none; border-color: var(--accent); }
+
+/* ---- Keycap ---- */
+.l-kbd {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: var(--chip-h); height: var(--chip-h); padding: 0 var(--s-2);
+  border: var(--hairline) solid var(--hairline-color); border-radius: var(--radius);
+  color: var(--ink-2); font-size: var(--fs-small); font-variant-numeric: tabular-nums;
+}
+
+/* ---- Modal: closes on Escape and backdrop click (see VERIFY.md, color-swap) ---- */
+.l-scrim {
+  position: fixed; inset: 0; z-index: var(--z-modal);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding-top: 12vh;
+  background: var(--scrim);
+}
+.l-modal {
+  width: min(var(--modal-w), calc(100vw - var(--s-8)));
+  max-height: 76vh; overflow: auto;
+  background: var(--panel);
+  border: var(--hairline) solid var(--hairline-color);
+  border-radius: var(--radius);
+}
+.l-modal__head {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s-4);
+  padding: var(--s-4); border-bottom: var(--hairline) solid var(--hairline-color);
+}
+.l-modal__title { margin: 0; font-size: var(--fs-ui); font-weight: var(--w-medium); }
+.l-modal__body { padding: var(--s-4); }
+
+/* ---- Toast ---- */
+.l-toasts {
+  position: fixed; left: 50%; top: calc(var(--topbar-h) + var(--s-4)); transform: translateX(-50%);
+  z-index: var(--z-toast); display: flex; flex-direction: column; gap: var(--s-2); align-items: center;
+  pointer-events: none;
+}
+.l-toast {
+  max-width: var(--toast-max-w);
+  padding: var(--s-2) var(--s-4);
+  background: var(--accent); color: var(--on-accent);
+  border-radius: var(--radius);
+  font-weight: var(--w-medium);
+}

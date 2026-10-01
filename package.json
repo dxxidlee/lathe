@@ -1,0 +1,28 @@
+{
+  "name": "lathe",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Tools for people who make tools. Thesis project by David Lee.",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --port 4318 --strictPort",
+    "typecheck": "tsc -b",
+    "check:tokens": "node scripts/check-tokens.mjs",
+    "verify:shell": "npm run build && node verify/shell.mjs"
+  },
+  "dependencies": {
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router-dom": "^7.18.4"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.2"
+  }
+}

@@ -145,3 +145,38 @@ Also noted for Milestone 3: the default palette is "Scarlet Red / Dark Red / Dee
 - Safari itself (see above). `prompt`/`confirm` dialogs were accepted by Playwright, not clicked by a person.
 - Color-swap's eyedropper flows (sample rule / sample preserve / cluster pick) depend on the preview, which is invisible in the original (layout bug), so they were not exercised.
 - EPS files were validated with Ghostscript, not opened in Illustrator.
+
+---
+
+# VERIFY: Milestone 1 (shell)
+
+`npm run verify:shell` builds the app, serves the production build with `vite preview`, and drives it in Chrome at 1440×900 (`verify/shell.mjs`). Screenshots go to `verify/out/shell/`. **24/24 pass.**
+
+| Check | Result |
+|---|---|
+| `check:tokens`: no hex, color functions, numeric weights or px outside `tokens.css` | Pass |
+| Home: hero photo, accessible h1, index of 16 tools + Make a tool | Pass |
+| Favicons, apple-touch-icon, manifest and manifest icons resolve | Pass |
+| Tokens applied: black panels, white text, Helvetica Neue stack | Pass |
+| Wordmark is live text (Medium) with the mark at cap height (0.714em) | Pass |
+| Layout: top bar 40, rail 208, stage 944×836, inspector 288, status bar 24 | Pass |
+| Defaults panel renders the manifest (chosenBy, `TODO(David)`, inheritedFrom) | Pass |
+| Drop a PNG anywhere → tool loads it, status bar reads `logo.png  1500×300  24 KB`, tray +1 | Pass |
+| Drop overlay names the target tool | Pass |
+| Tool settings and last asset persist across reload (IndexedDB) | Pass |
+| ⌘E exports a 1500×300 PNG and adds it to the tray as `Export · sandbox` | Pass |
+| Tray lists assets, Send to menu, persists (with its open state) across reload | Pass |
+| Send to from another tool switches routes and loads the asset after mount | Pass |
+| Dropping on an unbuilt tool adds to the tray with a toast | Pass |
+| Remove from tray | Pass |
+| ⌘K palette: fuzzy match (`clrchk` → Color-check), Enter navigates | Pass |
+| Palette closes on Escape and on backdrop click | Pass |
+| 1–9 switch tools in rail order; ignored while typing | Pass |
+| `?` shortcut sheet; Escape closes | Pass |
+| ⌘⇧F shows the Milestone 4 notice | Pass |
+| Rail collapses to 40px and stays collapsed after reload | Pass |
+| `/make`, unknown tool, deep-link reload | Pass |
+| No console errors or failed requests across the run | Pass |
+| IndexedDB blocked: the app runs from memory | Pass |
+
+Bugs found and fixed while building: the tray's Send to menu was clipped by the tray's scroll container (now rendered in a portal), and Sandbox revoked a blob URL while an image was still loading it (now revoked after the new image settles).

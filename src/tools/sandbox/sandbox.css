@@ -1,0 +1,9 @@
+.sandbox { position: absolute; inset: 0; display: grid; place-items: center; overflow: auto; }
+.sandbox[data-matte="black"] { background: var(--black); }
+.sandbox[data-matte="white"] { background: var(--white); }
+.sandbox[data-matte="lathe"] { background: var(--lathe); }
+.sandbox[data-view="fit"] .sandbox__img { max-width: calc(100% - var(--s-8)); max-height: calc(100% - var(--s-8)); }
+.sandbox[data-view="actual"] { place-items: start; padding: var(--s-6); }
+.sandbox__img { display: block; transform-origin: center; }
+.sandbox__empty { max-width: 32ch; text-align: center; color: var(--ink-3); font-size: var(--fs-body); line-height: var(--lh-body); }
+.sandbox[data-matte="white"] .sandbox__empty, .sandbox[data-matte="lathe"] .sandbox__empty { color: var(--black-64); }

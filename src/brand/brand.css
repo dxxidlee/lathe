@@ -1,0 +1,18 @@
+.lathe-mark { display: inline-block; width: 1em; height: 1em; flex: 0 0 auto; }
+
+/* Size the wordmark with font-size; the mark tracks the cap height. */
+.lathe-wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--mark-gap);
+  font-family: var(--font);
+  font-weight: var(--w-medium);
+  letter-spacing: var(--track-title);
+  line-height: 1;
+  white-space: nowrap;
+}
+.lathe-wordmark__mark {
+  width: var(--mark-size);
+  height: var(--mark-size);
+  align-self: baseline;
+}
