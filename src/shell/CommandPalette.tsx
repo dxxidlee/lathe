@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { TOOLS, isReady } from '../tools/registry';
+import { resetEverything } from '../lib/reset';
 import { useShell } from './state';
 import { Modal } from './Modal';
 import { modKey } from '../lib/format';
@@ -47,6 +48,11 @@ export function CommandPalette() {
       { id: 'nav', label: 'Toggle tool rail', run: () => { close(); shell.toggleNav(); } },
       { id: 'tray', label: 'Toggle asset tray', run: () => { close(); shell.toggleTray(); } },
       { id: 'keys', label: 'Keyboard shortcuts', keys: '?', run: () => { close(); shell.setSheetOpen(true); } },
+      { id: 'reset-tool', label: 'Reset this tool', hint: 'Its image, settings and edits', run: () => { close(); if (shell.resetToolRef.current) shell.resetToolRef.current(); else shell.toast('Open a tool to reset it'); } },
+      { id: 'reset-all', label: 'Reset everything', hint: 'Every tool, the tray and the cache', run: () => {
+        close();
+        if (window.confirm('Reset Lathe? This forgets every tool’s settings and edits and empties the tray. Files you downloaded stay on your computer.')) void resetEverything();
+      } },
     ];
   }, [navigate, shell.runExport, shell.runFork]);
 

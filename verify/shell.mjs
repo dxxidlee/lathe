@@ -291,6 +291,32 @@ await check('Routes: /make, unknown tool, deep-link reload', async () => {
   assert(await page.$('.sandbox'), 'deep link');
   return '/make, /t/nope, /t/sandbox';
 });
+await check('Reset this tool (Cmd+K): forgets its image, settings and Defaults edits', async () => {
+  await page.goto(BASE + '/t/sandbox', { waitUntil: 'networkidle' });
+  await page.click('.l-rail__opt:text-is("Lathe")');
+  const row = page.locator('.defaults__row[data-key="view"] select'); await row.selectOption('actual');
+  await page.waitForSelector('.sandbox__img');
+  const before = await page.$eval('.sandbox', el => el.dataset.matte);
+  await page.keyboard.press(`${mod}+k`); await page.keyboard.type('reset this'); await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.querySelector('.sandbox')?.dataset.matte === 'black');
+  const after = await page.evaluate(() => ({ matte: document.querySelector('.sandbox').dataset.matte, view: document.querySelector('.sandbox').dataset.view, img: !!document.querySelector('.sandbox__img'), edited: document.querySelector('[data-testid="defaults-edited"]')?.textContent }));
+  await page.reload({ waitUntil: 'networkidle' });
+  const reloaded = await page.$eval('.sandbox', el => el.dataset.matte);
+  assert(before === 'lathe' && after.matte === 'black' && after.view === 'fit' && !after.img && /Maker/.test(after.edited) && reloaded === 'black', JSON.stringify({ before, after, reloaded }));
+  return 'matte lathe → black, view edit cleared, last image forgotten; stays reset after reload';
+});
+await check('Reset everything (Cmd+K, confirmed): every tool, the tray and the cache', async () => {
+  const n = await trayCount(page);
+  page.once('dialog', d => d.accept());
+  await page.keyboard.press(`${mod}+k`); await page.keyboard.type('reset every'); await page.keyboard.press('Enter');
+  await page.waitForURL(BASE + '/');
+  await page.waitForLoadState('networkidle');
+  await page.goto(BASE + '/t/sandbox', { waitUntil: 'networkidle' });
+  const after = await trayCount(page);
+  const stored = await page.evaluate(() => new Promise(res => { const r = indexedDB.open('lathe'); r.onsuccess = () => { const tx = r.result.transaction(['assets', 'cache'], 'readonly'); const a = tx.objectStore('assets').count(); const c = tx.objectStore('cache').count(); tx.oncomplete = () => res([a.result, c.result]); }; }));
+  assert(n > 0 && after === 0 && stored[0] === 0 && stored[1] === 0, `tray ${n} → ${after}, stored ${stored}`);
+  return `tray ${n} → 0; assets and cache stores empty; lands on home`;
+});
 await check('No console errors across the run', () => { assert(!errors.length, errors.join(' | ')); return 'clean'; });
 
 /* ---- IndexedDB blocked ---- */

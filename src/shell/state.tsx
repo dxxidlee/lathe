@@ -21,6 +21,8 @@ interface ShellState {
   exportRef: React.MutableRefObject<(() => void) | null>;
   /** Set by the tool host while a built tool is mounted. */
   forkRef: React.MutableRefObject<(() => void) | null>;
+  /** Set by the mounted tool host: forget this tool's settings and reopen it fresh. */
+  resetToolRef: React.MutableRefObject<(() => void) | null>;
   runExport: () => void;
   runFork: () => void;
 }
@@ -36,6 +38,7 @@ export function ShellProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const exportRef = useRef<(() => void) | null>(null);
   const forkRef = useRef<(() => void) | null>(null);
+  const resetToolRef = useRef<(() => void) | null>(null);
   const prefsLoaded = useRef(false);
 
   useEffect(() => {
@@ -68,7 +71,7 @@ export function ShellProvider({ children }: { children: ReactNode }) {
     navCollapsed, toggleNav: () => setNavCollapsed(v => !v),
     trayOpen, toggleTray: (open?: boolean) => setTrayOpen(v => (open === undefined ? !v : open)),
     paletteOpen, setPaletteOpen, sheetOpen, setSheetOpen,
-    status, setStatus, toasts, toast, exportRef, forkRef, runExport, runFork,
+    status, setStatus, toasts, toast, exportRef, forkRef, resetToolRef, runExport, runFork,
   }), [navCollapsed, trayOpen, paletteOpen, sheetOpen, status, toasts, toast, runExport, runFork]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

@@ -16,9 +16,11 @@ interface Props {
   onResetRow: (key: string) => void;
   onResetAll: () => void;
   onFork: () => void;
+  /** Clears the tool's saved image and settings as well as these edits. */
+  onResetTool: () => void;
 }
 
-export function DefaultsPanel({ manifest, edits, onEdit, onReason, onResetRow, onResetAll, onFork }: Props) {
+export function DefaultsPanel({ manifest, edits, onEdit, onReason, onResetRow, onResetAll, onFork, onResetTool }: Props) {
   if (!manifest.length) return null;
   const n = Object.keys(edits).length;
   return (
@@ -36,6 +38,7 @@ export function DefaultsPanel({ manifest, edits, onEdit, onReason, onResetRow, o
       <div className="defaults__actions">
         <button type="button" className="l-btn" disabled={!n} onClick={onResetAll}>Reset to maker’s defaults</button>
         <button type="button" className="l-btn" onClick={onFork}>Fork this tool</button>
+        <button type="button" className="l-btn" onClick={onResetTool} title="Forget this tool's image, settings and edits">Reset tool</button>
       </div>
     </section>
   );

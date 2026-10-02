@@ -8,6 +8,7 @@ import { loadSettings } from '../lib/settings';
 import { changedKeys, effective, loadApplied, loadEdits, same, saveApplied, saveEdits, type Edits } from '../lib/defaults';
 import { forkTool } from '../lib/fork';
 import { useShell } from './state';
+import { resetTool } from '../lib/reset';
 import { DefaultsPanel } from './DefaultsPanel';
 import { ASSET_MIME } from './Tray';
 
@@ -47,6 +48,7 @@ export function ToolHost({ entry }: { entry: ToolEntry }) {
 
     (async () => {
       try {
+        if (resetPending.current) { resetPending.current = false; await resetTool(entry.id); }
         const [tool, settings, savedEdits, applied] = await Promise.all([
           entry.load!(), loadSettings(entry.id), loadEdits(entry.id), loadApplied(entry.id), loadAssets(),
         ]);
@@ -66,6 +68,7 @@ export function ToolHost({ entry }: { entry: ToolEntry }) {
           statusbar: { set: info => shell.setStatus(info), clear: () => shell.setStatus({}) },
         };
         shell.forkRef.current = () => void doFork(tool.defaults);
+        shell.resetToolRef.current = () => onResetTool();
         result = tool.mount(ctx);
         shell.exportRef.current = typeof result === 'object' && result.export ? result.export : null;
         setPhase('ready');
@@ -81,6 +84,7 @@ export function ToolHost({ entry }: { entry: ToolEntry }) {
       unmarkMounted?.();
       shell.exportRef.current = null;
       shell.forkRef.current = null;
+      shell.resetToolRef.current = null;
       try { if (result) (typeof result === 'function' ? result : result.unmount)(); }
       catch (e) { console.error(`[lathe] ${entry.id} failed to unmount`, e); }
       stage.replaceChildren();
@@ -119,6 +123,16 @@ export function ToolHost({ entry }: { entry: ToolEntry }) {
   };
   const onResetRow = (key: string) => { const next = { ...edits }; delete next[key]; void persist(next, true); };
   const onResetAll = () => void persist({}, true);
+  /** Forget this tool's working settings and Defaults edits, then reopen it as shipped. */
+  // The stored data is cleared during the remount, after the old instance has unmounted (and
+  // made its last writes), so nothing it saves on the way out survives the reset.
+  const resetPending = useRef(false);
+  const onResetTool = () => {
+    resetPending.current = true;
+    setEdits({}); editsRef.current = {};
+    setVersion(v => v + 1);
+    shell.toast(`${entry.name} reset to how it was shipped`);
+  };
 
   return (
     <>
@@ -135,7 +149,7 @@ export function ToolHost({ entry }: { entry: ToolEntry }) {
       <aside className="inspector" aria-label="Inspector">
         <div className="inspector__tool" ref={inspectorRef} />
         <DefaultsPanel manifest={manifest} edits={edits} onEdit={onEdit} onReason={onReason}
-          onResetRow={onResetRow} onResetAll={onResetAll} onFork={() => shell.runFork()} />
+          onResetRow={onResetRow} onResetAll={onResetAll} onFork={() => shell.runFork()} onResetTool={onResetTool} />
       </aside>
     </>
   );

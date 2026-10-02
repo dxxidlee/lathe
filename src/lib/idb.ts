@@ -91,3 +91,11 @@ export async function cacheGet<T>(key: string): Promise<T | undefined> {
 export function cacheSet(key: string, value: unknown, ttlMs: number): Promise<void> {
   return idbSet('cache', key, { value, expires: Date.now() + ttlMs });
 }
+
+export async function idbClear(store: StoreName): Promise<void> {
+  try {
+    memory[store].clear();
+    const db = await open();
+    if (db) await run(store, 'readwrite', s => s.clear());
+  } catch (e) { console.warn('[lathe] idbClear', e); }
+}
