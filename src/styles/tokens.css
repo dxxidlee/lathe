@@ -121,6 +121,8 @@
   --float-w: 260px;
   --float-h: 240px;
   --swatch-h: 34px;
+  --card-w: 220px;
+  --search-h: 48px;
 
   /* ---- Layers ---- */
   --z-drop: 20;

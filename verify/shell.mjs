@@ -191,7 +191,7 @@ await check('Send to from another tool switches tools and loads the asset', asyn
   return `${name} → Sandbox`;
 });
 await check('Dropping on a tool that is not built yet adds to the tray', async () => {
-  await page.goto(BASE + '/t/bento', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/t/grid', { waitUntil: 'networkidle' });
   const before = await trayCount(page);
   await dropFiles(page, '.stage', [{ path: join(FX, 'photo.jpg'), type: 'image/jpeg' }]);
   await page.waitForFunction(n => Number(document.querySelector('[data-testid="tray-count"]').textContent) === n + 1, before);

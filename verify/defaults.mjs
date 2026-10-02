@@ -147,7 +147,7 @@ await check("Reset to maker's defaults clears every edit", async () => {
   assert(/Pass10/.test(s), s); return s.replace(/\s+/g, ' ');
 });
 await check('Fork from a tool that is not built yet explains itself', async () => {
-  await page.goto(BASE + '/t/bento', { waitUntil: 'networkidle' });
+  await page.goto(BASE + '/t/grid', { waitUntil: 'networkidle' });
   await page.keyboard.press('Meta+Shift+f');
   const t = await page.textContent('.l-toasts'); assert(/Open a built tool to fork it/.test(t), t); return t;
 });

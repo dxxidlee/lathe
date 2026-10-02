@@ -523,6 +523,7 @@ export class UIController {
   /* ---------------- stage sizing ---------------- */
   fitStage(){
     const stage = $('stage'), inner = $('stageInner');
+    if(!stage || !inner) return; // unmounted
     const v = this.video.v;
     const vw = v.videoWidth || (this.video._stillCanvas && this.video._stillCanvas.width) || 0;
     const vh = v.videoHeight || (this.video._stillCanvas && this.video._stillCanvas.height) || 0;
@@ -957,7 +958,8 @@ UIController.prototype.bind = function(){
     clearTimeout(rt);
     rt = setTimeout(() => self.fitStage(), 100);
   }, { signal });
-  new ResizeObserver(() => self.fitStage()).observe($('stage'));
+  self._ro = new ResizeObserver(() => self.fitStage());
+  self._ro.observe($('stage'));
 
   window.addEventListener('beforeunload', () => {
     if(self.exporter.active) self.exporter.cancel();
@@ -1074,6 +1076,7 @@ UIController.prototype.loadAsset = function(a){
 /** Tear down: listeners, render loop, media, audio graph, GL context. */
 UIController.prototype.destroy = function(){
   this.ac.abort();
+  if(this._ro) this._ro.disconnect();
   cancelAnimationFrame(this._raf);
   clearTimeout(this._persistT);
   try { if(this.exporter.active) this.exporter.cancel(); } catch(e){}

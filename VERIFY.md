@@ -294,3 +294,62 @@ Other fixes found while porting:
 - Editors follow each row's shape: select (options), toggle chips (option lists), number (clamped to min/max), color, text, JSON (validated against the maker's shape). Manifests carry the hints. Rows the code doesn't read are marked `editable: false`.
 - If a tool fails to start with edited defaults, the stage offers "Reset to maker's defaults".
 - Color-swap now reopens its last image or video after a reload or remount.
+
+---
+
+# VERIFY: Milestone 5 (Audit subject mode, palettes, Bento)
+
+`npm run verify:audit` builds the app, serves it with the `/api` functions (`vite preview` runs them the way Vercel does), and drives Audit and Bento in Chrome against the live archive APIs (`verify/audit.mjs`). **33/33 pass.** Ports, shell and defaults still pass.
+
+### API (`/api`)
+
+| Check | Result |
+|---|---|
+| `/api/sources` lists all 13 sources; the 6 keyless ones are available; keyed ones are hidden; no key values in the response | Pass |
+| Every available source returns the normalized schema (`id, source, title, creator, date, year, imageUrl, thumbUrl, width, height, license, isPublicDomain, sourceUrl` + `type`) | Pass. "poster": AIC 23/133,118 · Archive 24/13,552 · LoC 23/18,704 · Met 2/9,242 · Openverse 20/240 · Wikimedia 24 |
+| Source responses CDN-cacheable for 24 h (`s-maxage=86400`); errors `no-store`; unknown and locked sources 404; missing `q` 400 | Pass |
+| `/api/img` serves allowlisted images and refuses the cloud metadata IP, foreign hosts, `file:`, HTML pages and junk; images capped at 4 MB (Vercel's response limit is 4.5 MB) with a `fallback=` thumbnail | Pass |
+
+### Audit
+
+| Check | Result |
+|---|---|
+| Parallel fan-out; results stream in; per-source counts, totals, timings and errors in the inspector | Pass: 116 results from 6 sources |
+| Every thumbnail gets a 5–8 swatch palette (k-means in OKLab, in a Web Worker) with hex codes under each result | Pass: 92/116 within the run window, 5–6 swatches each |
+| Repeat search served from the 24 h IndexedDB cache (no network) | Pass |
+| Filters: public domain only, orientation, year range, source toggle, type | Pass |
+| Color: sort by OKLab distance to a typed hex; filter within a ΔE threshold (checked against an independent OKLab computation) | Pass |
+| Collections: add results, aggregate palette for the selection, persist across reload, multiple collections | Pass |
+
+### Bento
+
+| Check | Result |
+|---|---|
+| Audit → "Build deck in Bento": cover, palette + stats, imagery slides, auto-generated credits slide | Pass |
+| Reshuffle, lock, drag to swap, corner resize snapping to the 12 × 8 grid, keyboard move/resize/delete | Pass |
+| Tiles: image, logo, palette (swatches + hex), hex list, type specimen, text, stat | Pass |
+| `.pptx`: opens in python-pptx (independent OOXML reader); 5 slides, 13.333 × 7.5 in; 8 pictures natively cropped (re-croppable in PowerPoint); 35 editable text boxes; all runs Helvetica Neue, with Arial's PANOSE and pitch family declared as the fallback; every slide XML valid (`xmllint`) | Pass |
+| `.pdf`: 5 pages; Ghostscript renders; text extractable (cover and credits). Helvetica is the PDF base font, since Helvetica Neue is licensed and can't be embedded | Pass |
+| `.png` per slide (1920 × 1080) and all slides zipped | Pass |
+| `.svg` per slide: valid XML, images embedded as data URIs (no external links), renders | Pass |
+| Copy for Figma: the slide's SVG markup on the clipboard | Pass |
+| Light/dark theme; deck persists across reload; every export lands in the tray | Pass |
+
+### Not verified
+
+- Opening the `.pptx` in PowerPoint, Keynote and Google Slides themselves (no licenses or accounts here). It is checked with python-pptx and `xmllint`, the font fallback is declared, and images use standard `srcRect` crops.
+- Pasting into Figma (the clipboard holds valid SVG markup, which Figma imports as layers).
+
+### Deviations from CLAUDE.md, found against the live APIs on 2026-10-01
+
+- **The Met:** `/public/collection/v1/search` was retired on 2026-10-01 (HTTP 410), so the adapter uses `/v1.1/search` (paginated). In-copyright Met objects publish no image, so queries like "poster" return few Met results.
+- **Are.na:** listed as keyless in CLAUDE.md, but v3 search now returns 401 without a token, and v2 sits behind a Cloudflare bot challenge (not something to work around). It is implemented against v3 and appears only when `ARENA_TOKEN` is set in `.env.local`.
+- **User-Agent:** Wikimedia rate-limits clients that don't identify themselves (429), while the Art Institute's firewall rejects agents carrying a URL (403). Wikimedia hosts get `LatheAudit/0.1 (+LATHE_CONTACT_URL)`, which defaults to the project owner's public GitHub profile (set it to the deployed site); every other host gets a plain agent.
+- **Function layout:** adapters live in `api/_lib/sources/*.js`, served by one dynamic route `api/sources/[source].js`, to stay within Vercel Hobby's function limit (three functions in total). They are JavaScript with JSDoc types, checked by `tsc` (`tsconfig.api.json`), so they run unmodified on Vercel and in Node.
+- **Image sizes:** each source's `imageUrl` is deck-sized (Met web-large, Wikimedia ≤ 1920 px, Archive ≤ 4 MB) to fit through the 4 MB proxy.
+
+Bugs found and fixed while building:
+- The Audit/Bento grids sized to their content's minimum width, overflowing narrow stages.
+- Bento's slide fit ignored padding.
+- Exports dropped images whose originals were refused or too large; they now fall back to the thumbnail.
+- Color-swap's stage ResizeObserver fired after unmount; it is now disconnected.

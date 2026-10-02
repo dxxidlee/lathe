@@ -18,7 +18,11 @@ export interface ToolEntry {
 }
 
 export const TOOLS: ToolEntry[] = [
-  { id: 'audit', name: 'Audit', group: 'Research', milestone: 5, blurb: 'Subject and brand audits across open archives, out as a deck.' },
+  {
+    id: 'audit', name: 'Audit', group: 'Research', milestone: 5,
+    blurb: 'Subject and brand audits across open archives, out as a deck.',
+    load: () => import('./audit').then(m => m.tool),
+  },
   {
     id: 'color-check', name: 'Color-check', group: 'Color', milestone: 2, accepts: ['text/plain', 'font/*'],
     blurb: 'WCAG 2.2 and APCA contrast matrix from pasted hex.',
@@ -39,7 +43,11 @@ export const TOOLS: ToolEntry[] = [
   { id: 'vectorize', name: 'Vectorize', group: 'Image', milestone: 7, blurb: 'Raster to SVG, one or many colors.' },
   { id: 'cutout', name: 'Cutout', group: 'Image', milestone: 7, blurb: 'In-browser background removal.' },
   { id: 'specimen', name: 'Specimen', group: 'Type', milestone: 8, blurb: 'Drop a font: glyphs, metrics, features, scale.' },
-  { id: 'bento', name: 'Bento', group: 'Layout', milestone: 5, blurb: 'Compose assets into bento slides, out to pptx, pdf, svg.' },
+  {
+    id: 'bento', name: 'Bento', group: 'Layout', milestone: 5, accepts: ['image/*', 'application/vnd.lathe.deck+json', 'application/json'],
+    blurb: 'Compose assets into bento slides, out to pptx, pdf, svg.',
+    load: () => import('./bento').then(m => m.tool),
+  },
   { id: 'grid', name: 'Grid', group: 'Layout', milestone: 8, blurb: 'Columns, gutters, baseline. SVG, PNG and CSS out.' },
   { id: 'kinetic-type', name: 'Kinetic-type', group: 'Motion', milestone: 8, blurb: 'Animated type presets, GIF and WebM out.' },
   {
