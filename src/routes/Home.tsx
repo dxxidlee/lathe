@@ -57,6 +57,7 @@ export function Home() {
               <a key={t.id} href={`/t/${t.id}`} onClick={go(`/t/${t.id}`)} className={`graph__tool${active === t.id ? ' is-active' : ''}${isReady(t) ? '' : ' is-planned'}`}
                 onMouseEnter={() => setActive(t.id)} onMouseLeave={() => setActive(null)} onFocus={() => setActive(t.id)} onBlur={() => setActive(null)}
                 aria-label={`${t.name}: ${t.blurb}${isReady(t) ? '' : ` (arrives in milestone ${t.milestone})`}`} data-tool={t.id}>
+                <path d={r.line} className="graph__hit" />
                 <path d={r.line} className="graph__route graph__draw" pathLength={1} style={{ animationDelay: `${delay}ms` }} />
                 <path d={r.head} className="graph__route graph__head" style={{ animationDelay: `${delay + 900}ms` }} />
                 <text x={r.label.x} y={r.label.y} textAnchor={r.anchor} dominantBaseline={r.baseline} className="graph__label" style={{ animationDelay: `${delay + 700}ms` }}>
@@ -67,6 +68,7 @@ export function Home() {
           })}
           <a href="/make" onClick={go('/make')} className={`graph__tool graph__tool--make${active === 'make' ? ' is-active' : ''}`}
             onMouseEnter={() => setActive('make')} onMouseLeave={() => setActive(null)} onFocus={() => setActive('make')} onBlur={() => setActive(null)} aria-label="Make a tool: describe a tool you wish existed" data-tool="make">
+            <path d={MAKE.line} className="graph__hit" />
             <path d={MAKE.line} className="graph__route graph__draw" pathLength={1} style={{ animationDelay: '700ms' }} />
             <path d={MAKE.head} className="graph__route graph__head" style={{ animationDelay: '1500ms' }} />
             <text x={MAKE.label.x} y={MAKE.label.y} textAnchor="middle" dominantBaseline="hanging" className="graph__label" style={{ animationDelay: '1400ms' }}>Make a tool</text>

@@ -87,13 +87,14 @@ await check('Home: hovering a tool draws its route and fades the rest; click ope
   await page.hover('.graph__tool[data-tool="palette"] .graph__label');
   await page.waitForTimeout(400); // opacity transitions
   const st = await page.evaluate(() => {
-    const op = el => Number(getComputedStyle(el).strokeOpacity);
+    const op = el => Number(getComputedStyle(el).strokeOpacity) * Number(getComputedStyle(el).opacity);
     const act = document.querySelector('.graph__tool[data-tool="palette"] .graph__route');
     const other = document.querySelector('.graph__tool[data-tool="dither"] .graph__route');
-    return { act: op(act), other: op(other), foot: document.querySelector('.home__foot').textContent };
+    const lab = id => Number(getComputedStyle(document.querySelector(`.graph__tool[data-tool="${id}"] .graph__label`)).opacity);
+    return { act: op(act), other: op(other), labAct: lab('palette'), labOther: lab('dither'), foot: document.querySelector('.home__foot').textContent };
   });
   await shot(page, 'home-hover');
-  assert(st.act === 1 && st.other < 0.2 && /Palette/.test(st.foot) && /scales and tokens/.test(st.foot), JSON.stringify(st));
+  assert(st.act === 1 && st.other < 0.2 && st.labAct === 1 && st.labOther < 0.5 && /Palette/.test(st.foot) && /scales and tokens/.test(st.foot), JSON.stringify(st));
   await page.click('.home__link');
   const listed = await page.locator('.toollist__tool').count();
   await page.click('.home__link');

@@ -42,9 +42,15 @@
 /* Draw in: solid strokes trace their length; dashed axes are revealed by a tracing mask. */
 .graph__draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: graph-draw 1100ms cubic-bezier(.6, 0, .2, 1) forwards; }
 .graph__reveal { fill: none; stroke: var(--white); stroke-width: var(--s-4); stroke-dasharray: 1; stroke-dashoffset: 1; animation: graph-draw 1300ms cubic-bezier(.6, 0, .2, 1) forwards; }
-.graph__head, .graph__label { opacity: 0; animation: graph-fade 400ms ease forwards; }
+/* Arrowheads and labels fade in on stroke/fill opacity, leaving `opacity` free for the hover fade
+   (a finished animation would otherwise pin it). */
+.graph__head { stroke-opacity: 0; animation: graph-head 400ms ease forwards; }
+.graph__label { fill-opacity: 0; animation: graph-label 400ms ease forwards; }
 @keyframes graph-draw { to { stroke-dashoffset: 0; } }
-@keyframes graph-fade { to { opacity: 1; } }
+@keyframes graph-head { to { stroke-opacity: var(--o-64); } }
+@keyframes graph-label { to { fill-opacity: 1; } }
+/* A wide invisible stroke along each route, so routes are easy to hover. */
+.graph__hit { fill: none; stroke: transparent; stroke-width: var(--s-5); pointer-events: stroke; vector-effect: non-scaling-stroke; }
 
 .graph__label {
   fill: var(--black); font-size: var(--fs-body); font-weight: var(--w-medium);
@@ -57,14 +63,17 @@
 /* Hover or focus: the tool's route and label in full, everything else recedes. */
 .graph.is-hovering .graph__line { stroke-opacity: var(--o-16); }
 .graph.is-hovering .graph__mark { stroke-opacity: var(--o-40); }
-.graph.is-hovering .graph__tool:not(.is-active) .graph__route { stroke-opacity: var(--o-16); }
+.graph.is-hovering .graph__tool:not(.is-active) .graph__route { opacity: var(--o-16); }
 .graph.is-hovering .graph__tool:not(.is-active) .graph__label { opacity: var(--o-40); }
-.graph__tool.is-active .graph__route { stroke-opacity: 1; stroke-width: var(--stroke-med); }
+.graph__tool.is-active .graph__route { stroke-width: var(--stroke-med); }
+.graph__tool.is-active .graph__draw { stroke-opacity: 1; animation: none; stroke-dashoffset: 0; }
+.graph__tool.is-active .graph__head { stroke-opacity: 1; animation: none; }
 .graph__tool.is-active .graph__label { fill: var(--black); text-decoration: underline; text-underline-offset: var(--s-1); }
 
 @media (prefers-reduced-motion: reduce) {
   .graph__draw, .graph__reveal { animation: none; stroke-dashoffset: 0; }
-  .graph__head, .graph__label { animation: none; opacity: 1; }
+  .graph__head { animation: none; stroke-opacity: var(--o-64); }
+  .graph__label { animation: none; fill-opacity: 1; }
 }
 
 /* ---- List (the "Tools" view, and small screens) ---- */
