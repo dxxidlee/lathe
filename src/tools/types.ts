@@ -82,6 +82,10 @@ export interface EmitFn {
 }
 
 export interface MountContext {
+  /** Effective starting values keyed by DefaultEntry.key: the maker's manifest, with the
+      user's edits applied once the Defaults panel is editable (Milestone 4). Read these
+      instead of hardcoding values in the tool. */
+  defaults: Record<string, unknown>;
   stage: HTMLElement;
   inspector: HTMLElement;
   statusbar: StatusbarAPI;

@@ -160,3 +160,47 @@ export function field(o: { label: string; value: string; type?: 'text' | 'number
   el.append(lab, input);
   return { el, input };
 }
+
+export function textarea(o: { label: string; value: string; placeholder?: string; rows?: number; onInput: (v: string) => void }) {
+  const id = nextId('ta');
+  const el = h('div', 'l-field');
+  const lab = h('label', 'l-label', o.label);
+  lab.htmlFor = id;
+  const input = h('textarea', 'l-textarea');
+  Object.assign(input, { id, value: o.value, placeholder: o.placeholder ?? '', rows: o.rows ?? 4, spellcheck: false });
+  input.addEventListener('input', () => o.onInput(input.value));
+  el.append(lab, input);
+  return { el, input };
+}
+
+/** Modal dialog that closes on Escape, backdrop click and its Close button; restores focus. */
+export function modal(o: { title: string; body: HTMLElement | HTMLElement[]; onClose?: () => void }): () => void {
+  const prev = document.activeElement as HTMLElement | null;
+  const scrim = h('div', 'l-scrim');
+  const box = h('div', 'l-modal');
+  box.setAttribute('role', 'dialog');
+  box.setAttribute('aria-modal', 'true');
+  box.setAttribute('aria-label', o.title);
+  const head = h('div', 'l-modal__head');
+  const closeBtn = button({ label: 'Close', onClick: () => close() });
+  head.append(h('h2', 'l-modal__title', o.title), closeBtn);
+  const body = h('div', 'l-modal__body');
+  body.append(...(Array.isArray(o.body) ? o.body : [o.body]));
+  box.append(head, body);
+  scrim.appendChild(box);
+  const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); close(); } };
+  scrim.addEventListener('mousedown', e => { if (e.target === scrim) close(); });
+  window.addEventListener('keydown', onKey, true);
+  document.body.appendChild(scrim);
+  closeBtn.focus();
+  let open = true;
+  function close() {
+    if (!open) return;
+    open = false;
+    window.removeEventListener('keydown', onKey, true);
+    scrim.remove();
+    prev?.focus?.();
+    o.onClose?.();
+  }
+  return close;
+}

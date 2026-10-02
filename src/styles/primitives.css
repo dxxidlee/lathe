@@ -140,3 +140,18 @@
   border-radius: var(--radius);
   font-weight: var(--w-medium);
 }
+
+.l-textarea {
+  min-height: calc(var(--field-h) * 4);
+  padding: var(--s-3);
+  border: var(--hairline) solid var(--hairline-color);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--ink);
+  line-height: var(--lh-body);
+  font-variant-numeric: tabular-nums;
+  resize: vertical;
+}
+.l-textarea:focus { outline: none; border-color: var(--accent); }
+.l-textarea::placeholder { color: var(--ink-3); }
+.l-section__body > .l-btn:not(.l-btn--primary) { align-self: flex-start; }

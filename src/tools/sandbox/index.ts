@@ -20,8 +20,7 @@ export const tool: LatheTool = {
   defaults,
   accepts: ['image/*'],
 
-  mount({ stage, inspector, statusbar, assets, settings, emit }) {
-    const d = Object.fromEntries(defaults.map(x => [x.key, x.value]));
+  mount({ defaults: d, stage, inspector, statusbar, assets, settings, emit }) {
     let matte = settings.get<Matte>('matte', d.matte as Matte);
     let view = settings.get<View>('view', d.view as View);
     let current: Asset | undefined;

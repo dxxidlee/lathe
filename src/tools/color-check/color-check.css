@@ -1,0 +1,39 @@
+.cc { position: absolute; inset: 0; overflow: auto; padding: var(--s-6); }
+.cc__matrix { min-height: 100%; display: flex; }
+.cc__empty { margin: auto; color: var(--ink-3); font-size: var(--fs-body); }
+
+.cc table.matrix { border-collapse: collapse; width: 100%; align-self: flex-start; }
+.cc table.matrix th, .cc table.matrix td {
+  border: var(--hairline) solid var(--hairline-color);
+  padding: var(--s-1) var(--s-1);
+  text-align: center; white-space: nowrap;
+  font-size: var(--fs-ui); font-weight: var(--w-regular);
+}
+.cc table.matrix th.head, .cc table.matrix th.corner { color: var(--ink-3); font-variant-numeric: tabular-nums; }
+.cc table.matrix th .swatch {
+  display: inline-block; width: var(--s-2); height: var(--s-2); margin-right: var(--s-1);
+  vertical-align: middle; border: var(--hairline) solid var(--hairline-color); border-radius: var(--hairline);
+}
+.cc table.matrix td.cell { position: relative; padding: var(--s-2) var(--s-1); }
+.cc table.matrix td.cell .val { display: block; font-weight: var(--w-medium); font-variant-numeric: tabular-nums; line-height: var(--lh-snug); }
+.cc table.matrix td.cell .grade { display: block; line-height: var(--lh-snug); }
+.cc table.matrix td.cell .tier {
+  position: absolute; top: var(--s-1); right: var(--s-1);
+  width: var(--s-2); height: var(--s-2); border-radius: var(--hairline);
+}
+.cc table.matrix td.diag { background: transparent; }
+.cc table.matrix td.is-repairable { cursor: pointer; }
+.cc table.matrix td.is-repairable:hover, .cc table.matrix td.is-repairable:focus-visible {
+  outline: calc(var(--hairline) * 2) solid var(--accent); outline-offset: calc(var(--hairline) * -2);
+}
+
+.cc-repair { display: flex; flex-direction: column; gap: var(--s-4); }
+.cc-repair__preview {
+  display: grid; place-items: center; min-height: var(--s-9);
+  border: var(--hairline) solid var(--hairline-color); border-radius: var(--radius);
+  font-size: var(--fs-title); font-weight: var(--w-medium); letter-spacing: var(--track-title);
+}
+.cc-repair__grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-4); }
+.cc-repair__opt { display: flex; flex-direction: column; gap: var(--s-2); }
+.cc-repair__hex, .cc-repair__ratio { font-variant-numeric: tabular-nums; }
+.cc-repair__ratio { color: var(--ink-2); }

@@ -43,6 +43,7 @@ export function ToolHost({ entry }: { entry: ToolEntry }) {
         const [tool, settings] = await Promise.all([entry.load!(), loadSettings(entry.id), loadAssets()]);
         if (cancelled) return;
         const ctx: MountContext = {
+          defaults: Object.fromEntries(tool.defaults.map(d => [d.key, d.value])),
           stage, inspector, assets, settings, emit,
           statusbar: { set: info => shell.setStatus(info), clear: () => shell.setStatus({}) },
         };

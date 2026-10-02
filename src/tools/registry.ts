@@ -19,7 +19,11 @@ export interface ToolEntry {
 
 export const TOOLS: ToolEntry[] = [
   { id: 'audit', name: 'Audit', group: 'Research', milestone: 5, blurb: 'Subject and brand audits across open archives, out as a deck.' },
-  { id: 'color-check', name: 'Color-check', group: 'Color', milestone: 2, blurb: 'WCAG 2.2 and APCA contrast matrix from pasted hex.' },
+  {
+    id: 'color-check', name: 'Color-check', group: 'Color', milestone: 2, accepts: ['text/plain', 'font/*'],
+    blurb: 'WCAG 2.2 and APCA contrast matrix from pasted hex.',
+    load: () => import('./color-check').then(m => m.tool),
+  },
   { id: 'palette', name: 'Palette', group: 'Color', milestone: 7, blurb: 'Image or URL in, palette, scales and tokens out.' },
   { id: 'color-swap', name: 'Color-swap', group: 'Color', milestone: 3, blurb: 'Recolor images and video to a target palette.' },
   { id: 'mesh-gradient', name: 'Mesh-gradient', group: 'Color', milestone: 3, blurb: 'Animated mesh gradients with grain, PNG and GIF out.' },
@@ -30,7 +34,11 @@ export const TOOLS: ToolEntry[] = [
   { id: 'bento', name: 'Bento', group: 'Layout', milestone: 5, blurb: 'Compose assets into bento slides, out to pptx, pdf, svg.' },
   { id: 'grid', name: 'Grid', group: 'Layout', milestone: 8, blurb: 'Columns, gutters, baseline. SVG, PNG and CSS out.' },
   { id: 'kinetic-type', name: 'Kinetic-type', group: 'Motion', milestone: 8, blurb: 'Animated type presets, GIF and WebM out.' },
-  { id: 'multi-export', name: 'Multi-export', group: 'Export', milestone: 2, blurb: 'One logo to png, jpg, svg, eps in rgb and cmyk.' },
+  {
+    id: 'multi-export', name: 'Multi-export', group: 'Export', milestone: 2, accepts: ['image/png', 'image/jpeg', 'image/svg+xml'],
+    blurb: 'One logo to png, jpg, svg, eps in rgb and cmyk.',
+    load: () => import('./multi-export').then(m => m.tool),
+  },
   { id: 'icon-set', name: 'Icon-set', group: 'Export', milestone: 8, blurb: 'One mark to a full favicon and app icon set.' },
   { id: 'mood-strip', name: 'Mood-strip', group: 'Reference', milestone: 3, blurb: 'A floating strip of reference images.' },
   {

@@ -1,6 +1,11 @@
 import type { DefaultsManifest } from '../tools/types';
 
-const show = (v: unknown) => (typeof v === 'string' ? v : JSON.stringify(v));
+const show = (v: unknown): string => {
+  if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return String(v);
+  if (Array.isArray(v)) return v.map(show).join(', ');
+  if (v && typeof v === 'object') return Object.entries(v).map(([k, x]) => `${k} ${show(x)}`).join(', ');
+  return JSON.stringify(v);
+};
 
 /** Read-only for now. Milestone 4 makes rows editable, strikes through the maker's value,
     and adds "Reset to maker's defaults" and Fork. */

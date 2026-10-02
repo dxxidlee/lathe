@@ -1,6 +1,11 @@
 // Enforces CLAUDE.md: no hardcoded colors, sizes or weights outside src/styles/tokens.css.
 // Flags hex colors, rgb()/hsl(), numeric font-weights and px values (except in @media queries
 // and the generated mark path). Run: npm run check:tokens
+//
+// Exempt, because they are not UI chrome:
+//  - tools/*/defaults.ts: default values are data shown and edited in the Defaults panel.
+//  - files whose header contains `tokens-exempt:` with a reason, for engines that write
+//    export file formats (SVG/EPS/HTML internals), not Lathe's interface.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
@@ -26,8 +31,10 @@ const files = [];
 let bad = 0;
 for (const f of files) {
   const rel = relative(ROOT, f);
-  if (SKIP.has(rel)) continue;
-  readFileSync(f, 'utf8').split('\n').forEach((line, i) => {
+  if (SKIP.has(rel) || /^tools\/[^/]+\/defaults\.ts$/.test(rel)) continue;
+  const text = readFileSync(f, 'utf8');
+  if (/tokens-exempt:\s*\S/.test(text.split('\n').slice(0, 8).join('\n'))) continue;
+  text.split('\n').forEach((line, i) => {
     if (/^\s*@media/.test(line) || /^\s*(\/\/|\*|\/\*)/.test(line)) return;
     // px inside template strings that build runtime layout (e.g. `${n}px`) is computed, not a token
     const scan = line.replace(/\$\{[^}]*\}px/g, '');

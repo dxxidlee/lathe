@@ -17,6 +17,8 @@ Verification of the five reference tools in `/reference` (cloned from `dxxidlee/
 
 **Fail** means the original is broken. **Warn** means it works but has a gap or a McCann string to strip. The port must pass every check the original passed and fix every Fail listed below. The Fix column describes what the port will do; nothing in `/reference` was changed.
 
+**Port status:** Color-check and Multi-export are ported (Milestone 2) and pass every original check plus the fixes; see "Milestone 2" at the end of this file.
+
 ## How to rerun
 
 ```bash
@@ -180,3 +182,36 @@ Also noted for Milestone 3: the default palette is "Scarlet Red / Dark Red / Dee
 | IndexedDB blocked: the app runs from memory | Pass |
 
 Bugs found and fixed while building: the tray's Send to menu was clipped by the tray's scroll container (now rendered in a portal), and Sandbox revoked a blob URL while an image was still loading it (now revoked after the new image settles).
+
+---
+
+# VERIFY: Milestone 2 (Color-check, Multi-export ports)
+
+`npm run verify:port` builds the app and reruns the Milestone 0 checks against the Lathe ports in Chrome (`verify/port.mjs`, validators shared with `run.mjs` via `verify/lib.mjs`). **72/72 pass.** The shell suite still passes 24/24.
+
+| Tool | Original (M0) | Port (M2) |
+|---|---|---|
+| color-check | 13 pass | 13 pass, plus: repair modal closes on Escape; exports land in the tray; palette, standard and uploaded font persist across reload; the HTML report no longer links Google Fonts |
+| multi-export | 46 pass · 3 warn · 8 fail | 59 pass, 0 warn, 0 fail |
+
+### Multi-export fixes (all verified with Ghostscript)
+
+| Bug (M0) | Port result |
+|---|---|
+| Vector EPS from `logo.svg` differed from the SVG on 3.6% of pixels | 1.0% (RGB) and 0.2% shape coverage (CMYK); the remainder is anti-aliasing |
+| `fill="none"` filled black | Pass: vector EPS, interior stays white |
+| `fill-rule="evenodd"` ignored | Pass: `eofill`, hole stays white |
+| `<g transform>` ignored | Pass: shapes measured in the live DOM and written with their CTM |
+| CSS class / `<style>` fill ignored | Pass: computed style, red rect renders red |
+| `rect rx` ignored | Pass: rounded rect built from arcs |
+| `<text>` dropped (blank EPS) | Pass: falls back to a raster EPS of the rendered artwork; the README notes why |
+| Arc commands drawn as straight lines (noted, untested in M0) | Pass: arcs converted to Béziers; new probe |
+| README / EPS `%%Creator` said McCANN | Pass: "Lathe Multi-export" |
+
+Each probe also asserts the EPS is not blank, so white-pixel checks cannot pass on an empty page. Stroke caps and joins now follow the SVG (the original forced round).
+
+### Behaviour notes
+
+- **Color-check:** the default chart font is Helvetica Neue (was Inter, loaded from Google Fonts). The grade colors, export hairline and label colors are defaults in the manifest. A dropped `.txt` loads into the palette field, and a dropped font file becomes the chart font.
+- **Multi-export:** the zip, like every export, also lands in the asset tray. The preview surface (light/dark) is a new viewing control and doesn't affect the files.
+- Bug found and fixed during the port: Multi-export cleared its "Export completed" status as soon as the export finished.
