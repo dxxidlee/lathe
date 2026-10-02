@@ -13,13 +13,16 @@
     "verify:shell": "npm run build && node verify/shell.mjs",
     "verify:port": "npm run build && node verify/port.mjs",
     "verify:defaults": "npm run build && node verify/defaults.mjs",
-    "verify:audit": "npm run build && node verify/audit.mjs"
+    "verify:audit": "npm run build && node verify/audit.mjs",
+    "verify:brand": "npm run build && node verify/brand.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.131.0",
     "fix-webm-duration": "^1.0.6",
     "gif.js": "^0.2.0",
     "jspdf": "^4.2.1",
     "jszip": "^3.10.2",
+    "node-html-parser": "^9.0.4",
     "pptxgenjs": "^4.0.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",

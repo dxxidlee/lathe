@@ -1,0 +1,13 @@
+{
+  "info": { "totalrecords": 3, "page": 1, "pages": 1 },
+  "records": [
+    { "id": 299843, "title": "Poster for the Bauhaus Exhibition", "people": [{ "name": "Joost Schmidt", "role": "Artist" }], "dated": "1923", "datebegin": 1923,
+      "images": [{ "iiifbaseuri": "https://ids.lib.harvard.edu/ids/iiif/18737480", "width": 2400, "height": 3400 }],
+      "primaryimageurl": "https://nrs.harvard.edu/urn-3:HUAM:DDC111222", "url": "https://harvardartmuseums.org/collections/object/299843",
+      "classification": "Posters", "imagepermissionlevel": 0, "copyright": "© Artists Rights Society (ARS), New York" },
+    { "id": 1, "title": "Restricted image", "people": [], "dated": "1950", "datebegin": 1950, "images": [{ "iiifbaseuri": "https://ids.lib.harvard.edu/ids/iiif/1" }],
+      "url": "https://harvardartmuseums.org/collections/object/1", "classification": "Prints", "imagepermissionlevel": 1 },
+    { "id": 2, "title": "No IIIF", "people": null, "dated": null, "datebegin": 0, "images": [],
+      "primaryimageurl": "https://nrs.harvard.edu/urn-3:HUAM:2", "classification": "Photographs", "imagepermissionlevel": 0 }
+  ]
+}

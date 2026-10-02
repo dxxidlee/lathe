@@ -7,6 +7,12 @@ import * as wikimedia from './wikimedia.js';
 import * as loc from './loc.js';
 import * as openverse from './openverse.js';
 import * as arena from './arena.js';
+import * as cooperhewitt from './cooperhewitt.js';
+import * as smithsonian from './smithsonian.js';
+import * as harvard from './harvard.js';
+import * as europeana from './europeana.js';
+import * as rijks from './rijks.js';
+import * as unsplash from './unsplash.js';
 
 /**
  * @typedef {Object} Source
@@ -27,13 +33,13 @@ export const SOURCES = [
   { id: 'loc', name: 'Library of Congress', key: null, homepage: 'https://www.loc.gov/photos/', imageHosts: ['tile.loc.gov', 'loc.gov'], search: loc.search },
   { id: 'openverse', name: 'Openverse', key: null, homepage: 'https://openverse.org', imageHosts: ['api.openverse.org'], search: openverse.search },
   { id: 'arena', name: 'Are.na', key: 'ARENA_TOKEN', homepage: 'https://www.are.na', imageHosts: ['d2w9rnfcy7mm78.cloudfront.net', 'images.are.na', 'are.na'], search: arena.search },
-  // Keyed sources: adapters arrive in Milestone 6. Listed so the registry is complete; hidden until then.
-  { id: 'cooperhewitt', name: 'Cooper Hewitt', key: 'COOPER_HEWITT_KEY', homepage: 'https://collection.cooperhewitt.org', imageHosts: [], search: null },
-  { id: 'smithsonian', name: 'Smithsonian Open Access', key: 'SMITHSONIAN_KEY', homepage: 'https://www.si.edu/openaccess', imageHosts: [], search: null },
-  { id: 'harvard', name: 'Harvard Art Museums', key: 'HARVARD_KEY', homepage: 'https://harvardartmuseums.org', imageHosts: [], search: null },
-  { id: 'europeana', name: 'Europeana', key: 'EUROPEANA_KEY', homepage: 'https://www.europeana.eu', imageHosts: [], search: null },
-  { id: 'rijks', name: 'Rijksmuseum', key: 'RIJKS_KEY', homepage: 'https://www.rijksmuseum.nl', imageHosts: [], search: null },
-  { id: 'unsplash', name: 'Unsplash', key: 'UNSPLASH_KEY', homepage: 'https://unsplash.com', imageHosts: [], search: null },
+  // Cooper Hewitt and the Rijksmuseum replaced their keyed APIs with keyless ones (see VERIFY.md).
+  { id: 'cooperhewitt', name: 'Cooper Hewitt', key: null, homepage: 'https://collection.cooperhewitt.org', imageHosts: ['ciim-static-media.s3.us-east-1.amazonaws.com'], search: cooperhewitt.search },
+  { id: 'rijks', name: 'Rijksmuseum', key: null, homepage: 'https://www.rijksmuseum.nl', imageHosts: ['iiif.micr.io'], search: rijks.search },
+  { id: 'smithsonian', name: 'Smithsonian Open Access', key: 'SMITHSONIAN_KEY', homepage: 'https://www.si.edu/openaccess', imageHosts: ['ids.si.edu'], search: smithsonian.search },
+  { id: 'harvard', name: 'Harvard Art Museums', key: 'HARVARD_KEY', homepage: 'https://harvardartmuseums.org', imageHosts: ['ids.lib.harvard.edu', 'nrs.harvard.edu'], search: harvard.search },
+  { id: 'europeana', name: 'Europeana', key: 'EUROPEANA_KEY', homepage: 'https://www.europeana.eu', imageHosts: ['api.europeana.eu'], search: europeana.search },
+  { id: 'unsplash', name: 'Unsplash', key: 'UNSPLASH_KEY', homepage: 'https://unsplash.com', imageHosts: ['images.unsplash.com'], search: unsplash.search },
 ];
 
 /** @param {Source} s @param {Record<string, string | undefined>} env */

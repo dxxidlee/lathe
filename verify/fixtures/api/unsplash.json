@@ -1,0 +1,11 @@
+{
+  "total": 2, "total_pages": 1,
+  "results": [
+    { "id": "Abc123", "description": "Swiss railway station sign", "alt_description": "white sign", "created_at": "2021-05-04T10:00:00Z",
+      "width": 4000, "height": 6000, "user": { "name": "Ada Lovelace" },
+      "urls": { "raw": "https://images.unsplash.com/photo-1?ixid=x", "small": "https://images.unsplash.com/photo-1?ixid=x&w=400" },
+      "links": { "html": "https://unsplash.com/photos/Abc123" } },
+    { "id": "Def456", "description": null, "alt_description": null, "created_at": null, "width": 3000, "height": 2000, "user": null,
+      "urls": { "raw": "https://images.unsplash.com/photo-2?ixid=y", "small": "https://images.unsplash.com/photo-2?ixid=y&w=400" }, "links": {} }
+  ]
+}

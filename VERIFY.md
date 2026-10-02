@@ -353,3 +353,52 @@ Bugs found and fixed while building:
 - Bento's slide fit ignored padding.
 - Exports dropped images whose originals were refused or too large; they now fall back to the thumbnail.
 - Color-swap's stage ResizeObserver fired after unmount; it is now disconnected.
+
+---
+
+## Milestone 6: keyed sources and Audit brand mode
+
+`npm run verify:brand` (plus the earlier suites, rerun). Unit checks run in-process on fixtures; the API checks hit live sites, Wikidata and archive.org; the UI runs on the production build. Microlink is replaced by a local stand-in that screenshots with Playwright (`MICROLINK_API`), so the suite spends one real screenshot, not dozens: the free tier allows 25 a day.
+
+### Keyed sources
+
+| Check | Result |
+|---|---|
+| Harvard Art Museums (fixture): key sent, images with `imagepermissionlevel` > 0 dropped, IIIF 1600/400 px, `primaryimageurl` fallback | Pass |
+| Unsplash (fixture): `Client-ID` header, "Photo by … on Unsplash" credit, `utm_source=lathe` links, 1920 px images | Pass |
+| Harvard, Unsplash, Europeana and Smithsonian report HTTP 401 for a bad key | Pass |
+| Cooper Hewitt (5,247 for "poster") and the Rijksmuseum (41) return the schema; their image hosts pass `/api/img` | Pass |
+| Smithsonian with `DEMO_KEY` (304 results) and Europeana with `api2demo`: live, during development | Pass |
+
+Not verified: Harvard and Unsplash against the live APIs (no keys here). They follow the published response formats and are fixture-tested.
+
+### Brand mode
+
+| Check | Result |
+|---|---|
+| CSS colors: hex (3/4/6/8), `rgb()`/`hsl()` in comma and space syntax, `oklch()`, `oklab()`, alpha; `var()` refused; translucent overlays (< 50%) skipped | Pass |
+| Clustering merges near colors in OKLab and ranks by use | Pass |
+| CSS scan: `@font-face` (weights, styles), stacks through `var()` and the `font` shorthand, comments and `url()` ignored, custom-property names kept, `@import` incl. Google `css2` URLs | Pass |
+| HTML scan: title, meta, Open Graph, theme color, icons, manifest, Google/Adobe font links, logo SVGs (sprite `<use>` inlined, scripts and handlers stripped); photos in menus ignored | Pass |
+| SSRF guard: loopback, private, link-local, metadata, CGNAT, IPv6 private, `::ffff:` mapped, non-standard ports, credentials, `file:`, and a public name resolving to 127.0.0.1, all refused; redirects re-checked | Pass |
+| Capture stripe.com: 12 ranked colors incl. #635BFF, Söhne self-hosted, 9 logo candidates as data URIs, 693 KB response (under Vercel's 4.5 MB) | Pass |
+| "Stripe, Inc." → Wikidata Q7624104 → stripe.com | Pass |
+| Screenshot endpoint: desktop 1440 × 900, mobile 780 × 1688 (2×), same-origin JPEG; `javascript:`/`file:` refused. One live Microlink request: 1280 × 800 | Pass |
+| Observations endpoint, with Claude stubbed: `claude-opus-5-5`, adaptive thinking, `fallbacks: "default"`, JSON-schema output, images sent; observations citing no capture dropped; refusal → 422; no key → 404 | Pass |
+| UI: mode switch, missing keys named in the inspector, report (captures, CSS palette, measured vs declared colors, typography, logos), independent OKLab recheck of the comparison | Pass |
+| Re-running from the IndexedDB cache spends no screenshots | Pass |
+| Deck in Bento: cover, palette, official colors (Brandfetch), typography, homepage, identity, timeline, observations, method, credits; `.pptx` (python-pptx), `.pdf` (Ghostscript), `.png`, `.svg` with embedded screenshots | Pass |
+| Wayback timeline (API and in the report); Wayback fallback for sites that block automated requests | **Skipped**: archive.org answered 503 "Temporarily Offline" for the whole session. Both worked earlier in development (stripe.com 2006 → 2026; Muji captured from its snapshot); the suite reruns them whenever archive.org is up |
+
+Not verified: Brandfetch (no key) and live Claude observations (no key; the request shape is tested against a stub).
+
+### Deviations from CLAUDE.md, found against the live APIs
+
+- **Cooper Hewitt and the Rijksmuseum** no longer use keys: Cooper Hewitt moved to a keyless GraphQL API, and the Rijksmuseum to its keyless Linked Art search. `COOPER_HEWITT_KEY` and `RIJKS_KEY` are not read; `.env.example` says so.
+- **Smithsonian** exposes media only for CC0 objects, so the query adds `media_usage:"CC0"`.
+- **Europeana** images come through its thumbnail API, since provider hosts can't be allowlisted.
+- **Wayback:** the CDX index takes 25–30 s per query for a big site (it timed out collapsed), so the timeline uses the availability API, about 1 s per year, paced against archive.org's 429s.
+- **Microlink's free tier is 25 screenshots a day.** A brand audit takes 2 + the timeline count (default 6). Screenshots are cached for a week at the CDN and 24 h in IndexedDB. `MICROLINK_KEY` lifts the limit.
+- **Bot walls:** many sites (Vitra, Muji, Parsons, NYT) answer 403/429 to any server request, whatever the User-Agent. The capture then reads the site's latest Wayback snapshot and says so in the report and on the cover.
+- **Brandfetch** needs a key, and the brand is looked up by domain.
+- **Functions:** `api/brand/capture`, `shot`, `timeline`, `observe`, so seven functions in total, with `maxDuration` set in `vercel.json`.

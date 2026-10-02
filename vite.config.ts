@@ -23,17 +23,26 @@ function resolveApi(root: string, pathname: string): string | null {
 }
 
 /* Runs the /api Web-standard handlers (export GET(request)) inside Vite's dev and preview servers,
-   so `npm run dev` and `npm run preview` behave like the Vercel deployment. Restart after editing /api. */
+   so `npm run dev` and `npm run preview` behave like the Vercel deployment (GET and POST, 4.5 MB bodies
+   like Vercel's limit). Restart after editing /api. */
 function apiRoutes(): Plugin {
   const root = process.cwd();
   const handle = async (req: IncomingMessage, res: ServerResponse, next: () => void) => {
     if (!req.url?.startsWith('/api/') && req.url !== '/api') return next();
     const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
     const file = resolveApi(root, url.pathname);
-    if (!file || req.method !== 'GET') { res.statusCode = file ? 405 : 404; res.end(); return; }
+    if (!file) { res.statusCode = 404; res.end(); return; }
     try {
       const mod = await import(pathToFileURL(file).href);
-      const response: Response = await mod.GET(new Request(url, { method: 'GET', headers: req.headers as Record<string, string> }));
+      const method = req.method === 'POST' ? 'POST' : req.method === 'GET' ? 'GET' : null;
+      if (!method || typeof mod[method] !== 'function') { res.statusCode = 405; res.end(); return; }
+      let body: Buffer | undefined;
+      if (method === 'POST') {
+        const chunks: Buffer[] = []; let size = 0;
+        for await (const c of req) { size += (c as Buffer).length; if (size > 4.5 * 1024 * 1024) { res.statusCode = 413; res.end(); return; } chunks.push(c as Buffer); }
+        body = Buffer.concat(chunks);
+      }
+      const response: Response = await mod[method](new Request(url, { method, headers: req.headers as Record<string, string>, body }));
       res.statusCode = response.status;
       response.headers.forEach((v, k) => res.setHeader(k, v));
       res.end(Buffer.from(await response.arrayBuffer()));

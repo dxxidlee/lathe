@@ -14,16 +14,27 @@ export interface SourcePage { source: string; query: string; page: number; total
 
 export const proxied = (url: string) => `/api/img?url=${encodeURIComponent(url)}`;
 
-export async function listSources(): Promise<SourceInfo[]> {
-  try {
-    const r = await fetch('/api/sources');
-    if (!r.ok) throw new Error(String(r.status));
-    return (await r.json()).sources;
-  } catch (e) {
-    console.warn('[audit] /api/sources unavailable', e);
-    return [];
-  }
+export interface BrandFeatures { capture: boolean; screenshots: boolean; screenshotsLimited: boolean; brandfetch: boolean; observations: boolean }
+interface Catalog { sources: SourceInfo[]; brand: BrandFeatures | null }
+let catalog: Promise<Catalog> | null = null;
+
+/** /api/sources, once per session: the sources and which brand features the keys unlock. */
+export function fetchCatalog(): Promise<Catalog> {
+  catalog ??= (async () => {
+    try {
+      const r = await fetch('/api/sources');
+      if (!r.ok) throw new Error(String(r.status));
+      const j = await r.json();
+      return { sources: j.sources, brand: j.brand ?? null };
+    } catch (e) {
+      console.warn('[audit] /api/sources unavailable', e);
+      catalog = null;
+      return { sources: [], brand: null };
+    }
+  })();
+  return catalog;
 }
+export const listSources = async (): Promise<SourceInfo[]> => (await fetchCatalog()).sources;
 
 export async function searchSource(id: string, q: string, page: number, cacheHours: number, signal?: AbortSignal): Promise<SourcePage> {
   const key = `audit:${id}:${q.toLowerCase()}:${page}`;
@@ -59,18 +70,23 @@ export class PaletteQueue {
       this.busy.add(w); w.postMessage(this.queue.shift());
     }
   }
-  async get(id: string, thumbUrl: string): Promise<PaletteResult | null> {
-    const key = `palette:${this.opts.k}:${this.opts.minSwatches}:${this.opts.sample}:${thumbUrl}`;
-    const hit = await cacheGet<PaletteResult>(key);
+  /** Palette of a remote thumbnail, fetched through the image proxy. */
+  get(id: string, thumbUrl: string): Promise<PaletteResult | null> {
+    return this.run(id, proxied(thumbUrl), thumbUrl);
+  }
+  /** Palette of a same-origin or blob: URL; `cacheId` names it in the cache (null: do not cache). */
+  async run(id: string, url: string, cacheId: string | null): Promise<PaletteResult | null> {
+    const key = cacheId && `palette:${this.opts.k}:${this.opts.minSwatches}:${this.opts.sample}:${cacheId}`;
+    const hit = key ? await cacheGet<PaletteResult>(key) : undefined;
     if (hit) return hit;
     const reply = await new Promise<PaletteReply>(res => {
       this.waiting.set(id, res);
-      this.queue.push({ id, url: proxied(thumbUrl), k: this.opts.k, sample: this.opts.sample, iterations: this.opts.iterations, minShare: this.opts.minShare, minSwatches: this.opts.minSwatches });
+      this.queue.push({ id, url, k: this.opts.k, sample: this.opts.sample, iterations: this.opts.iterations, minShare: this.opts.minShare, minSwatches: this.opts.minSwatches });
       this.pump();
     });
     if (reply.error || !reply.swatches) return null;
     const out = { swatches: reply.swatches, width: reply.width, height: reply.height };
-    await cacheSet(key, out, this.opts.cacheHours * 3600_000);
+    if (key) await cacheSet(key, out, this.opts.cacheHours * 3600_000);
     return out;
   }
   cancelPending() { this.queue = []; for (const [, r] of this.waiting) r({ id: '', error: 'cancelled' }); this.waiting.clear(); }

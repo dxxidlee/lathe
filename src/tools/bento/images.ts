@@ -20,6 +20,21 @@ async function blobFor(src: string, assets: AssetsAPI, fallback?: string): Promi
   return res.blob();
 }
 
+/** Decode any image the browser can show. createImageBitmap rejects SVG (and some icons), so those
+    go through an <img>; an SVG without intrinsic size is drawn at `maxPx` on its longest edge. */
+async function decode(blob: Blob, maxPx: number): Promise<{ src: CanvasImageSource; w: number; h: number; close(): void }> {
+  if (blob.type !== 'image/svg+xml') {
+    try { const b = await createImageBitmap(blob); return { src: b, w: b.width, h: b.height, close: () => b.close() }; } catch { /* fall back to <img> */ }
+  }
+  const url = URL.createObjectURL(blob);
+  const img = new Image();
+  img.src = url;
+  try { await img.decode(); } finally { URL.revokeObjectURL(url); }
+  let w = img.naturalWidth, h = img.naturalHeight;
+  if (blob.type === 'image/svg+xml') { const a = w && h ? w / h : 1; w = a >= 1 ? maxPx : Math.round(maxPx * a); h = a >= 1 ? Math.round(maxPx / a) : maxPx; }
+  return { src: img, w: Math.max(1, w), h: Math.max(1, h), close: () => {} };
+}
+
 const toDataUrl = (b: Blob) => new Promise<string>((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(b); });
 
 export function resolveImage(src: string, assets: AssetsAPI, maxPx: number, fallback?: string): Promise<ResolvedImage> {
@@ -28,16 +43,16 @@ export function resolveImage(src: string, assets: AssetsAPI, maxPx: number, fall
   if (!p) {
     p = (async () => {
       const blob = await blobFor(src, assets, fallback);
-      const bmp = await createImageBitmap(blob);
-      const scale = Math.min(1, maxPx / Math.max(bmp.width, bmp.height));
-      const keepAlpha = blob.type === 'image/png' || blob.type === 'image/webp' || blob.type === 'image/gif' || blob.type === 'image/svg+xml';
+      const bmp = await decode(blob, maxPx);
+      const scale = Math.min(1, maxPx / Math.max(bmp.w, bmp.h));
+      const keepAlpha = /^image\/(png|webp|gif|svg\+xml|x-icon|vnd\.microsoft\.icon|avif)$/.test(blob.type);
       if (scale === 1 && /^image\/(jpeg|png)$/.test(blob.type)) {
-        const out = { dataUrl: await toDataUrl(blob), w: bmp.width, h: bmp.height, mime: blob.type };
+        const out = { dataUrl: await toDataUrl(blob), w: bmp.w, h: bmp.h, mime: blob.type };
         bmp.close(); return out;
       }
-      const w = Math.max(1, Math.round(bmp.width * scale)), h = Math.max(1, Math.round(bmp.height * scale));
+      const w = Math.max(1, Math.round(bmp.w * scale)), h = Math.max(1, Math.round(bmp.h * scale));
       const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
-      cv.getContext('2d')!.drawImage(bmp, 0, 0, w, h);
+      cv.getContext('2d')!.drawImage(bmp.src, 0, 0, w, h);
       bmp.close();
       const mime = keepAlpha ? 'image/png' : 'image/jpeg';
       return { dataUrl: cv.toDataURL(mime, 0.9), w, h, mime };
