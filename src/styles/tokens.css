@@ -92,6 +92,10 @@
   --field-h: 22.5px;
   --swatch: 15px;
   --focus-ring: 1px;
+  --stroke-thin: 1;
+  --stroke-med: 1.5;
+  --stroke-bold: 2;
+  --stroke-heavy: 2.5;
   --icon: 12px;
   --thumb: 60px;
   --mark-size: 0.714em;        /* Helvetica Neue cap height */
@@ -114,6 +118,10 @@
   --tray-item-w: 296px;
   --page-max: 1600px;
   --hero-bar-h: 56px;
+  --strip-w: 560px;
+  --float-w: 260px;
+  --float-h: 240px;
+  --swatch-h: 34px;
 
   /* ---- Layers ---- */
   --z-drop: 20;

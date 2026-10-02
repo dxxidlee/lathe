@@ -17,7 +17,7 @@ Verification of the five reference tools in `/reference` (cloned from `dxxidlee/
 
 **Fail** means the original is broken. **Warn** means it works but has a gap or a McCann string to strip. The port must pass every check the original passed and fix every Fail listed below. The Fix column describes what the port will do; nothing in `/reference` was changed.
 
-**Port status:** Color-check and Multi-export are ported (Milestone 2) and pass every original check plus the fixes; see "Milestone 2" at the end of this file.
+**Port status:** all five tools are ported and pass every original check plus the fixes: Color-check and Multi-export in Milestone 2, Mesh-gradient, Color-swap and Mood-strip in Milestone 3. See the sections at the end of this file.
 
 ## How to rerun
 
@@ -191,7 +191,7 @@ Bugs found and fixed while building: the tray's Send to menu was clipped by the 
 
 | Tool | Original (M0) | Port (M2) |
 |---|---|---|
-| color-check | 13 pass | 13 pass, plus: repair modal closes on Escape; exports land in the tray; palette, standard and uploaded font persist across reload; the HTML report no longer links Google Fonts |
+| color-check | 13 pass | 14 pass (13 originals plus persistence), including: repair modal closes on Escape; exports land in the tray; palette, standard and uploaded font persist across reload; the HTML report no longer links Google Fonts |
 | multi-export | 46 pass · 3 warn · 8 fail | 59 pass, 0 warn, 0 fail |
 
 ### Multi-export fixes (all verified with Ghostscript)
@@ -215,3 +215,49 @@ Each probe also asserts the EPS is not blank, so white-pixel checks cannot pass 
 - **Color-check:** the default chart font is Helvetica Neue (was Inter, loaded from Google Fonts). The grade colors, export hairline and label colors are defaults in the manifest. A dropped `.txt` loads into the palette field, and a dropped font file becomes the chart font.
 - **Multi-export:** the zip, like every export, also lands in the asset tray. The preview surface (light/dark) is a new viewing control and doesn't affect the files.
 - Bug found and fixed during the port: Multi-export cleared its "Export completed" status as soon as the export finished.
+
+---
+
+# VERIFY: Milestone 3 (Mesh-gradient, Color-swap, Mood-strip ports; McCann removed)
+
+`npm run verify:port` now covers all five tools plus a McCann scan. **128/128 pass**, and the shell suite still passes 24/24.
+
+| Tool | Original (M0) | Port |
+|---|---|---|
+| color-check | 13 pass | 14 pass |
+| multi-export | 46 pass · 3 warn · 8 fail | 58 pass |
+| mesh-gradient | 15 pass · 1 warn | 17 pass |
+| color-swap | 12 pass · 2 warn · 3 fail | 18 pass |
+| mood-strip | 17 pass · 2 warn | 18 pass |
+| McCann removal | — | 3 pass |
+
+### Fixes, each with a check
+
+| Tool | Bug (M0) | Port |
+|---|---|---|
+| color-swap | Preview stage 28px wide, canvas 0×0, invisible | Mounted into the shell's stage: 944px wide at 1440×900, view toggles clickable |
+| color-swap | Escape and backdrop clicks don't close modals (`.overlay` vs `.rc-overlay`) | Selector fixed; both close |
+| color-swap | Transparent PNG exports with a black background | Stills render from their source canvas, the shader passes source alpha through, and the export context has alpha: `logo.png` exports 72% transparent |
+| color-swap | WebM has no duration in its header | `fix-webm-duration` writes it: 3.00 s in the header |
+| mesh-gradient | GIF encoder and worker loaded from cdnjs at click time | `gif.js` from npm with the worker bundled; no CDN requests during export |
+| mood-strip | No Float fallback without Document PiP | A popup window holds the strip and returns it on close (simulated in Chrome); Firefox 155 uses PiP |
+| mood-strip | Possible restore race (an early empty save could overwrite the board) | The board is restored before the first save |
+| mood-strip | "Paste link" used `prompt()`; Clear used `confirm()` | Inspector link field; Lathe modal |
+
+Other fixes found while porting:
+- **mesh-gradient:** `mix()` only parses 6-digit hex, so the original's `mix(c, '#fff', t)` blended toward #000FFF and gave sphere/orbit highlights a blue cast. White and black are now written in full.
+- **color-swap:** the original's collapsed-section CSS was malformed, so "Presets file" never collapsed. It now does; it starts collapsed, as the original markup intended.
+
+### McCann removed
+
+- Mesh-gradient families TRUTH / WELL / TOLD are now **Conic / Field / Sphere** (also in export filenames: `conic-conic-16x9-42.png`).
+- Multi-export writes "Lathe Multi-export" into the EPS `%%Creator` and the README.
+- None of the McCann suite chrome was ported: no `nav.js` "McCann Design" menu, no `design.css` header, no `home-mark.svg`, no gallery assets, no `McCann-Headline_4.ttf` or `PPNeueMontreal-Book.otf`.
+- `verify/port.mjs` scans `src/` and the production build for "McCann" (none) and checks no gallery, home-mark or licensed-font files were copied.
+- **Pending David:** Color-swap's default palette keeps the original hex values (#E71324, #92001D, #500010…), with the "Scarlet Red / Dark Red / Deep Red" names neutralised to "Red / Dark red / Deep red". If that red is McCann's brand color, swap the palette in `src/tools/color-swap/defaults.ts`.
+
+### Behaviour notes
+
+- **Color-swap** keeps its engine and controller as the original JavaScript (`engine.js`, `ui.js`, with the marked Lathe edits), rather than a TypeScript rewrite, to keep its 2,500 lines of behaviour intact. Its state persists through Lathe settings (IndexedDB), not localStorage. Uploaded files and exports land in the asset tray. Every global listener, the render loop, the media and the GL context are released on unmount.
+- **Mood-strip** stores images in the asset tray and the board as references, so a reload restores order without storing data URLs. Linked images load with CORS first so their colors can be read. Hosts without CORS headers log a console error before the retry; this is the original's strategy and is expected.
+- **Mesh-gradient:** the overlay handles drop their drop-shadows (no shadows in chrome) for a black keyline, and the selected element is outlined in chartreuse.

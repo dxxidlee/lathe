@@ -1,8 +1,8 @@
 /* tokens-exempt: writes export files (PNG/JPG/SVG/EPS/README), not Lathe's interface.
 
    Multi-export engine, ported from reference/multi-export/index.html. Raster, SVG, CMYK JPEG
-   and zip assembly are the original algorithms; the EPS writers live in eps.ts. "McCANN Export"
-   is now "Lathe Multi-export". */
+   and zip assembly are the original algorithms; the EPS writers live in eps.ts. Metadata and README credit
+   "Lathe Multi-export". */
 import JSZip from 'jszip';
 import { CmykJpeg } from './cmyk-jpeg.js';
 import { epsFromCanvas, epsFromSvg } from './eps';

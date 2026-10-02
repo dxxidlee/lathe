@@ -25,8 +25,16 @@ export const TOOLS: ToolEntry[] = [
     load: () => import('./color-check').then(m => m.tool),
   },
   { id: 'palette', name: 'Palette', group: 'Color', milestone: 7, blurb: 'Image or URL in, palette, scales and tokens out.' },
-  { id: 'color-swap', name: 'Color-swap', group: 'Color', milestone: 3, blurb: 'Recolor images and video to a target palette.' },
-  { id: 'mesh-gradient', name: 'Mesh-gradient', group: 'Color', milestone: 3, blurb: 'Animated mesh gradients with grain, PNG and GIF out.' },
+  {
+    id: 'color-swap', name: 'Color-swap', group: 'Color', milestone: 3, accepts: ['image/*', 'video/*'],
+    blurb: 'Recolor images and video to a target palette.',
+    load: () => import('./color-swap').then(m => m.tool),
+  },
+  {
+    id: 'mesh-gradient', name: 'Mesh-gradient', group: 'Color', milestone: 3,
+    blurb: 'Animated mesh gradients with grain, PNG and GIF out.',
+    load: () => import('./mesh-gradient').then(m => m.tool),
+  },
   { id: 'dither', name: 'Dither', group: 'Image', milestone: 7, blurb: 'Bayer, error diffusion and halftone.' },
   { id: 'vectorize', name: 'Vectorize', group: 'Image', milestone: 7, blurb: 'Raster to SVG, one or many colors.' },
   { id: 'cutout', name: 'Cutout', group: 'Image', milestone: 7, blurb: 'In-browser background removal.' },
@@ -40,7 +48,11 @@ export const TOOLS: ToolEntry[] = [
     load: () => import('./multi-export').then(m => m.tool),
   },
   { id: 'icon-set', name: 'Icon-set', group: 'Export', milestone: 8, blurb: 'One mark to a full favicon and app icon set.' },
-  { id: 'mood-strip', name: 'Mood-strip', group: 'Reference', milestone: 3, blurb: 'A floating strip of reference images.' },
+  {
+    id: 'mood-strip', name: 'Mood-strip', group: 'Reference', milestone: 3, accepts: ['image/*'],
+    blurb: 'A floating strip of reference images.',
+    load: () => import('./mood-strip').then(m => m.tool),
+  },
   {
     id: 'sandbox', name: 'Sandbox', group: 'Reference', milestone: 1, dev: true, accepts: ['image/*'],
     blurb: 'Contract test: load, inspect, recolor the matte, export.',

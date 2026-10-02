@@ -1,16 +1,17 @@
 // Port verification: rerun every check the reference tool passed (verify/run.mjs) against the
 // Lathe port, plus the bug fixes promised in VERIFY.md. Serves the production build (vite preview).
 // Usage: npm run verify:port   or   node verify/port.mjs [color-check multi-export]
-import { chromium } from 'playwright';
+import { chromium, firefox } from 'playwright';
 import JSZip from 'jszip';
-import { spawn } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync, rmSync } from 'node:fs';
+import { spawn, execFileSync } from 'node:child_process';
+import { mkdirSync, readFileSync, writeFileSync, rmSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, basename, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
   HAS_GS, state, assert, Warn, check, openPage, download, pngInfo, jpegInfo,
-  imgStats, diffImages, gsRender, validateEps, readText,
+  imgStats, diffImages, gsRender, validateEps, readText, ffprobe,
 } from './lib.mjs';
+import { serve } from './serve.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
@@ -20,6 +21,8 @@ const PORT = 4319;
 const BASE = `http://127.0.0.1:${PORT}`;
 const ONLY = process.argv.slice(2);
 const MOD = 'Meta';
+const FXPORT = 4320; // verify/serve.mjs: serves /__fixtures/ for URL-based flows (cross-origin, like the web)
+const FXBASE = `http://127.0.0.1:${FXPORT}`;
 state.out = OUT;
 
 async function startPreview() {
@@ -289,10 +292,443 @@ async function testMultiExport(ctx) {
   await page.close();
 }
 
+/* ================================================================
+   MESH-GRADIENT
+   ================================================================ */
+async function testMeshGradient(ctx) {
+  const { page, errors } = await openPage(ctx, BASE + '/t/mesh-gradient');
+  await page.waitForSelector('.mg__canvas');
+  await check('Loads with no console errors', () => { assert(!errors.length, errors.join(' | ')); return 'clean'; });
+  const canvasStats = async () => {
+    const url = await page.evaluate(() => document.querySelector('.mg__canvas').toDataURL('image/png'));
+    return { url, ...(await imgStats(Buffer.from(url.split(',')[1], 'base64'), 'image/png')) };
+  };
+  const variantSel = page.locator('.inspector select').first();
+  const slider = (label) => page.locator('.l-slider', { has: page.locator('.l-slider__label', { hasText: new RegExp(`^${label}$`) }) }).locator('input');
+  const setSlider = (label, v) => slider(label).evaluate((el, v) => { el.value = v; el.dispatchEvent(new Event('input')); }, v);
+  await check('Preview renders a non-flat gradient on load', async () => {
+    const s = await canvasStats(); assert(s.std > 5, 'flat'); return `canvas ${s.w}×${s.h}, σ ${s.std.toFixed(1)}`;
+  });
+  await check('UI labels: families are Conic / Field / Sphere (McCann tagline removed)', async () => {
+    const fams = await page.$$eval('.inspector .l-section:first-child .l-chip', bs => bs.map(b => b.textContent));
+    assert(fams.slice(0, 3).join('/') === 'Conic/Field/Sphere', fams.join('/'));
+    return fams.slice(0, 3).join(' / ');
+  });
+  for (const fam of ['Conic', 'Field', 'Sphere']) {
+    await chip(page, fam).click();
+    const vars = await variantSel.evaluate(s => [...s.options].map(o => o.value));
+    await check(`Family "${fam}": all variants render (${vars.join(', ')})`, async () => {
+      const out = [];
+      for (const v of vars) {
+        await variantSel.selectOption(v);
+        const st = await canvasStats(); assert(st.std > 3, `${v} flat`); out.push(`${v} σ${st.std.toFixed(0)}`);
+      }
+      return out.join(', ');
+    });
+  }
+  await check('Element selection (Sphere/Spheres): click picks an element, stops edit it', async () => {
+    await chip(page, 'Sphere').click(); await variantSel.selectOption('spheres');
+    const before = (await canvasStats()).url;
+    const box = await page.locator('.mg__canvas').boundingBox();
+    const den = Number(await slider('Density').inputValue()), N = 2 + Math.round(den), r = box.width / N / 2 * 0.99;
+    await page.mouse.click(box.x + 4 * r, box.y + r);
+    assert(await page.locator('.mg__sel').count() === 1, 'no highlight');
+    await page.locator('.inspector input[type=color]').first().evaluate(i => { i.value = '#00ff00'; i.dispatchEvent(new Event('input')); });
+    assert((await canvasStats()).url !== before, 'unchanged');
+    return 'highlight + per-element recolor';
+  });
+  await check('Sliders (density/angle/blur/grain) redraw the preview', async () => {
+    await chip(page, 'Conic').click();
+    const a = (await canvasStats()).url;
+    await setSlider('Density', 9); await setSlider('Angle', 200); await setSlider('Blur', 60); await setSlider('Grain', 10);
+    const b = (await canvasStats()).url;
+    assert(a !== b, 'unchanged'); return 'redraws';
+  });
+  await check('Randomize changes the output', async () => {
+    const a = (await canvasStats()).url; await page.click('.inspector .l-btn:has-text("Randomize")'); const b = (await canvasStats()).url;
+    assert(a !== b, 'unchanged'); return 'changes';
+  });
+  await check('Play animates, Stop returns to still', async () => {
+    await setSlider('Drift', 60);
+    await page.click('.inspector .l-btn:has-text("Play")'); await page.waitForTimeout(400);
+    const a = (await canvasStats()).url; await page.waitForTimeout(300); const b = (await canvasStats()).url;
+    await page.click('.inspector .l-btn:has-text("Stop")');
+    await setSlider('Drift', 0);
+    assert(a !== b, 'frames identical'); assert(await page.locator('.inspector .l-btn:has-text("Play")').count() === 1, 'stuck on Stop');
+    return 'animates';
+  });
+  for (const [ratio, ew, eh] of [['16:9', 3840, 2160], ['4:5', 2160, 2700], ['9:16', 2160, 3840]]) {
+    await chip(page, ratio).click();
+    await check(`Export .png at ${ratio} → ${ew}×${eh}`, async () => {
+      const f = await download(page, () => page.click('.inspector .l-btn:has-text(".png")'));
+      const buf = readFileSync(f); const { w, h } = pngInfo(buf); const st = await imgStats(buf, 'image/png');
+      assert(w === ew && h === eh, `${w}×${h}`); assert(st.std > 3, 'flat');
+      return `${basename(f)} ${w}×${h}`;
+    });
+  }
+  await chip(page, '16:9').click();
+  await check('Export .jpeg → 3840×2160', async () => {
+    const f = await download(page, () => page.click('.inspector .l-btn:has-text(".jpeg")'));
+    const j = jpegInfo(readFileSync(f)); assert(j.w === 3840 && j.h === 2160, `${j.w}×${j.h}`); return `${basename(f)} ${j.w}×${j.h}`;
+  });
+  await check('Export .gif → 40-frame 720×405 loop, encoder bundled (no CDN)', async () => {
+    const cdn = []; page.on('request', r => { if (/cdnjs|jsdelivr|unpkg/.test(r.url())) cdn.push(r.url()); });
+    const f = await download(page, () => page.click('.inspector .l-btn:has-text(".gif")'), 180000);
+    const buf = readFileSync(f);
+    assert(buf.slice(0, 6).toString() === 'GIF89a', 'not GIF89a');
+    const info = await state.vp.evaluate(async b64 => {
+      const d = new ImageDecoder({ data: Uint8Array.from(atob(b64), c => c.charCodeAt(0)), type: 'image/gif' }); await d.tracks.ready;
+      const fr = await d.decode({ frameIndex: 0 });
+      return { frames: d.tracks.selectedTrack.frameCount, w: fr.image.displayWidth, h: fr.image.displayHeight };
+    }, buf.toString('base64'));
+    assert(info.frames === 40 && info.w === 720 && info.h === 405, JSON.stringify(info));
+    assert(!cdn.length, 'CDN requests: ' + cdn.join(', '));
+    return `${basename(f)} ${info.w}×${info.h}, ${info.frames} frames, no CDN requests`;
+  });
+  await check('State persists across reload (family, ratio, sliders)', async () => {
+    await chip(page, 'Field').click(); await chip(page, '4:5').click();
+    await page.waitForTimeout(400);
+    await page.reload({ waitUntil: 'networkidle' }); await page.waitForSelector('.mg__canvas');
+    const active = await page.$$eval('.inspector .l-chip.is-active', bs => bs.map(b => b.textContent));
+    assert(active.includes('Field') && active.includes('4:5'), active.join(','));
+    await chip(page, 'Conic').click(); await chip(page, '16:9').click();
+    return active.join(', ');
+  });
+  await check('No console errors during the flow', () => { assert(!errors.length, errors.join(' | ')); return 'clean'; });
+  await page.close();
+}
+
+/* ================================================================
+   COLOR-SWAP
+   ================================================================ */
+async function testColorSwap(ctx) {
+  const { page, errors } = await openPage(ctx, BASE + '/t/color-swap');
+  await page.waitForSelector('#statusText');
+  const waitAnalysis = (t = 60000) => page.waitForFunction(() => /Analysis complete|Analysis failed/.test(document.getElementById('statusText').textContent), null, { timeout: t });
+  const grab = async () => {
+    await page.waitForTimeout(250);
+    return Buffer.from((await page.evaluate(() => document.getElementById('outCanvas').toDataURL('image/png'))).split(',')[1], 'base64');
+  };
+  await check('Loads with no console errors, WebGL2 renderer ok', async () => {
+    assert(!errors.length, errors.join(' | '));
+    const st = await page.textContent('#statusText');
+    assert(!/WebGL2 is unavailable/.test(st), st); return 'clean, WebGL2 ok';
+  });
+  await page.setInputFiles('#fileInput', join(FX, 'photo.jpg'));
+  await check('photo.jpg: loads, analysis finds color families', async () => {
+    await waitAnalysis();
+    const st = await page.textContent('#statusText'); assert(/Analysis complete/.test(st), st);
+    const n = await page.locator('#clusterList > *').count(); assert(n > 0, 'no clusters');
+    return `${n} cluster rows`;
+  });
+  await check('Preview stage is visible at 1440×900 (was 28px wide in the original)', async () => {
+    const m = await page.evaluate(() => {
+      const st = document.getElementById('stage').getBoundingClientRect(), c = document.getElementById('outCanvas').getBoundingClientRect();
+      const b = document.querySelector('[data-view="original"]'), r = b.getBoundingClientRect();
+      return { stageW: Math.round(st.width), canvas: `${Math.round(c.width)}×${Math.round(c.height)}`, covered: document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) !== b };
+    });
+    assert(m.stageW > 800 && !m.covered, JSON.stringify(m));
+    return `stage ${m.stageW}px, canvas ${m.canvas}`;
+  });
+  await check('photo.jpg: recolored view differs from original; split view works', async () => {
+    const rec = await grab();
+    await page.click('[data-view="original"]'); const orig = await grab();
+    await page.click('[data-view="split"]'); const split = await grab();
+    await page.click('[data-view="recolored"]');
+    const d = await diffImages({ buf: rec, type: 'image/png' }, { buf: orig, type: 'image/png' }, 200, 133);
+    const ds = await diffImages({ buf: split, type: 'image/png' }, { buf: orig, type: 'image/png' }, 200, 133);
+    assert(d > 0.1, `only ${(d * 100).toFixed(1)}%`); assert(ds > 0.02 && ds < d, `split ${(ds * 100).toFixed(1)}%`);
+    return `${(d * 100).toFixed(0)}% px recolored; split ${(ds * 100).toFixed(0)}%`;
+  });
+  await check('Presets apply settings (Graphic → strength 100)', async () => {
+    await page.click('#presetGrid button:has-text("Graphic")');
+    const v = await page.inputValue('#set_strength'); await page.click('#presetGrid button:has-text("Balanced")');
+    assert(v === '100', 'strength ' + v); return 'ok';
+  });
+  await check('Add rule', async () => { await page.click('#btnAddRule'); const t = await page.textContent('#ruleCount'); assert(/^1 rule/.test(t), t); return t; });
+  await check('Import palette modal replaces palette', async () => {
+    await page.click('#btnImportPalette'); await page.fill('#importText', '#000000 #E8FF1A #FFFFFF'); await page.click('#importApply');
+    const t = await page.textContent('#paletteCount'); assert(/^3 active/.test(t), t); return t;
+  });
+  await check('Modals close on Escape (fixed)', async () => {
+    await page.click('#btnImportPalette'); await page.keyboard.press('Escape');
+    const hidden = await page.$eval('#importModal', m => m.hidden);
+    if (!hidden) await page.click('#importModal [data-close]');
+    assert(hidden, 'Escape did not close'); return 'closes';
+  });
+  await check('Modals close on backdrop click (fixed)', async () => {
+    await page.click('#btnImportPalette'); await page.mouse.click(5, 5);
+    const hidden = await page.$eval('#importModal', m => m.hidden);
+    if (!hidden) await page.click('#importModal [data-close]');
+    assert(hidden, 'backdrop did not close'); return 'closes';
+  });
+  let presetFile;
+  await check('Save preset .json downloads valid JSON', async () => {
+    await page.click('[data-sec="presetio"] .section-head'); // collapsed by default (the original's collapse CSS never applied)
+    presetFile = await download(page, () => page.click('#btnSavePreset'));
+    const j = JSON.parse(readText(presetFile)); return `${basename(presetFile)} keys: ${Object.keys(j).join(', ')}`;
+  });
+  await check('Load preset .json restores state', async () => {
+    await page.setInputFiles('#presetInput', presetFile);
+    await page.waitForFunction(() => /Preset loaded|not a valid/.test(document.querySelector('.l-toasts').textContent));
+    return 'Preset loaded';
+  });
+  await check('Palette and settings persist across reload (IndexedDB)', async () => {
+    await page.waitForTimeout(400);
+    await page.reload({ waitUntil: 'networkidle' }); await page.waitForSelector('#paletteCount');
+    const t = await page.textContent('#paletteCount'); assert(/^3 active/.test(t), t);
+    await page.setInputFiles('#fileInput', join(FX, 'photo.jpg')); await waitAnalysis();
+    return t;
+  });
+  const exportOnce = async (timeout) => {
+    const before = await trayCount(page);
+    await page.click('#btnExport'); await page.waitForSelector('#exportModal:not([hidden])');
+    await page.click('#expStart'); await page.waitForSelector('#expDownload:not([hidden])', { timeout });
+    const f = await download(page, () => page.click('#expDownload'));
+    const status = await page.textContent('#expStatus');
+    await page.click('#expCancel');
+    await page.waitForFunction(n => Number(document.querySelector('[data-testid="tray-count"]').textContent) >= n + 1, before);
+    return { f, status };
+  };
+  await check('photo.jpg: export still → recolored PNG at original size, lands in tray', async () => {
+    const { f, status } = await exportOnce(30000);
+    const buf = readFileSync(f); const { w, h } = pngInfo(buf);
+    assert(w === 1600 && h === 1067, `${w}×${h}`);
+    const d = await diffImages({ buf, type: 'image/png' }, { buf: readFileSync(join(FX, 'photo.jpg')), type: 'image/jpeg' }, 200, 133);
+    assert(d > 0.1, 'not recolored'); return `${basename(f)} ${w}×${h}, ${(d * 100).toFixed(0)}% recolored; ${status}`;
+  });
+  await page.setInputFiles('#fileInput', join(FX, 'logo.png'));
+  await check('logo.png: export keeps transparency (fixed)', async () => {
+    await waitAnalysis();
+    const { f } = await exportOnce(30000);
+    const buf = readFileSync(f); const { w, h } = pngInfo(buf); const st = await imgStats(buf, 'image/png');
+    assert(w === 1500 && h === 300, `${w}×${h}`);
+    assert(st.transparent > 0.05, `transparency lost (${(st.transparent * 100).toFixed(1)}% transparent)`);
+    return `${w}×${h}, ${(st.transparent * 100).toFixed(0)}% transparent`;
+  });
+  await page.setInputFiles('#fileInput', join(FX, 'clip.mp4'));
+  await check('clip.mp4: loads (H.264/AAC), fps detected, analysis runs', async () => {
+    await waitAnalysis(90000);
+    const st = await page.textContent('#statusText'); assert(/Analysis complete/.test(st), st);
+    return `duration ${await page.textContent('#timeDur')}; ${(await page.textContent('[data-testid="status-file"]')).trim()}`;
+  });
+  await check('clip.mp4: renders recolored frames as the video moves', async () => {
+    const seek = t => page.evaluate(t => new Promise(r => { const v = document.getElementById('srcVideo'); v.pause(); v.addEventListener('seeked', () => requestAnimationFrame(() => requestAnimationFrame(r)), { once: true }); v.currentTime = t; }), t);
+    await seek(0.5); const a = await grab(); await seek(2.0); const b = await grab();
+    const d = await diffImages({ buf: a, type: 'image/png' }, { buf: b, type: 'image/png' }, 160, 90);
+    assert(d > 0.005, 'identical'); return `${(d * 100).toFixed(1)}% px differ between 0.5 s and 2.0 s`;
+  });
+  await check('clip.mp4: export → WebM with video + audio and a duration header (fixed)', async () => {
+    const { f, status } = await exportOnce(60000);
+    const p = ffprobe(f);
+    const v = p.streams.find(s => s.codec_type === 'video'), a = p.streams.find(s => s.codec_type === 'audio');
+    assert(v && /vp8|vp9/.test(v.codec_name) && v.width === 640 && v.height === 360, 'video stream');
+    const frames = parseInt(execFileSync('ffprobe', ['-v', 'error', '-count_frames', '-select_streams', 'v:0', '-show_entries', 'stream=nb_read_frames', '-of', 'csv=p=0', f]).toString(), 10);
+    const dur = parseFloat(p.format.duration);
+    assert(frames >= 60, `${frames} frames`); assert(a, 'no audio');
+    assert(isFinite(dur) && Math.abs(dur - 3) < 0.5, `header duration ${p.format.duration}`);
+    return `${basename(f)} ${v.codec_name} ${v.width}×${v.height}, ${frames} frames, ${a.codec_name}, duration ${dur.toFixed(2)} s; ${status}`;
+  });
+  await check('No console errors during the flow', () => { assert(!errors.length, errors.join(' | ')); return 'clean'; });
+  await page.close();
+}
+
+/* ================================================================
+   MOOD-STRIP
+   ================================================================ */
+async function testMoodStrip(ctx) {
+  const { page, errors } = await openPage(ctx, BASE + '/t/mood-strip');
+  await page.waitForSelector('.ms');
+  const count = async () => (await page.textContent('[data-testid="status-file"]')).trim();
+  const waitCount = n => page.waitForFunction(n => document.querySelector('[data-testid="status-file"]').textContent.trim().startsWith(n + ' '), n);
+  await check('Loads with no console errors', () => { assert(!errors.length, errors.join(' | ')); return 'clean'; });
+  await check('Add images (file picker): PNG + JPG, into the tray once each', async () => {
+    const before = await trayCount(page);
+    await page.setInputFiles('.ms input[type=file]', [join(FX, 'logo.png'), join(FX, 'photo.jpg')]);
+    await waitCount(2);
+    await page.waitForFunction(() => [...document.querySelectorAll('.ms-dim')].every(d => /×/.test(d.textContent)));
+    const dims = await page.$$eval('.ms-dim', ds => ds.map(d => d.textContent));
+    assert(dims[0] === '1500 × 300' && dims[1] === '1600 × 1067', dims.join(', '));
+    assert(await trayCount(page) === before + 2, `tray ${before} → ${await trayCount(page)}`);
+    return `${await count()}: ${dims.join(', ')}`;
+  });
+  await check('Palette: 5 swatches extracted from the photo', async () => {
+    const card = page.locator('.ms-card').nth(1);
+    await card.locator('.ms-icon[title="Colors"]').click();
+    await card.locator('.ms-palette.open .ms-sw').first().waitFor();
+    const hex = await card.locator('.ms-sw-hex').allTextContents();
+    assert(hex.length === 5 && hex.every(h => /^[0-9A-F]{6}$/.test(h)), hex.join(','));
+    return hex.join(' ');
+  });
+  await check('Copy all / Copy as CSS put hex codes on the clipboard', async () => {
+    const card = page.locator('.ms-card').nth(1);
+    await card.locator('.ms-mini:has-text("Copy all")').click(); const a = await page.evaluate(() => navigator.clipboard.readText());
+    await card.locator('.ms-mini:has-text("Copy as CSS")').click(); const b = await page.evaluate(() => navigator.clipboard.readText());
+    assert(a.split('\n').length === 5 && /^:root \{\n  --color-1: #/.test(b), JSON.stringify([a, b])); return 'ok';
+  });
+  await check('Save downloads the original file bytes', async () => {
+    const f = await download(page, () => page.locator('.ms-card').nth(1).locator('.ms-icon[title="Save"]').click());
+    assert(readFileSync(f).equals(readFileSync(join(FX, 'photo.jpg'))), 'bytes differ'); return basename(f) + ' (byte-identical)';
+  });
+  await check('Paste an image from the clipboard', async () => {
+    const b64 = readFileSync(join(FX, 'logo.png')).toString('base64');
+    await page.evaluate(b64 => {
+      const dt = new DataTransfer(); dt.items.add(new File([Uint8Array.from(atob(b64), c => c.charCodeAt(0))], 'pasted.png', { type: 'image/png' }));
+      document.body.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true }));
+    }, b64);
+    await waitCount(3); return await count();
+  });
+  await check('Paste a link: WordPress-style thumb URL upgrades to full size', async () => {
+    await page.evaluate(u => {
+      const dt = new DataTransfer(); dt.setData('text/plain', u);
+      document.body.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true }));
+    }, FXBASE + '/__fixtures/photo-300x200.jpg');
+    await waitCount(4);
+    await page.waitForFunction(() => /1600 × 1067/.test(document.querySelectorAll('.ms-dim')[3].textContent));
+    assert(/Upgraded to full size/.test(await page.textContent('.l-toasts')), 'no upgrade toast');
+    return 'photo-300x200.jpg → photo.jpg, 1600 × 1067';
+  });
+  await check('Link field (replaces prompt()) adds a ref; typing in it does not trigger paste-to-add', async () => {
+    const input = page.locator('.inspector input[placeholder="https://…"]');
+    await input.fill(FXBASE + '/__fixtures/logo.png'); await input.press('Enter');
+    await waitCount(5);
+    await input.evaluate(el => { el.focus(); const dt = new DataTransfer(); dt.setData('text/plain', 'https://example.com/x.png'); el.dispatchEvent(new ClipboardEvent('paste', { clipboardData: dt, bubbles: true })); });
+    await page.waitForTimeout(300);
+    assert((await count()).startsWith('5 '), 'paste in field added a ref: ' + await count());
+    return await count();
+  });
+  await check('Drop a file onto the strip: added once (not also by the shell)', async () => {
+    const before = await trayCount(page);
+    const b64 = readFileSync(join(FX, 'photo.jpg')).toString('base64');
+    await page.evaluate(b64 => {
+      const dt = new DataTransfer(); dt.items.add(new File([Uint8Array.from(atob(b64), c => c.charCodeAt(0))], 'dropped.jpg', { type: 'image/jpeg' }));
+      const el = document.querySelector('.ms');
+      for (const t of ['dragenter', 'dragover', 'drop']) el.dispatchEvent(new DragEvent(t, { dataTransfer: dt, bubbles: true, cancelable: true }));
+    }, b64);
+    await waitCount(6); await page.waitForTimeout(300);
+    assert(await trayCount(page) === before + 1, `tray ${before} → ${await trayCount(page)}`);
+    assert(await page.locator('.dropzone').count() === 0, 'shell drop overlay stuck');
+    return await count();
+  });
+  await check('Drag to reorder cards', async () => {
+    const before = await page.$$eval('.ms-card', cs => cs.map(c => c.dataset.id));
+    await page.evaluate(() => {
+      const cards = document.querySelectorAll('.ms-card'); const dt = new DataTransfer();
+      cards[0].dispatchEvent(new DragEvent('dragstart', { dataTransfer: dt, bubbles: true }));
+      const r = cards[2].getBoundingClientRect();
+      cards[2].dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true, clientY: r.bottom - 2 }));
+    });
+    const after = await page.$$eval('.ms-card', cs => cs.map(c => c.dataset.id));
+    assert(after[2] === before[0], `${before} → ${after}`); return `${before.join(',')} → ${after.join(',')}`;
+  });
+  await check('Remove a ref', async () => { await page.locator('.ms-card').last().locator('.ms-icon[title="Remove"]').click(); await waitCount(5); return await count(); });
+  await check('Board persists across reload', async () => {
+    const order = await page.$$eval('.ms-label', ls => ls.map(l => l.textContent));
+    await page.waitForTimeout(700); // let the IndexedDB write land (the original test waited too)
+    await page.reload({ waitUntil: 'networkidle' }); await waitCount(5);
+    await page.waitForFunction(() => [...document.querySelectorAll('.ms-dim')].every(d => /×/.test(d.textContent)));
+    const again = await page.$$eval('.ms-label', ls => ls.map(l => l.textContent));
+    assert(again.join('|') === order.join('|'), `${order} vs ${again}`); return `${await count()}, order kept`;
+  });
+  await check('Pop out opens a separate window with the image', async () => {
+    const [pop] = await Promise.all([page.waitForEvent('popup'), page.locator('.ms-card').first().locator('.ms-icon[title="Pop out"]').click()]);
+    await pop.waitForFunction(() => { const i = document.querySelector('.ms-float-body img'); return i && i.naturalWidth > 0; });
+    const w = await pop.evaluate(() => document.querySelector('.ms-float-body img').naturalWidth); await pop.close();
+    return `popup image ${w}px wide`;
+  });
+  await check('Float (Document PiP) moves the strip into an always-on-top window and back', async () => {
+    await page.click('.inspector .l-btn:has-text("Float")');
+    await page.waitForFunction(() => documentPictureInPicture.window && documentPictureInPicture.window.document.querySelector('.ms-strip'), null, { timeout: 5000 });
+    const inPip = await page.evaluate(() => documentPictureInPicture.window.document.querySelectorAll('.ms-card').length);
+    const label = await page.textContent('.inspector .l-btn:has-text("Return strip")');
+    await page.click('.inspector .l-btn:has-text("Return strip")');
+    await page.waitForFunction(() => !documentPictureInPicture.window && document.querySelector('.ms .ms-strip'));
+    assert(inPip === 5 && label === 'Return strip', `${inPip} cards`); return `${inPip} cards floated and returned`;
+  });
+  // Linked images load with crossOrigin first so their colors can be read; hosts without CORS
+  // headers (like the fixture server, and most of the web) log an error before the retry.
+  const corsRetry = e => /blocked by CORS policy|net::ERR_FAILED/.test(e);
+  await check('Clear (Lathe modal) empties the board; images stay in the tray', async () => {
+    const tray = await trayCount(page);
+    await page.click('.inspector .l-btn:has-text("Clear")');
+    await page.click('.l-modal .l-btn--primary:has-text("Remove all")');
+    await waitCount(0);
+    assert(await trayCount(page) === tray, 'tray changed'); return await count();
+  });
+  await check('No console errors during the flow (besides the CORS-first retry for linked images)', () => {
+    const real = errors.filter(e => !corsRetry(e));
+    assert(!real.length, real.join(' | '));
+    return `clean; ${errors.length} expected CORS-retry messages`;
+  });
+  await page.close();
+
+  // ---- Browser without Document PiP: Float falls back to a popup window (fixed) ----
+  {
+    const c2 = await ctx.browser().newContext({ viewport: { width: 1440, height: 900 } });
+    await c2.addInitScript(() => { delete window.documentPictureInPicture; delete Window.prototype.documentPictureInPicture; });
+    const { page: p2, errors: e2 } = await openPage(c2, BASE + '/t/mood-strip');
+    await check('No-PiP browser (simulated): Float opens a popup window holding the strip', async () => {
+      await p2.setInputFiles('.ms input[type=file]', join(FX, 'photo.jpg'));
+      await p2.waitForSelector('.ms-card');
+      const [pop] = await Promise.all([p2.waitForEvent('popup'), p2.click('.inspector .l-btn:has-text("Float")')]);
+      await pop.waitForSelector('.ms-strip .ms-card');
+      const placeholder = await p2.textContent('.ms');
+      await pop.close();
+      await p2.waitForSelector('.ms .ms-strip .ms-card');
+      assert(/Strip is floating/.test(placeholder) && !e2.length, `${placeholder} ${e2.join('|')}`);
+      return 'popup held the strip; strip returned when the window closed';
+    });
+    await c2.close();
+  }
+  // ---- Firefox ----
+  {
+    let b;
+    try { b = await firefox.launch(); } catch (e) { await check('Firefox: loads, add image, Float', () => { throw new Warn('Firefox could not launch: ' + e.message.split('\n')[0]); }); return; }
+    const c3 = await b.newContext();
+    const { page: p3, errors: e3 } = await openPage(c3, BASE + '/t/mood-strip');
+    await check('Firefox: loads, add image, Float', async () => {
+      await p3.setInputFiles('.ms input[type=file]', join(FX, 'photo.jpg'));
+      await p3.waitForSelector('.ms-card');
+      await p3.click('.inspector .l-btn:has-text("Float")');
+      await p3.waitForTimeout(1500);
+      const pip = await p3.evaluate(() => !!(window.documentPictureInPicture && documentPictureInPicture.window));
+      const ua = await p3.evaluate(() => navigator.userAgent.match(/Firefox\/[\d.]+/)?.[0]);
+      assert(!e3.length, e3.join(' | '));
+      return `${ua}; Float ${pip ? 'opened PiP' : 'used a popup'}`;
+    });
+    await b.close();
+  }
+}
+
+/* ================================================================
+   McCANN STRIP
+   ================================================================ */
+async function testMcCannStrip() {
+  await check('No McCann strings in src/ or the production build', () => {
+    const hits = [];
+    const walk = d => { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else if (/\.(ts|tsx|js|css|html|json|map)$/.test(f)) { const t = readFileSync(p, 'utf8'); if (/mccann/i.test(t)) hits.push(p.replace(ROOT + '/', '')); } } };
+    walk(join(ROOT, 'src')); walk(join(ROOT, 'dist'));
+    assert(!hits.length, hits.join(', ')); return 'none';
+  });
+  await check('No McCann tagline families (TRUTH / WELL / TOLD) in source', () => {
+    const t = readFileSync(join(ROOT, 'src/tools/mesh-gradient/engine.ts'), 'utf8') + readFileSync(join(ROOT, 'src/tools/mesh-gradient/index.ts'), 'utf8');
+    const m = t.match(/['"](TRUTH|WELL|TOLD)['"]/g); assert(!m, m && m.join(',')); return 'Conic / Field / Sphere';
+  });
+  await check('No McCann gallery assets, home-mark or licensed fonts copied', () => {
+    const bad = []; const walk = d => { for (const f of readdirSync(d)) { const p = join(d, f); if (statSync(p).isDirectory()) walk(p); else if (/home-mark|McCann-Headline|PPNeueMontreal|gallery/i.test(f)) bad.push(p); } };
+    for (const d of ['src', 'public', 'dist']) walk(join(ROOT, d));
+    assert(!bad.length, bad.join(', ')); return 'none';
+  });
+}
+
 /* ---------------- main ---------------- */
-const TOOLS = { 'color-check': testColorCheck, 'multi-export': testMultiExport };
+const TOOLS = {
+  'color-check': testColorCheck, 'multi-export': testMultiExport, 'mesh-gradient': testMeshGradient,
+  'color-swap': testColorSwap, 'mood-strip': testMoodStrip, 'mccann-strip': testMcCannStrip,
+};
 rmSync(OUT, { recursive: true, force: true }); mkdirSync(OUT, { recursive: true });
 const server = await startPreview();
+const fixtureServer = await serve(FXPORT);
 const browser = await chromium.launch({ channel: 'chrome' });
 const ctx = await browser.newContext({ acceptDownloads: true, viewport: { width: 1440, height: 900 } });
 await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: BASE });
@@ -303,7 +739,7 @@ for (const [id, fn] of Object.entries(TOOLS)) {
   state.tool = id; console.log(`\n${id}`);
   try { await fn(ctx); } catch (e) { state.results.push({ tool: id, check: 'runner', status: 'fail', detail: e.message.split('\n')[0] }); console.log('  FAIL  runner crashed — ' + e.message.split('\n')[0]); }
 }
-await browser.close(); server.kill();
+await browser.close(); server.kill(); fixtureServer.close();
 writeFileSync(join(OUT, 'results.json'), JSON.stringify(state.results, null, 2));
 const n = s => state.results.filter(r => r.status === s).length;
 console.log(`\n${n('pass')} pass · ${n('warn')} warn · ${n('fail')} fail`);

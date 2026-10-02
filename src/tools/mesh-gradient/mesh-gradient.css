@@ -1,0 +1,13 @@
+.mg { position: absolute; inset: 0; display: grid; place-items: center; overflow: hidden; }
+.mg__wrap { position: relative; line-height: 0; }
+.mg__canvas { display: block; border-radius: var(--radius); }
+.mg__ov { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
+.mg__ov .hit { pointer-events: auto; cursor: grab; }
+.mg__ov .hit:active { cursor: grabbing; }
+/* Handles sit on arbitrary artwork: white with a black keyline, no shadows. */
+.mg__axis { stroke: var(--white); stroke-width: var(--stroke-med); stroke-dasharray: var(--stroke-thin) calc(var(--stroke-thin) * 5); stroke-linecap: round; }
+.mg__handle { fill: var(--white); stroke: var(--black); stroke-width: var(--stroke-thin); }
+.mg__center { fill: var(--white-16); stroke: var(--white); stroke-width: var(--stroke-bold); }
+.mg__dot { fill: var(--black); pointer-events: none; }
+.mg__dot--light { fill: var(--white); }
+.mg__sel { fill: none; stroke: var(--lathe); stroke-width: var(--stroke-heavy); pointer-events: none; }

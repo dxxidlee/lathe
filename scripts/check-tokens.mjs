@@ -6,6 +6,8 @@
 //  - tools/*/defaults.ts: default values are data shown and edited in the Defaults panel.
 //  - files whose header contains `tokens-exempt:` with a reason, for engines that write
 //    export file formats (SVG/EPS/HTML internals), not Lathe's interface.
+//  - single lines marked `tokens-allow: <reason>`, for data values (e.g. a fallback color for a
+//    malformed saved swatch), never styling.
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join, relative } from 'node:path';
 
@@ -24,7 +26,7 @@ const files = [];
   for (const f of readdirSync(d)) {
     const p = join(d, f);
     if (statSync(p).isDirectory()) walk(p);
-    else if (/\.(css|ts|tsx)$/.test(f)) files.push(p);
+    else if (/\.(css|ts|tsx|js)$/.test(f) && !f.endsWith('.d.ts')) files.push(p);
   }
 })(ROOT);
 
@@ -35,7 +37,7 @@ for (const f of files) {
   const text = readFileSync(f, 'utf8');
   if (/tokens-exempt:\s*\S/.test(text.split('\n').slice(0, 8).join('\n'))) continue;
   text.split('\n').forEach((line, i) => {
-    if (/^\s*@media/.test(line) || /^\s*(\/\/|\*|\/\*)/.test(line)) return;
+    if (/^\s*@media/.test(line) || /^\s*(\/\/|\*|\/\*)/.test(line) || /tokens-allow:\s*\S/.test(line)) return;
     // px inside template strings that build runtime layout (e.g. `${n}px`) is computed, not a token
     const scan = line.replace(/\$\{[^}]*\}px/g, '');
     for (const [re, what] of RULES) {

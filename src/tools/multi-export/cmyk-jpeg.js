@@ -1,4 +1,5 @@
-/* Ported verbatim from reference/assets/cmyk-jpeg.js; only the IIFE wrapper became an ES module export. */
+/* tokens-exempt: JPEG encoder internals.
+   Ported verbatim from reference/assets/cmyk-jpeg.js; only the IIFE wrapper became an ES module export. */
 /* ==========================================================================
    Baseline JPEG encoder with four-channel Adobe CMYK output.
 

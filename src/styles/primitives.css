@@ -155,3 +155,16 @@
 .l-textarea:focus { outline: none; border-color: var(--accent); }
 .l-textarea::placeholder { color: var(--ink-3); }
 .l-section__body > .l-btn:not(.l-btn--primary) { align-self: flex-start; }
+.l-select {
+  height: var(--field-h); padding: 0 var(--s-3);
+  border: var(--hairline) solid var(--hairline-color); border-radius: var(--radius);
+  background: var(--panel); color: var(--ink);
+}
+.l-select:focus { outline: none; border-color: var(--accent); }
+.l-row { display: flex; flex-wrap: wrap; gap: var(--s-1); align-items: center; }
+.l-swatch-input {
+  width: var(--chip-h); height: var(--chip-h); padding: 0;
+  border: var(--hairline) solid var(--hairline-color); border-radius: var(--radius); background: none; cursor: pointer;
+}
+.l-swatch-input::-webkit-color-swatch-wrapper { padding: 0; }
+.l-swatch-input::-webkit-color-swatch { border: 0; border-radius: var(--radius); }

@@ -122,7 +122,7 @@ export function slider(o: {
     input.style.setProperty('--p', `${((Number(input.value) - o.min) / (o.max - o.min || 1)) * 100}%`);
   };
   input.addEventListener('input', () => { sync(); o.onChange(Number(input.value)); });
-  el.append(lab, input, out);
+  el.append(lab, out, input);
   sync();
   return { el, set(v: number) { input.value = String(v); sync(); } };
 }
@@ -203,4 +203,21 @@ export function modal(o: { title: string; body: HTMLElement | HTMLElement[]; onC
     o.onClose?.();
   }
   return close;
+}
+
+export function select<V extends string>(o: { label: string; options: Opt<V>[]; value: V; onChange: (v: V) => void }) {
+  const id = nextId('sel');
+  const el = h('div', 'l-field');
+  const lab = h('label', 'l-label', o.label);
+  lab.htmlFor = id;
+  const sel = h('select', 'l-select');
+  sel.id = id;
+  const fill = (opts: Opt<V>[], value: V) => {
+    sel.replaceChildren(...opts.map(op => { const x = h('option', undefined, op.label); x.value = op.value; return x; }));
+    sel.value = value;
+  };
+  fill(o.options, o.value);
+  sel.addEventListener('change', () => o.onChange(sel.value as V));
+  el.append(lab, sel);
+  return { el, input: sel, set(v: V) { sel.value = v; }, setOptions: fill };
 }
