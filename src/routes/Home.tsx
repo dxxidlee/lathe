@@ -4,7 +4,7 @@ import { Wordmark } from '../brand/Wordmark';
 import { TOOLS, isReady, toolsByGroup } from '../tools/registry';
 import { useShell } from '../shell/state';
 import { modKey } from '../lib/format';
-import { MAKE, MARK_TRANSFORM, STRUCTURE, VIEW, routes } from './home-graph';
+import { MAKE, MARK_TRANSFORM, STRUCTURE, VIEW, routesFor } from './home-graph';
 
 /* Home: the Lathe mark as a construction drawing that draws itself in, with every tool on it. Each tool has its own
    route out of the drawing; hovering or focusing a tool draws its route and fades the rest.
@@ -17,7 +17,7 @@ export function Home() {
   useEffect(() => { document.title = 'Lathe · Tools for people who make tools.'; }, []);
 
   const tools = useMemo(() => TOOLS.filter(t => !t.dev), []);
-  const rs = useMemo(() => routes(tools.length), [tools.length]);
+  const rs = useMemo(() => routesFor(tools.map(t => t.id)), [tools]);
   const ready = tools.filter(isReady).length;
   const current = tools.find(t => t.id === active);
   const go = (path: string) => (e: React.MouseEvent) => { e.preventDefault(); navigate(path); };
