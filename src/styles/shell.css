@@ -5,7 +5,7 @@
 .shell {
   display: grid;
   height: 100vh;
-  grid-template-columns: var(--nav-w) minmax(var(--stage-min-w), 1fr) var(--inspector-w);
+  grid-template-columns: var(--nav-w) minmax(0, 1fr) var(--inspector-w);
   grid-template-rows: var(--topbar-h) minmax(0, 1fr) auto var(--statusbar-h);
   grid-template-areas:
     "top top top"
@@ -15,7 +15,7 @@
   background: var(--panel);
   overflow: hidden;
 }
-.shell.nav-collapsed { grid-template-columns: var(--nav-w-collapsed) minmax(var(--stage-min-w), 1fr) var(--inspector-w); }
+.shell.nav-collapsed { grid-template-columns: var(--nav-w-collapsed) minmax(0, 1fr) var(--inspector-w); }
 
 /* ---- Top bar ---- */
 .topbar {
