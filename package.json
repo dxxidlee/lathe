@@ -11,7 +11,8 @@
     "typecheck": "tsc -b",
     "check:tokens": "node scripts/check-tokens.mjs",
     "verify:shell": "npm run build && node verify/shell.mjs",
-    "verify:port": "npm run build && node verify/port.mjs"
+    "verify:port": "npm run build && node verify/port.mjs",
+    "verify:defaults": "npm run build && node verify/defaults.mjs"
   },
   "dependencies": {
     "fix-webm-duration": "^1.0.6",

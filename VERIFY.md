@@ -254,10 +254,43 @@ Other fixes found while porting:
 - Multi-export writes "Lathe Multi-export" into the EPS `%%Creator` and the README.
 - None of the McCann suite chrome was ported: no `nav.js` "McCann Design" menu, no `design.css` header, no `home-mark.svg`, no gallery assets, no `McCann-Headline_4.ttf` or `PPNeueMontreal-Book.otf`.
 - `verify/port.mjs` scans `src/` and the production build for "McCann" (none) and checks no gallery, home-mark or licensed-font files were copied.
-- **Pending David:** Color-swap's default palette keeps the original hex values (#E71324, #92001D, #500010…), with the "Scarlet Red / Dark Red / Deep Red" names neutralised to "Red / Dark red / Deep red". If that red is McCann's brand color, swap the palette in `src/tools/color-swap/defaults.ts`.
+- **Decided (David, Milestone 4):** keep the red. Color-swap's default palette keeps the original hex values (#E71324, #92001D, #500010…), with the swatch names neutralised to "Red / Dark red / Deep red".
 
 ### Behaviour notes
 
 - **Color-swap** keeps its engine and controller as the original JavaScript (`engine.js`, `ui.js`, with the marked Lathe edits), rather than a TypeScript rewrite, to keep its 2,500 lines of behaviour intact. Its state persists through Lathe settings (IndexedDB), not localStorage. Uploaded files and exports land in the asset tray. Every global listener, the render loop, the media and the GL context are released on unmount.
 - **Mood-strip** stores images in the asset tray and the board as references, so a reload restores order without storing data URLs. Linked images load with CORS first so their colors can be read. Hosts without CORS headers log a console error before the retry; this is the original's strategy and is expected.
 - **Mesh-gradient:** the overlay handles drop their drop-shadows (no shadows in chrome) for a black keyline, and the selected element is outlined in chartreuse.
+
+---
+
+# VERIFY: Milestone 4 (Defaults panel, Fork)
+
+`npm run verify:defaults` builds the app and drives the Defaults panel and Fork in Chrome (`verify/defaults.mjs`). **17/17 pass.** Ports (128/128) and shell (24/24) still pass.
+
+| Check | Result |
+|---|---|
+| Every default listed with chosenBy / inheritedFrom and `TODO(David)` | Pass (Color-check: 17 rows) |
+| Number edit applies at once; maker value struck through; "Edited by you" | Pass: WCAG AA 4.5 → 6 changes Pass/Large/Usable 10/4/50% → 8/6/40% |
+| Option edit switches the tool | Pass: Standard wcag → apca, matrix shows +106 |
+| A reason is saved with the edit and survives reload | Pass |
+| Edits persist across reload | Pass |
+| Invalid JSON, or a list where the maker had an object, is refused | Pass |
+| Descriptive rows (CMYK separation, sRGB…) shown, not editable | Pass |
+| Fork (⌘⇧F): tool source byte-identical to the repo, contract files, `defaults.json` (maker / current / edits with reasons / manifest with `chosenBy: You`), `FORK.md` listing each change struck through with the maker's choice and your reason; zip lands in the tray | Pass |
+| Reset one row; "Reset to maker's defaults" | Pass |
+| Fork on an unbuilt tool explains itself | Pass |
+| Multi-export: raster size 2000 → 1000 replaces the working value; formats, color spaces and treatments edited as chips; export follows (one 1000×200 PNG) | Pass |
+| Mesh-gradient: family default → sphere shows Sphere / spheres; reset → Conic | Pass |
+| Color-swap: strength 0.85 → 0.5 moves the slider; the loaded photo survives the remount; reset → 85 | Pass |
+| Mood-strip: swatches per image 5 → 3 | Pass |
+| Fork works for every built tool | Pass |
+| No console errors | Pass |
+
+### How it works
+
+- Edits live per tool in IndexedDB. A tool receives `ctx.defaults` (the maker's values with your edits applied), and an edit remounts it so the change shows at once.
+- When a default's value changes (an edit or a reset), the shell drops your saved working value under the same key and passes `ctx.changedDefaults` to the tool. Tools with composite state (Mesh-gradient, Color-swap) drop their own working copies, so the new default always shows.
+- Editors follow each row's shape: select (options), toggle chips (option lists), number (clamped to min/max), color, text, JSON (validated against the maker's shape). Manifests carry the hints. Rows the code doesn't read are marked `editable: false`.
+- If a tool fails to start with edited defaults, the stage offers "Reset to maker's defaults".
+- Color-swap now reopens its last image or video after a reload or remount.

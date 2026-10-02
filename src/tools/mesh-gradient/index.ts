@@ -22,12 +22,24 @@ export const tool: LatheTool = {
   group: 'Color',
   defaults,
 
-  mount({ defaults: d, stage, inspector, statusbar, settings, emit }) {
+  mount({ defaults: d, changedDefaults, stage, inspector, statusbar, settings, emit }) {
     const PALETTES = d.palettes as Record<string, string[]>;
     const LOOP_S = d.loopSeconds as number;
+    if (!(d.palette as string in PALETTES)) d.palette = Object.keys(PALETTES)[0];
 
     /* ---------- state (persisted) ---------- */
     const saved = settings.get<Partial<MeshState> & { ctl?: Partial<Controls> }>('state', {});
+    // A default edited in the Defaults panel replaces the matching working value.
+    const DROP: Record<string, (keyof MeshState | `ctl.${keyof Controls}`)[]> = {
+      family: ['fam', 'variant'], variant: ['variant'], palette: ['palette', 'base', 'elems'], palettes: ['palette', 'base', 'elems'],
+      ratio: ['ratio'], seed: ['seed'], density: ['ctl.den'], angle: ['ctl.ang'], blur: ['ctl.soft'], grain: ['ctl.grain'],
+      drift: ['ctl.drift'], cycle: ['ctl.cyc'],
+    };
+    for (const k of changedDefaults) for (const f of DROP[k] ?? []) {
+      if (f.startsWith('ctl.')) { if (saved.ctl) delete saved.ctl[f.slice(4) as keyof Controls]; }
+      else delete saved[f as keyof MeshState];
+    }
+    if (saved.palette && !(saved.palette in PALETTES)) { delete saved.palette; delete saved.base; }
     const S: MeshState = {
       fam: (saved.fam && saved.fam in FAMILIES ? saved.fam : d.family) as FamKey,
       variant: saved.variant ?? (d.variant as string),

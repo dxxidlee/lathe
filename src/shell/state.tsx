@@ -19,6 +19,8 @@ interface ShellState {
   toast: (message: string) => void;
   /** Set by the mounted tool when it answers Cmd+E. */
   exportRef: React.MutableRefObject<(() => void) | null>;
+  /** Set by the tool host while a built tool is mounted. */
+  forkRef: React.MutableRefObject<(() => void) | null>;
   runExport: () => void;
   runFork: () => void;
 }
@@ -33,6 +35,7 @@ export function ShellProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<StatusInfo>({});
   const [toasts, setToasts] = useState<Toast[]>([]);
   const exportRef = useRef<(() => void) | null>(null);
+  const forkRef = useRef<(() => void) | null>(null);
   const prefsLoaded = useRef(false);
 
   useEffect(() => {
@@ -56,13 +59,16 @@ export function ShellProvider({ children }: { children: ReactNode }) {
     if (exportRef.current) exportRef.current();
     else toast('Nothing to export here yet');
   }, [toast]);
-  const runFork = useCallback(() => toast('Fork arrives with the Defaults panel (Milestone 4)'), [toast]);
+  const runFork = useCallback(() => {
+    if (forkRef.current) forkRef.current();
+    else toast('Open a built tool to fork it');
+  }, [toast]);
 
   const value = useMemo<ShellState>(() => ({
     navCollapsed, toggleNav: () => setNavCollapsed(v => !v),
     trayOpen, toggleTray: (open?: boolean) => setTrayOpen(v => (open === undefined ? !v : open)),
     paletteOpen, setPaletteOpen, sheetOpen, setSheetOpen,
-    status, setStatus, toasts, toast, exportRef, runExport, runFork,
+    status, setStatus, toasts, toast, exportRef, forkRef, runExport, runFork,
   }), [navCollapsed, trayOpen, paletteOpen, sheetOpen, status, toasts, toast, runExport, runFork]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

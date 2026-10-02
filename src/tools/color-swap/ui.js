@@ -706,7 +706,7 @@ UIController.prototype.bind = function(){
   $('fileInput').addEventListener('change', e => {
     const f = e.target.files && e.target.files[0];
     e.target.value = '';
-    if(f){ self.ctx.assets.add(f, { source:'drop' }); self.handleFile(f); }
+    if(f){ self.ctx.assets.add(f, { source:'drop' }).then(a => self.ctx.settings.set('lastAsset', a.id)); self.handleFile(f); }
   });
 
   /* ---- drag and drop ---- */
@@ -727,7 +727,7 @@ UIController.prototype.bind = function(){
     const a = trayId && self.ctx.assets.get(trayId);
     if(a){ self.loadAsset(a); return; }
     const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0];
-    if(f){ self.ctx.assets.add(f, { source:'drop' }); self.handleFile(f); }
+    if(f){ self.ctx.assets.add(f, { source:'drop' }).then(a => self.ctx.settings.set('lastAsset', a.id)); self.handleFile(f); }
   });
 
   /* ---- transport ---- */
@@ -1067,6 +1067,7 @@ UIController.prototype.runExport = function(){
 /* ---- Lathe integration ---- */
 /** An asset handed over by the shell (drop anywhere, tray, Send to). */
 UIController.prototype.loadAsset = function(a){
+  this.ctx.settings.set('lastAsset', a.id);
   const f = a.blob instanceof File ? a.blob : new File([a.blob], a.name, { type: a.type });
   return this.handleFile(f);
 };

@@ -14,6 +14,11 @@ export async function loadSettings(toolId: string): Promise<SettingsAPI> {
       data[key] = value;
       void idbSet('settings', toolId, { ...data });
     },
+    remove(key) {
+      if (!(key in data)) return;
+      delete data[key];
+      void idbSet('settings', toolId, { ...data });
+    },
     all: () => ({ ...data }),
   };
 }

@@ -3,7 +3,7 @@ import type { DefaultsManifest } from '../types';
 const TODO = 'TODO(David)';
 const DL = 'David Lee';
 const setting = (key: string, label: string, value: number) =>
-  ({ key, label, value, unit: '0–1', chosenBy: DL, reason: TODO, inheritedFrom: null });
+  ({ key, label, value, unit: '0–1', min: 0, max: 1, step: 0.01, chosenBy: DL, reason: TODO, inheritedFrom: null });
 
 export const defaults: DefaultsManifest = [
   {
@@ -44,10 +44,10 @@ export const defaults: DefaultsManifest = [
       'Subtle Brand Grade': { strength: 0.34, lumaPreserve: 0.92, satLimit: 0.36, accentFreq: 0.10, neutral: 0.80, softness: 0.65, texture: 0.85, temporal: 0.70 },
     },
   },
-  { key: 'analysisFrames', label: 'Frames sampled per video', value: 12, chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'exportResolution', label: 'Export resolution', value: 'original', chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'exportFps', label: 'Export frame rate', value: 'original', chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'exportQuality', label: 'Export quality', value: 'high', chosenBy: DL, reason: TODO, inheritedFrom: null },
+  { key: 'analysisFrames', min: 1, max: 60, step: 1, label: 'Frames sampled per video', value: 12, chosenBy: DL, reason: TODO, inheritedFrom: null },
+  { key: 'exportResolution', options: ['original', '1080', '720', '480'], label: 'Export resolution', value: 'original', chosenBy: DL, reason: TODO, inheritedFrom: null },
+  { key: 'exportFps', options: ['original', '30', '24'], label: 'Export frame rate', value: 'original', chosenBy: DL, reason: TODO, inheritedFrom: null },
+  { key: 'exportQuality', options: ['high', 'medium', 'small'], label: 'Export quality', value: 'high', chosenBy: DL, reason: TODO, inheritedFrom: null },
   { key: 'exportAudio', label: 'Include audio', value: true, chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'videoFormat', label: 'Video format', value: 'WebM (VP9/VP8, Opus)', chosenBy: DL, reason: TODO, inheritedFrom: null },
+  { key: 'videoFormat', editable: false, label: 'Video format', value: 'WebM (VP9/VP8, Opus)', chosenBy: DL, reason: TODO, inheritedFrom: null },
 ];

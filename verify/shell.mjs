@@ -242,9 +242,9 @@ await check('? opens the shortcut sheet; Escape closes', async () => {
   await page.keyboard.press('Escape'); assert(!(await page.$('.l-modal')), 'still open');
   return 'ok';
 });
-await check(`${mod}+Shift+F fork shows the Milestone 4 notice`, async () => {
+await check(`${mod}+Shift+F on an unbuilt tool explains there is nothing to fork`, async () => {
   await page.keyboard.press(`${mod}+Shift+f`);
-  const t = await page.textContent('.l-toasts'); assert(/Fork arrives/.test(t), t); return t;
+  const t = await page.textContent('.l-toasts'); assert(/Open a built tool to fork it/.test(t), t); return t;
 });
 await check('Rail collapses and stays collapsed after reload', async () => {
   await page.click('.nav__toggle');

@@ -13,7 +13,16 @@ export const tool: LatheTool = {
   defaults,
   accepts: ['image/*', 'video/*'],
 
-  mount({ defaults: d, stage, inspector, statusbar, assets, settings, emit }) {
+  mount({ defaults: d, changedDefaults, stage, inspector, statusbar, assets, settings, emit }) {
+    // A default edited in the Defaults panel replaces the matching value in the saved snapshot.
+    const snap = settings.get<{ palette?: unknown; settings?: Record<string, number> } | null>('state', null);
+    if (snap && changedDefaults.length) {
+      for (const k of changedDefaults) {
+        if (k === 'palette') delete snap.palette;
+        else if (snap.settings && k in snap.settings) delete snap.settings[k];
+      }
+      settings.set('state', snap);
+    }
     const ui = new UIController({
       stage, inspector, defaults: d, settings, statusbar, assets, emit,
       palette: d.palette as unknown[],
@@ -24,6 +33,9 @@ export const tool: LatheTool = {
     set('expRes', d.exportResolution); set('expFps', d.exportFps); set('expQual', d.exportQuality); set('expAudio', d.exportAudio);
 
     const off = assets.onChange(e => { if (e.type === 'load' && e.target === 'color-swap') void ui.loadAsset(e.asset); });
+    // Reopen the last image or video (after a reload, or a remount from a Defaults edit).
+    const last = assets.get(settings.get<string>('lastAsset', ''));
+    if (last) void ui.loadAsset(last);
     return {
       unmount() { off(); ui.destroy(); },
       export: () => { const btn = document.getElementById('btnExport') as HTMLButtonElement | null; if (btn && !btn.disabled) ui.openExport(); else emit('toast', 'Load an image or video first'); },

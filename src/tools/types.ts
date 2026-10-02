@@ -16,6 +16,14 @@ export interface DefaultEntry<V = unknown> {
   reason: string;
   /** Only for verifiable industry conventions (sRGB, 72 dpi, WCAG thresholds, 8pt grid). */
   inheritedFrom: string | null;
+  /* ---- Editing hints for the Defaults panel (all optional) ---- */
+  /** Allowed values: a select for scalars, toggle chips for arrays. */
+  options?: (string | number)[];
+  min?: number;
+  max?: number;
+  step?: number;
+  /** false for descriptive rows the code does not read (shown, not editable). */
+  editable?: boolean;
 }
 export type DefaultsManifest = DefaultEntry[];
 
@@ -58,6 +66,7 @@ export interface AssetsAPI {
 export interface SettingsAPI {
   get<T>(key: string, fallback: T): T;
   set(key: string, value: unknown): void;
+  remove(key: string): void;
   all(): Record<string, unknown>;
 }
 
@@ -86,6 +95,10 @@ export interface MountContext {
       user's edits applied once the Defaults panel is editable (Milestone 4). Read these
       instead of hardcoding values in the tool. */
   defaults: Record<string, unknown>;
+  /** Default keys whose value changed since this tool last mounted (an edit or a reset in the
+      Defaults panel). The shell already dropped top-level settings with the same key; tools that
+      keep composite state should drop their working copies of these too, so the new default shows. */
+  changedDefaults: string[];
   stage: HTMLElement;
   inspector: HTMLElement;
   statusbar: StatusbarAPI;
