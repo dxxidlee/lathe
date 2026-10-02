@@ -1,0 +1,15 @@
+.co { position: absolute; inset: 0; display: grid; place-items: center; padding: var(--s-6); overflow: hidden; }
+.co__canvas { grid-area: 1 / 1; max-width: 100%; max-height: 100%; border-radius: var(--radius); }
+/* Transparency is shown on a checkerboard (a convention for alpha, not decoration). */
+.co[data-backdrop="checker"] .co__canvas { background: repeating-conic-gradient(var(--white-16) 0 25%, var(--white-8) 0 50%) 0 0 / var(--s-5) var(--s-5); }
+.co[data-backdrop="black"] .co__canvas { background: var(--black); outline: var(--hairline) solid var(--hairline-color); }
+.co[data-backdrop="white"] .co__canvas { background: var(--white); }
+.co[data-backdrop="lathe"] .co__canvas { background: var(--lathe); }
+.co[data-view="original"] .co__canvas, .co[data-view="mask"] .co__canvas { background: none; }
+.co__status { grid-area: 1 / 1; align-self: end; display: flex; flex-direction: column; gap: var(--s-2); width: min(100%, calc(var(--card-w) * 2)); padding: var(--s-4); border-radius: var(--radius); background: var(--scrim); }
+.co[data-done="true"]:not([data-busy="true"]) .co__status { display: none; }
+.co:not([data-done="true"]):not([data-busy="true"]) .co__status { align-self: center; background: none; }
+.co__msg { margin: 0; color: var(--ink-2); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
+.co__bar { height: var(--s-1); background: var(--fill-strong); border-radius: var(--hairline); overflow: hidden; }
+.co__bar[hidden] { display: none; }
+.co__fill { height: 100%; background: var(--accent); transform-origin: left; transform: scaleX(0); }

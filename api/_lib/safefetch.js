@@ -6,7 +6,7 @@
    small, and nothing the function can reach privately is exposed by a Vercel deployment.) */
 import dns from 'node:dns/promises';
 import net from 'node:net';
-import { UA } from './http.js';
+import { uaFor } from './http.js';
 
 /** @param {string} ip */
 export function isPrivateIp(ip) {
@@ -45,7 +45,7 @@ export async function safeFetch(url, o = {}) {
     await assertPublic(u);
     const res = await fetch(u, {
       redirect: 'manual',
-      headers: { 'User-Agent': UA, Accept: o.accept ?? '*/*', 'Accept-Language': 'en' },
+      headers: { 'User-Agent': uaFor(u), Accept: o.accept ?? '*/*', 'Accept-Language': 'en' },
       signal: AbortSignal.timeout(o.timeout ?? 12000),
     });
     const loc = res.headers.get('location');

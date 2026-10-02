@@ -402,3 +402,63 @@ Not verified: Brandfetch (no key) and live Claude observations (no key; the requ
 - **Bot walls:** many sites (Vitra, Muji, Parsons, NYT) answer 403/429 to any server request, whatever the User-Agent. The capture then reads the site's latest Wayback snapshot and says so in the report and on the cover.
 - **Brandfetch** needs a key, and the brand is looked up by domain.
 - **Functions:** `api/brand/capture`, `shot`, `timeline`, `observe`, so seven functions in total, with `maxDuration` set in `vercel.json`.
+
+---
+
+## Milestone 7: Palette, Dither, Vectorize, Cutout
+
+`npm run verify:image`: 35 checks, all pass. Outputs are checked independently of the app: palettes and scales in OKLab, contrast with the WCAG formula, `.ase` parsed byte by byte, dithers by their pixels, traced SVGs rendered and compared with the source, cutouts by their alpha channel. Every tool takes images by drop, the tray, Send to, or a URL (`/api/fetch`, SSRF-safe; a web page gives its share image), and every output can be sent on to another tool.
+
+### Palette
+
+| Check | Result |
+|---|---|
+| Photo → 6 swatches (OKLab k-means), shares sum to 100% | Pass |
+| OKLCH scales: 11 steps per swatch; lightness descends; hue held within 4°; chroma reduced only to stay in sRGB; the swatch replaces its nearest step | Pass |
+| Swatches editable: add a hex, rename (slugged), recolor, remove | Pass |
+| Contrast pairs: every ratio shown matches an independent WCAG 2.2 computation; AA / AAA / all filters | Pass |
+| Exports: CSS (72 custom properties), DTCG 2025.10 tokens (sRGB components match hex), Figma variables (REST payload), Tailwind config (evaluated), `.ase` (independent parser: header, 6 groups, 72 RGB swatches, exact byte length) | Pass |
+| "Open in Color-check" hands over the hex list | Pass |
+
+### Dither
+
+| Check | Result |
+|---|---|
+| Floyd–Steinberg on a gray ramp keeps the average tone (0.500 vs 0.500) | Pass |
+| Bayer 2/4/8, Floyd–Steinberg, Atkinson: exactly two colors, PNG at source size (1600 × 1067) | Pass |
+| Threshold moves ink coverage (30% → 70%); pixel size 8 gives exact 8 × 8 blocks | Pass |
+| Palette mode: at most 4 colors, all from the image's OKLab palette | Pass |
+| Halftone dots (17,633) and lines (191 bands): PNG and SVG; the SVG is valid XML and renders to the same tone as the PNG (±0.03) | Pass |
+
+### Vectorize
+
+| Check | Result |
+|---|---|
+| One color (Potrace WASM): PNG logo → SVG covering the same ink, IoU 0.98 at source proportions | Pass |
+| Specks and smoothing change the trace (2,141 paths → 2 ignoring specks under 80 px²) | Pass |
+| Multi-color (ImageTracer, OKLab palette): 4 fills, mean tone within 0.01 of the photo | Pass |
+| Compare: wipe, overlay, SVG only, original | Pass |
+| SVG sent to Multi-export | Pass |
+
+### Cutout
+
+| Check | Result |
+|---|---|
+| Met *Teapot* (CC0): corners transparent, object opaque, 23% kept, 15 s on CPU incl. model download | Pass |
+| Edge refine: choke < base < spread; hardness removes the soft fringe; feather widens it | Pass |
+| WebP keeps alpha; cutout sent to Dither | Pass |
+
+Shared: all four tools have a Defaults panel (every reason `TODO(David)`), and Fork downloads each one's source.
+
+Bugs found and fixed while testing:
+- **Dither:** at pixel sizes that don't divide the image, blocks were uneven. The grid now uses whole cells from the top left.
+- **Cutout:** a +10 px spread lifted the background to 25% opacity. The soft edge window now stays inside 0–1.
+- **Server fetches:** they now send the Wikimedia contact User-Agent.
+
+### Notes and deviations
+
+- **Cutout's model files** (ONNX and WebAssembly, about 80 MB for `isnet_fp16`) download from IMG.LY's CDN on first use and are cached by the browser. The host is a Defaults row, so the files can be self-hosted later. Inference runs single-threaded because the app doesn't send the cross-origin isolation headers. Those headers would block images from archives that don't send CORP in Audit.
+- **Licensing (`LICENSES.md`):** @imgly/background-removal is AGPL-3.0, so the repository must stay open source and the deployed app should link to its source. esm-potrace-wasm declares GPL-2.0; upstream Potrace is "GPL-2.0 or later". Lathe's own license is still David's decision.
+- **Tailwind export** is a v3 config, which v4 loads with `@config`.
+- **Figma variables** use the REST API's `POST /v1/files/:key/variables` payload, since Figma has no file format for variables.
+- **Not verified:** opening the `.ase` in Adobe apps, and importing the Figma payload into a live file (both need accounts). Both follow the published formats, and the `.ase` is read back by an independent parser.

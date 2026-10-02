@@ -168,3 +168,7 @@
 }
 .l-swatch-input::-webkit-color-swatch-wrapper { padding: 0; }
 .l-swatch-input::-webkit-color-swatch { border: 0; border-radius: var(--radius); }
+
+/* Field + button rows (image tools: From URL, Send result to) */
+.l-url, .l-send { align-items: flex-end; }
+.l-url .l-field, .l-send .l-field { flex: 1; min-width: 0; }

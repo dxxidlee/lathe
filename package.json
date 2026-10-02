@@ -14,12 +14,16 @@
     "verify:port": "npm run build && node verify/port.mjs",
     "verify:defaults": "npm run build && node verify/defaults.mjs",
     "verify:audit": "npm run build && node verify/audit.mjs",
-    "verify:brand": "npm run build && node verify/brand.mjs"
+    "verify:brand": "npm run build && node verify/brand.mjs",
+    "verify:image": "npm run build && node verify/image.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
+    "@imgly/background-removal": "^1.7.0",
+    "esm-potrace-wasm": "^0.5.1",
     "fix-webm-duration": "^1.0.6",
     "gif.js": "^0.2.0",
+    "imagetracerjs": "^1.2.6",
     "jspdf": "^4.2.1",
     "jszip": "^3.10.2",
     "node-html-parser": "^9.0.4",

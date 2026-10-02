@@ -28,7 +28,11 @@ export const TOOLS: ToolEntry[] = [
     blurb: 'WCAG 2.2 and APCA contrast matrix from pasted hex.',
     load: () => import('./color-check').then(m => m.tool),
   },
-  { id: 'palette', name: 'Palette', group: 'Color', milestone: 7, blurb: 'Image or URL in, palette, scales and tokens out.' },
+  {
+    id: 'palette', name: 'Palette', group: 'Color', milestone: 7, accepts: ['image/*'],
+    blurb: 'Image or URL in, palette, scales and tokens out.',
+    load: () => import('./palette').then(m => m.tool),
+  },
   {
     id: 'color-swap', name: 'Color-swap', group: 'Color', milestone: 3, accepts: ['image/*', 'video/*'],
     blurb: 'Recolor images and video to a target palette.',
@@ -39,9 +43,21 @@ export const TOOLS: ToolEntry[] = [
     blurb: 'Animated mesh gradients with grain, PNG and GIF out.',
     load: () => import('./mesh-gradient').then(m => m.tool),
   },
-  { id: 'dither', name: 'Dither', group: 'Image', milestone: 7, blurb: 'Bayer, error diffusion and halftone.' },
-  { id: 'vectorize', name: 'Vectorize', group: 'Image', milestone: 7, blurb: 'Raster to SVG, one or many colors.' },
-  { id: 'cutout', name: 'Cutout', group: 'Image', milestone: 7, blurb: 'In-browser background removal.' },
+  {
+    id: 'dither', name: 'Dither', group: 'Image', milestone: 7, accepts: ['image/*'],
+    blurb: 'Bayer, error diffusion and halftone.',
+    load: () => import('./dither').then(m => m.tool),
+  },
+  {
+    id: 'vectorize', name: 'Vectorize', group: 'Image', milestone: 7, accepts: ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif', 'image/bmp'],
+    blurb: 'Raster to SVG, one or many colors.',
+    load: () => import('./vectorize').then(m => m.tool),
+  },
+  {
+    id: 'cutout', name: 'Cutout', group: 'Image', milestone: 7, accepts: ['image/png', 'image/jpeg', 'image/webp', 'image/avif', 'image/bmp', 'image/gif'],
+    blurb: 'In-browser background removal.',
+    load: () => import('./cutout').then(m => m.tool),
+  },
   { id: 'specimen', name: 'Specimen', group: 'Type', milestone: 8, blurb: 'Drop a font: glyphs, metrics, features, scale.' },
   {
     id: 'bento', name: 'Bento', group: 'Layout', milestone: 5, accepts: ['image/*', 'application/vnd.lathe.deck+json', 'application/json'],
