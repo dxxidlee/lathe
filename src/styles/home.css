@@ -35,7 +35,8 @@
 }
 .graph__line { stroke-opacity: var(--o-64); }
 .graph__line--dashed { stroke-dasharray: 9 7; }
-.graph__origin { fill: var(--black); }
+.graph__mark { stroke-opacity: 1; }
+.graph__mark.graph__draw { animation-duration: 2200ms; }
 .graph__route { stroke-opacity: var(--o-64); }
 
 /* Draw in: solid strokes trace their length; dashed axes are revealed by a tracing mask. */
@@ -55,7 +56,7 @@
 
 /* Hover or focus: the tool's route and label in full, everything else recedes. */
 .graph.is-hovering .graph__line { stroke-opacity: var(--o-16); }
-.graph.is-hovering .graph__origin { opacity: var(--o-16); }
+.graph.is-hovering .graph__mark { stroke-opacity: var(--o-40); }
 .graph.is-hovering .graph__tool:not(.is-active) .graph__route { stroke-opacity: var(--o-16); }
 .graph.is-hovering .graph__tool:not(.is-active) .graph__label { opacity: var(--o-40); }
 .graph__tool.is-active .graph__route { stroke-opacity: 1; stroke-width: var(--stroke-med); }

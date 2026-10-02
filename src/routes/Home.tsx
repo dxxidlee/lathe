@@ -4,9 +4,9 @@ import { Wordmark } from '../brand/Wordmark';
 import { TOOLS, isReady, toolsByGroup } from '../tools/registry';
 import { useShell } from '../shell/state';
 import { modKey } from '../lib/format';
-import { MAKE, STRUCTURE, VIEW, routes } from './home-graph';
+import { MAKE, MARK_TRANSFORM, STRUCTURE, VIEW, routes } from './home-graph';
 
-/* Home: a construction drawing that draws itself in, with every tool on it. Each tool has its own
+/* Home: the Lathe mark as a construction drawing that draws itself in, with every tool on it. Each tool has its own
    route out of the drawing; hovering or focusing a tool draws its route and fades the rest.
    "Tools" in the bar switches to a plain list (also the small-screen view). */
 export function Home() {
@@ -46,8 +46,9 @@ export function Home() {
           <g className="graph__structure">
             {STRUCTURE.map((s, i) => s.dashed
               ? <path key={i} d={s.d} className="graph__line graph__line--dashed" mask={`url(#m${i})`} />
-              : <path key={i} d={s.d} className="graph__line graph__draw" pathLength={1} style={{ animationDelay: `${300 + i * 110}ms` }} />)}
-            <circle cx={600} cy={455} r={3} className="graph__origin" />
+              : s.mark
+                ? <path key={i} d={s.d} transform={MARK_TRANSFORM} className="graph__line graph__mark graph__draw" pathLength={1} style={{ animationDelay: '250ms' }} />
+                : <path key={i} d={s.d} className="graph__line graph__draw" pathLength={1} style={{ animationDelay: `${300 + i * 110}ms` }} />)}
           </g>
           {tools.map((t, i) => {
             const r = rs[i];
