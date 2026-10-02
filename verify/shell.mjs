@@ -71,15 +71,37 @@ await check('token check: no hardcoded colors, sizes or weights', () => {
 
 /* ---- Home ---- */
 await page.goto(BASE + '/', { waitUntil: 'networkidle' });
-await check('Home: hero photo, accessible title, full tool index', async () => {
-  const img = await page.$eval('.hero__img', i => i.naturalWidth);
+await check('Home: the drawing traces in with every tool on it; accessible title', async () => {
   const h1 = await page.textContent('h1');
-  const n = await page.locator('.index__tool').count();
-  assert(img === 2400, 'hero not loaded'); assert(/Tools for people who make tools/.test(h1), h1);
-  assert(n === 17, `${n} tools in index`);
-  await shot(page, 'home-hero');
-  await page.locator('#tools').scrollIntoViewIfNeeded(); await shot(page, 'home-index');
-  return `hero 2400px, ${n} entries (16 tools + Make a tool)`;
+  const n = await page.locator('.graph__tool').count();
+  await page.waitForTimeout(3200); // let the drawing finish
+  const bg = await page.$eval('.home', e => getComputedStyle(e).backgroundColor);
+  const drawn = await page.$$eval('.graph__draw', ps => ps.every(p => Math.abs(parseFloat(getComputedStyle(p).strokeDashoffset)) < 0.001));
+  const labels = await page.$$eval('.graph__label', ls => ls.filter(l => getComputedStyle(l).opacity === '1').length);
+  assert(/Tools for people who make tools/.test(h1), h1);
+  assert(n === 16 && labels === 16 && drawn && bg === 'rgb(232, 255, 26)', `${n} tools, ${labels} labels shown, drawn ${drawn}, ${bg}`);
+  await shot(page, 'home-graph');
+  return `${n} entries (15 tools + Make a tool), all routes drawn, on chartreuse`;
+});
+await check('Home: hovering a tool draws its route and fades the rest; click opens it; Tools shows the list', async () => {
+  await page.hover('.graph__tool[data-tool="palette"] .graph__label');
+  await page.waitForTimeout(400); // opacity transitions
+  const st = await page.evaluate(() => {
+    const op = el => Number(getComputedStyle(el).strokeOpacity);
+    const act = document.querySelector('.graph__tool[data-tool="palette"] .graph__route');
+    const other = document.querySelector('.graph__tool[data-tool="dither"] .graph__route');
+    return { act: op(act), other: op(other), foot: document.querySelector('.home__foot').textContent };
+  });
+  await shot(page, 'home-hover');
+  assert(st.act === 1 && st.other < 0.2 && /Palette/.test(st.foot) && /scales and tokens/.test(st.foot), JSON.stringify(st));
+  await page.click('.home__link');
+  const listed = await page.locator('.toollist__tool').count();
+  await page.click('.home__link');
+  await page.click('.graph__tool[data-tool="palette"] .graph__label');
+  await page.waitForURL('**/t/palette');
+  await page.goto(BASE + '/', { waitUntil: 'networkidle' });
+  assert(listed === 15, `${listed} in list`);
+  return `route ${st.act}, others ${st.other}; footer “${st.foot.slice(0, 60)}…”; list of ${listed}; click → /t/palette`;
 });
 await check('Brand: favicons, apple-touch-icon and manifest resolve', async () => {
   const hrefs = await page.$$eval('link[rel~="icon"], link[rel="apple-touch-icon"], link[rel="manifest"]', ls => ls.map(l => l.href));
