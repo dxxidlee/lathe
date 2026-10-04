@@ -5,7 +5,7 @@
    real year, and duplicates are dropped. */
 import { json, mapLimit } from '../_lib/http.js';
 import { toSiteUrl } from '../_lib/safefetch.js';
-import { archiveUrl, closestSnapshot, renderUrl } from '../_lib/wayback.js';
+import { archiveUrl, closestSnapshot, firstCapture, renderUrl } from '../_lib/wayback.js';
 
 /** @param {string | null} v @param {number} def @param {number} lo @param {number} hi */
 const clampInt = (v, def, lo, hi) => { const n = parseInt(v ?? '', 10); return Number.isFinite(n) ? Math.min(hi, Math.max(lo, n)) : def; };
@@ -38,8 +38,9 @@ export async function GET(request) {
   const years = pickYears(first, now, snapshots);
   /** @type {string[]} */ const errors = [];
   const found = await mapLimit(years, 2, async year => {
-    const s = await closestSnapshot(host, year === now ? new Date().toISOString().slice(0, 10).replace(/-/g, '') : `${year}0701`)
-      .catch(e => { errors.push(e instanceof Error ? e.message : String(e)); return null; });
+    const note = (/** @type {unknown} */ e) => { errors.push(e instanceof Error ? e.message : String(e)); return null; };
+    const s = await closestSnapshot(host, year === now ? new Date().toISOString().slice(0, 10).replace(/-/g, '') : `${year}0701`).catch(note)
+      ?? await firstCapture(host, year === now ? `${year}0101` : `${year}0701`, `${year}1231`).catch(note);
     if (!s) return null;
     return { year: Number(s.timestamp.slice(0, 4)), timestamp: s.timestamp, original: s.original, archiveUrl: archiveUrl(s.timestamp, s.original), renderUrl: renderUrl(s.timestamp, s.original) };
   });

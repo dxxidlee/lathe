@@ -16,7 +16,8 @@
     "verify:audit": "npm run build && node verify/audit.mjs",
     "verify:brand": "npm run build && node verify/brand.mjs",
     "verify:image": "npm run build && node verify/image.mjs",
-    "verify:m8": "npm run build && node verify/m8.mjs"
+    "verify:m8": "npm run build && node verify/m8.mjs",
+    "verify:make": "npm run build && node verify/make.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",

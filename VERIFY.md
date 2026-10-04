@@ -505,3 +505,63 @@ Notes:
 - **Every registered tool is built now.** The tests that used an unbuilt tool (fork and drop with no tool) run on the Make a tool page instead.
 - **Test fixture:** Inter (OFL 1.1) is a test fixture only; see `verify/fixtures/CREDITS.md`.
 - **Not verified:** opening the specimen PDF in Acrobat or Preview (Ghostscript renders it), and installing the icon set on a phone home screen.
+
+---
+
+## Milestone 9: Make a tool (v1 dummy)
+
+`npm run verify:make`: 9 checks, all pass.
+
+`/make` asks "Describe a tool you wish existed". A prompt plays a scripted generation, one step at a time (about 5 seconds):
+1. The request read into an intent (verb, object, result)
+2. Inputs
+3. Outputs
+4. Defaults, chosen by "You", each quoting the words it came from
+5. The inspector assembling control by control
+6. A stage preview
+
+The three scripted tools run on Lathe's own engines, and their controls and Defaults rows drive the preview:
+
+| Prompt | Tool | Preview |
+|---|---|---|
+| Turn my photo into a halftone poster | Halftone poster (Image) | Dither's halftone on the campaign photograph: dot cell, screen angle, ink, paper |
+| Make a grid for a 12-column editorial spread | Spread grid (Layout) | A 420 × 297 mm spread with Grid's geometry, the fold, a baseline and placeholder copy snapped to it: columns (read from the prompt), gutter, margins, baseline |
+| Animate my logo letters falling into place | Logo drop (Motion) | Kinetic-type's fall preset with a bounce: letters, fall time, stagger, landing |
+
+Any other prompt sketches the tool from its words and ends on "Tool generation arrives in v2."
+
+| Check | Result |
+|---|---|
+| The prompt field's label | Pass |
+| Halftone: the steps play in order; then a preview, 4 controls and 5 defaults (all "Chosen by You · From your words …") | Pass |
+| Halftone controls redraw the preview | Pass |
+| Spread grid: 12 columns from the prompt; editing Columns to 8 in the Defaults panel redraws it ("1 edited") | Pass |
+| Logo drop animates; the Letters control changes the word | Pass |
+| An unscripted prompt ends on "Tool generation arrives in v2." with a sketch of the tool | Pass |
+| "Skip to the end"; reduced motion shows the generation at once | Pass |
+| No server calls, no console errors | Pass |
+
+Notes:
+- **No tool is written.** Fork on a generated tool says forking arrives with tool generation in v2.
+- **The rest of Lathe:** ⌘⇧F and dropping a file on this page behave as on any page without a tool.
+
+### Wayback, rechecked (2026-10-04)
+
+The Internet Archive was back for this milestone's full rerun, so the three checks skipped in Milestone 6 now pass:
+- The stripe.com timeline: 2006, 2014, 2022, 2026 from the API; 2006, 2016, 2026 in the report.
+- Vitra read from its Wayback capture after a live 403.
+
+Its availability API was still degraded: it returned empty results for years it has. The timeline now retries throttled answers with a pause, and falls back to a one-year CDX lookup when availability comes back empty.
+
+### All suites after Milestones 8–9
+
+| Suite | Result |
+|---|---|
+| shell | 27 / 27 |
+| defaults | 17 / 17 |
+| port | 128 / 128 |
+| audit | 33 / 33 |
+| brand | 29 / 29 |
+| image | 35 / 35 |
+| m8 | 26 / 26 |
+| make | 9 / 9 |
