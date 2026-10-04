@@ -146,8 +146,8 @@ await check("Reset to maker's defaults clears every edit", async () => {
   const s = await page.$$eval('.inspector .l-stat', r => r.map(x => x.textContent).join(' '));
   assert(/Pass10/.test(s), s); return s.replace(/\s+/g, ' ');
 });
-await check('Fork from a tool that is not built yet explains itself', async () => {
-  await page.goto(BASE + '/t/grid', { waitUntil: 'networkidle' });
+await check('Fork from a page with no tool (Make a tool) explains itself', async () => {
+  await page.goto(BASE + '/make', { waitUntil: 'networkidle' }); // every registered tool is built since Milestone 8
   await page.keyboard.press('Meta+Shift+f');
   const t = await page.textContent('.l-toasts'); assert(/Open a built tool to fork it/.test(t), t); return t;
 });

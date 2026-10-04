@@ -213,14 +213,14 @@ await check('Send to from another tool switches tools and loads the asset', asyn
   await page.waitForFunction(n => document.querySelector('.sandbox__img')?.alt === n, name);
   return `${name} → Sandbox`;
 });
-await check('Dropping on a tool that is not built yet adds to the tray', async () => {
-  await page.goto(BASE + '/t/grid', { waitUntil: 'networkidle' });
+await check('Dropping on a page with no tool (Make a tool) adds to the tray', async () => {
+  await page.goto(BASE + '/make', { waitUntil: 'networkidle' }); // every registered tool is built since Milestone 8
   const before = await trayCount(page);
   await dropFiles(page, '.stage', [{ path: join(FX, 'photo.jpg'), type: 'image/jpeg' }]);
   await page.waitForFunction(n => Number(document.querySelector('[data-testid="tray-count"]').textContent) === n + 1, before);
   const t = await page.textContent('.l-toasts');
   assert(/Added photo.jpg to the tray/.test(t), t);
-  await shot(page, 'planned-tool');
+  await shot(page, 'drop-no-tool');
   return t;
 });
 await check('Remove from tray', async () => {
@@ -265,8 +265,8 @@ await check('? opens the shortcut sheet; Escape closes', async () => {
   await page.keyboard.press('Escape'); assert(!(await page.$('.l-modal')), 'still open');
   return 'ok';
 });
-await check(`${mod}+Shift+F on an unbuilt tool explains there is nothing to fork`, async () => {
-  await page.goto(BASE + '/t/grid', { waitUntil: 'networkidle' }); // still unbuilt (Milestone 8)
+await check(`${mod}+Shift+F with no tool open explains there is nothing to fork`, async () => {
+  await page.goto(BASE + '/make', { waitUntil: 'networkidle' });
   await page.keyboard.press(`${mod}+Shift+f`);
   const t = await page.textContent('.l-toasts'); assert(/Open a built tool to fork it/.test(t), t); return t;
 });
@@ -295,10 +295,15 @@ await check('Reset this tool (Cmd+K): forgets its image, settings and Defaults e
   await page.goto(BASE + '/t/sandbox', { waitUntil: 'networkidle' });
   await page.click('.l-rail__opt:text-is("Lathe")');
   const row = page.locator('.defaults__row[data-key="view"] select'); await row.selectOption('actual');
-  await page.waitForSelector('.sandbox__img');
+  // The edit remounts the tool; wait for the new instance before resetting it.
+  await page.waitForFunction(() => document.querySelector('.sandbox')?.dataset.view === 'actual' && document.querySelector('.sandbox__img'));
+  await page.waitForTimeout(200);
   const before = await page.$eval('.sandbox', el => el.dataset.matte);
-  await page.keyboard.press(`${mod}+k`); await page.keyboard.type('reset this'); await page.keyboard.press('Enter');
-  await page.waitForFunction(() => document.querySelector('.sandbox')?.dataset.matte === 'black');
+  await page.keyboard.press(`${mod}+k`); await page.keyboard.type('reset this');
+  const first = await page.locator('.palette__item').first().textContent().catch(() => 'no palette');
+  await page.keyboard.press('Enter');
+  await page.waitForFunction(() => document.querySelector('.sandbox')?.dataset.matte === 'black', null, { timeout: 8000 })
+    .catch(async () => { throw new Error(`first result “${first}”; toasts “${await page.textContent('.l-toasts').catch(() => '')}”; matte ${await page.$eval('.sandbox', e => e.dataset.matte).catch(() => '?')}; url ${page.url()}`); });
   const after = await page.evaluate(() => ({ matte: document.querySelector('.sandbox').dataset.matte, view: document.querySelector('.sandbox').dataset.view, img: !!document.querySelector('.sandbox__img'), edited: document.querySelector('[data-testid="defaults-edited"]')?.textContent }));
   await page.reload({ waitUntil: 'networkidle' });
   const reloaded = await page.$eval('.sandbox', el => el.dataset.matte);

@@ -58,20 +58,36 @@ export const TOOLS: ToolEntry[] = [
     blurb: 'In-browser background removal.',
     load: () => import('./cutout').then(m => m.tool),
   },
-  { id: 'specimen', name: 'Specimen', group: 'Type', milestone: 8, blurb: 'Drop a font: glyphs, metrics, features, scale.' },
+  {
+    id: 'specimen', name: 'Specimen', group: 'Type', milestone: 8, accepts: ['font/*', 'application/font-woff', 'application/x-font-ttf', 'application/x-font-otf', 'application/vnd.ms-opentype'],
+    blurb: 'Drop a font: glyphs, metrics, features, scale.',
+    load: () => import('./specimen').then(m => m.tool),
+  },
   {
     id: 'bento', name: 'Bento', group: 'Layout', milestone: 5, accepts: ['image/*', 'application/vnd.lathe.deck+json', 'application/json'],
     blurb: 'Compose assets into bento slides, out to pptx, pdf, svg.',
     load: () => import('./bento').then(m => m.tool),
   },
-  { id: 'grid', name: 'Grid', group: 'Layout', milestone: 8, blurb: 'Columns, gutters, baseline. SVG, PNG and CSS out.' },
-  { id: 'kinetic-type', name: 'Kinetic-type', group: 'Motion', milestone: 8, blurb: 'Animated type presets, GIF and WebM out.' },
+  {
+    id: 'grid', name: 'Grid', group: 'Layout', milestone: 8,
+    blurb: 'Columns, gutters, baseline. SVG, PNG and CSS out.',
+    load: () => import('./grid').then(m => m.tool),
+  },
+  {
+    id: 'kinetic-type', name: 'Kinetic-type', group: 'Motion', milestone: 8, accepts: ['font/*', 'text/plain', 'application/font-woff', 'application/x-font-ttf', 'application/x-font-otf', 'application/vnd.ms-opentype'],
+    blurb: 'Animated type presets, GIF and WebM out.',
+    load: () => import('./kinetic-type').then(m => m.tool),
+  },
   {
     id: 'multi-export', name: 'Multi-export', group: 'Export', milestone: 2, accepts: ['image/png', 'image/jpeg', 'image/svg+xml'],
     blurb: 'One logo to png, jpg, svg, eps in rgb and cmyk.',
     load: () => import('./multi-export').then(m => m.tool),
   },
-  { id: 'icon-set', name: 'Icon-set', group: 'Export', milestone: 8, blurb: 'One mark to a full favicon and app icon set.' },
+  {
+    id: 'icon-set', name: 'Icon-set', group: 'Export', milestone: 8, accepts: ['image/svg+xml', 'image/png', 'image/jpeg', 'image/webp'],
+    blurb: 'One mark to a full favicon and app icon set.',
+    load: () => import('./icon-set').then(m => m.tool),
+  },
   {
     id: 'mood-strip', name: 'Mood-strip', group: 'Reference', milestone: 3, accepts: ['image/*'],
     blurb: 'A floating strip of reference images.',

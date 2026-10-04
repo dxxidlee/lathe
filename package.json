@@ -15,7 +15,8 @@
     "verify:defaults": "npm run build && node verify/defaults.mjs",
     "verify:audit": "npm run build && node verify/audit.mjs",
     "verify:brand": "npm run build && node verify/brand.mjs",
-    "verify:image": "npm run build && node verify/image.mjs"
+    "verify:image": "npm run build && node verify/image.mjs",
+    "verify:m8": "npm run build && node verify/m8.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
@@ -27,10 +28,12 @@
     "jspdf": "^4.2.1",
     "jszip": "^3.10.2",
     "node-html-parser": "^9.0.4",
+    "opentype.js": "^2.0.0",
     "pptxgenjs": "^4.0.1",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
-    "react-router-dom": "^7.18.4"
+    "react-router-dom": "^7.18.4",
+    "woff2-encoder": "^2.0.0"
   },
   "devDependencies": {
     "@types/node": "^26.6.4",

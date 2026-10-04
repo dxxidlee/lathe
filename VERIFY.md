@@ -462,3 +462,46 @@ Bugs found and fixed while testing:
 - **Tailwind export** is a v3 config, which v4 loads with `@config`.
 - **Figma variables** use the REST API's `POST /v1/files/:key/variables` payload, since Figma has no file format for variables.
 - **Not verified:** opening the `.ase` in Adobe apps, and importing the Figma payload into a live file (both need accounts). Both follow the published formats, and the `.ase` is read back by an independent parser.
+
+---
+
+## Milestone 8: Grid, Specimen, Kinetic-type, Icon-set
+
+`npm run verify:m8`: 26 checks, all pass. Checks are independent of the app:
+- Grid geometry is recomputed, and the CSS is laid out by Chrome.
+- Specimen is tested against a font generated with known metrics.
+- Every icon is decoded and the `.ico` parsed byte by byte.
+- GIF frames are counted by walking the file's blocks, and WebM is read with ffprobe.
+
+| Tool | Check | Result |
+|---|---|---|
+| Grid | Desktop 1440 (12 columns, 24 gutter, 80 margins): column 84.67 px, every column placed exactly, 109 baselines | Pass |
+| Grid | CSS snippet lays out in Chrome to the same 12 × 84.66 px columns from x = 80 | Pass |
+| Grid | A4 (ISO 216): SVG 210 × 297 mm, PNG at 300 dpi 2480 × 3508 | Pass |
+| Grid | Slide: 8 rows snapped to the 8 px baseline (80 px each); orientation swap | Pass |
+| Grid | Custom columns, gutter and margins | Pass |
+| Icon-set | SVG mark → 17 files: PNGs 16–1024 at exact sizes; Apple touch and maskable icons opaque on the background | Pass |
+| Icon-set | `favicon.ico`: 3 PNG entries (16, 32, 48), sizes and offsets valid; manifest with maskable 512; `favicon.svg` identical to the source; HTML snippet | Pass |
+| Icon-set | Maskable: no mark pixels outside the 40% safe circle | Pass |
+| Icon-set | PNG source (no `favicon.svg`); padding shrinks the mark | Pass |
+| Specimen | Generated OTF: family, style and metrics read exactly (UPM 1000, ascender 800, descender −200, x-height 500, cap height 700) | Pass |
+| Specimen | Inter WOFF2 unpacked and parsed: 518 glyphs in the grid, glyph details, 11 features | Pass |
+| Specimen | Features shown off and on; toggling `tnum` applies it to live text | Pass |
+| Specimen | Type scale 16 px × 1.25ⁿ (9 steps) on screen and in the CSS tokens | Pass |
+| Specimen | Specimen PDF (7 pages): glyphs drawn as vector paths from the font's outlines, no font embedded, Ghostscript renders | Pass |
+| Kinetic-type | Cycle = duration + stagger × (slots − 1) + hold (4.6 s) | Pass |
+| Kinetic-type | Stagger, fall, drift, scramble, dissolve: blank at the start, in motion, then all settle on the same set text | Pass |
+| Kinetic-type | GIF89a 540 × 540, 115 frames (4.6 s × 25 fps), loops | Pass |
+| Kinetic-type | WebM VP9 1080 × 1080, 4.60 s duration written into the header | Pass |
+| Kinetic-type | A dropped font replaces Helvetica Neue | Pass |
+| All four | Defaults panels (every reason `TODO(David)`); Fork downloads their source; no console errors | Pass |
+
+Bugs found and fixed while testing:
+- **Specimen:** opentype.js's text shaping throws on GSUB lookups it doesn't support (Inter's `ccmp`). Outlines are now laid out from the character map, advances and pair kerning; live text on the page keeps the browser's full shaping.
+- **Specimen:** opentype.js 2 groups name-table entries by platform, so names were read from the wrong place.
+- **Kinetic-type:** the cycle length counted letters without spaces while the stagger order counts them, so the last letters could be cut off.
+
+Notes:
+- **Every registered tool is built now.** The tests that used an unbuilt tool (fork and drop with no tool) run on the Make a tool page instead.
+- **Test fixture:** Inter (OFL 1.1) is a test fixture only; see `verify/fixtures/CREDITS.md`.
+- **Not verified:** opening the specimen PDF in Acrobat or Preview (Ghostscript renders it), and installing the icon set on a phone home screen.

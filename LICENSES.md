@@ -18,6 +18,8 @@ The IMG.LY model files (ONNX weights and WebAssembly) are not in this repository
 |---|---|---|
 | React, React DOM, React Router | Shell | MIT |
 | [imagetracerjs](https://github.com/jankovicsandras/imagetracerjs) 1.2.6 | Vectorize, multi-color tracing | Unlicense (public domain) |
+| [opentype.js](https://github.com/opentypejs/opentype.js) 2.0.0 | Specimen (font parsing, outlines for the PDF) | MIT |
+| [woff2-encoder](https://github.com/nicolo-ribaudo/woff2-encoder) 2.0.0 | Specimen (WOFF2 → sfnt) | MIT |
 | [onnxruntime-web](https://github.com/microsoft/onnxruntime) 1.21.0 | Cutout (through @imgly/background-removal) | MIT |
 | [pptxgenjs](https://github.com/gitbrent/PptxGenJS) 4.0.1 | Bento .pptx | MIT |
 | [jsPDF](https://github.com/parallax/jsPDF) 4.2.1 | Bento .pdf | MIT |
@@ -28,6 +30,7 @@ The IMG.LY model files (ONNX weights and WebAssembly) are not in this repository
 
 ## Fonts and brand
 
+- `verify/fixtures/inter-latin.woff2` (Inter, Latin subset, by Rasmus Andersson) is a test fixture under the SIL Open Font License 1.1; Lathe does not ship it.
 - Helvetica Neue is never bundled. It is licensed, so Lathe uses the system copy (macOS, iOS) with Helvetica and Arial as fallbacks.
 - The original suite's McCann typefaces were not copied (see VERIFY.md, Milestone 3).
 - The Lathe mark, logo and campaign image in `/brand` belong to David Lee.

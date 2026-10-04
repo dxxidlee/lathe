@@ -1,0 +1,5 @@
+.gr { position: absolute; inset: 0; display: grid; place-items: center; padding: var(--s-7); overflow: hidden; }
+.gr__frame { background: var(--white); border-radius: var(--hairline); }
+.gr__frame svg { display: block; width: 100%; height: 100%; }
+.gr-row3 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 0.8fr); gap: var(--s-2); }
+.gr-row4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-2); }
