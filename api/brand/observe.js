@@ -2,12 +2,14 @@
 /* POST /api/brand/observe → a short, generated visual audit of the captured brand (ANTHROPIC_API_KEY).
    Body: { name, domain, captures: [{ id, label, dataUrl }], facts: { colors, pixelColors, typefaces,
    title, description, years } }. Claude sees the captures and the extracted data and must cite the
-   captures each observation rests on; observations citing no submitted capture are dropped. */
+   captures each observation rests on; observations citing no submitted capture are dropped. With
+   facts.instagram (the brand's latest posts: types, dates, engagement, captions), its most engaged posts
+   arrive as captures ig1–ig3, and observations about the feed as a whole may cite "instagram". */
 import Anthropic from '@anthropic-ai/sdk';
 import { json } from '../_lib/http.js';
 
 export const MODEL = 'claude-opus-5-5';
-const MAX_CAPTURES = 10;
+const MAX_CAPTURES = 13; // homepage ×2, up to 8 timeline years, 3 Instagram posts
 const AREAS = ['consistency', 'hierarchy', 'type', 'color', 'tone'];
 
 const SCHEMA = {
@@ -25,7 +27,7 @@ const SCHEMA = {
         properties: {
           area: { type: 'string', enum: AREAS },
           text: { type: 'string', description: 'One or two sentences. Specific and checkable.' },
-          evidence: { type: 'array', items: { type: 'string' }, description: 'IDs of the captures this observation is based on, e.g. ["desktop", "y2016"].' },
+          evidence: { type: 'array', items: { type: 'string' }, description: 'IDs of the captures this observation is based on, e.g. ["desktop", "y2016", "ig1"], or "instagram" for the Instagram data.' },
         },
       },
     },
@@ -37,6 +39,7 @@ You receive labelled screenshot captures and data extracted from the site's HTML
 Write 5 to 8 observations across these areas: consistency, hierarchy, type, color, tone.
 Every observation must describe something visible in the captures (or directly present in the supplied data) and list the IDs of the captures it is based on. Do not speculate about anything you cannot see: no claims about strategy, audience, business results, or pages that were not captured.
 Refer to colors by the hex values supplied where they match what is visible. Name typefaces only as they appear in the supplied data.
+When Instagram data is supplied, cover the feed alongside the site: what the posts show, the mix of post types, how often the brand posts (from the dates), which posts draw the most engagement, and how the captions and imagery line up with the site. Cite the post captures (ig1, ig2, ig3) or "instagram" for observations drawn from the data. Report engagement as the numbers given; do not judge it against other brands.
 Plain, specific language; no praise or marketing adjectives.`;
 
 /** @param {string} s */
@@ -55,6 +58,7 @@ export async function POST(request) {
     .filter((/** @type {any} */ c) => c.id && c.image);
   if (!captures.length) return json({ error: 'No captures to observe' }, { status: 400 });
   const ids = new Set(captures.map((/** @type {any} */ c) => c.id));
+  if (body?.facts?.instagram) ids.add('instagram');
 
   /** @type {import('@anthropic-ai/sdk/resources/beta/messages/messages').BetaContentBlockParam[]} */
   const content = [];
@@ -63,7 +67,7 @@ export async function POST(request) {
     content.push({ type: 'image', source: { type: 'base64', media_type: c.image.media_type, data: c.image.data } });
   }
   const facts = body?.facts && typeof body.facts === 'object' ? body.facts : {};
-  content.push({ type: 'text', text: `Company: ${String(body?.name || body?.domain || '').slice(0, 120)} (${String(body?.domain || '').slice(0, 120)})\nExtracted data:\n${JSON.stringify(facts).slice(0, 12000)}\n\nWrite the audit.` });
+  content.push({ type: 'text', text: `Company: ${String(body?.name || body?.domain || '').slice(0, 120)} (${String(body?.domain || '').slice(0, 120)})\nExtracted data:\n${JSON.stringify(facts).slice(0, 24000)}\n\nWrite the audit.` });
 
   const client = new Anthropic();
   try {

@@ -3,11 +3,11 @@
    Brandfetch assets and generated observations; then a deck in Bento. */
 import type { MountContext, MountResult } from '../types';
 import { PaletteQueue, fetchCatalog, type BrandFeatures } from './api';
-import { ApiError, captureBrand, downscale, fetchRendered, fetchShot, logoFromUrl, fetchSocial, fetchTimeline, requestObservations, type BrandCapture, type LogoCandidate, type SiteCapture, type Observations, type Social, type Timeline } from './brand-api';
+import { ApiError, captureBrand, downscale, fetchInstagram, fetchRendered, fetchShot, igHandle, igSrc, logoFromUrl, fetchSocial, fetchTimeline, requestObservations, type BrandCapture, type IgPost, type Instagram, type LogoCandidate, type SiteCapture, type Observations, type Social, type Timeline } from './brand-api';
 import { buildBrandDeck, type DeckImage } from './brand-deck';
 import { DECK_MIME } from '../bento/model';
 import { deltaE, hexToOklab, kmeans, rgbToOklab, type Lab, type Swatch } from '../../lib/color';
-import { button, note, section, statList } from '../../ui/primitives';
+import { button, field, note, section, statList } from '../../ui/primitives';
 import { cacheGet, cacheSet } from '../../lib/idb';
 
 type SiteImage = SiteCapture['images'][number];
@@ -47,8 +47,24 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   let social: Social | null = null;
   let socialLoading = false;
   let socialError: string | null = null;
-  /** Imagery picked for the board: `yt:<video>:<still>` or `site:<index>`, in pick order. */
+  /** Imagery picked for the board: `ig:<post>`, `yt:<video>:<still>` or `site:<index>`, in pick order. */
   let picks: string[] = [];
+  let picksTouched = false;
+  /** Instagram: the handle (from Brandfetch's links, the site's, or typed), its profile and posts. */
+  let ig: Instagram | null = null;
+  let igLoading = false;
+  let igError: string | null = null;
+  let igFrom: 'Brandfetch' | 'site' | 'typed' | null = null;
+  let igName: string | null = null;
+  /** Instagram tiles are kept across repaints so their videos keep playing. */
+  const igNodes = new Map<string, { card: HTMLElement; pick: HTMLButtonElement }>();
+  const igViews = new IntersectionObserver(entries => {
+    for (const e of entries) {
+      const v = e.target.querySelector('video');
+      if (!v) continue;
+      if (e.isIntersecting) { if (!v.src && v.dataset.src) v.src = v.dataset.src; void v.play().catch(() => {}); } else v.pause();
+    }
+  }, { root: null, rootMargin: '25% 0%' });
   /** Site photography seen only once the page is rendered (script-built sites). */
   let rendered: SiteImage[] = [];
   /** Logos found only in the rendered page. */
@@ -85,7 +101,9 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   const deckBtn = button({ label: 'Build deck in Bento', primary: true, onClick: () => void buildDeckNow() });
   const obsBtn = button({ label: 'Write observations', onClick: () => void observe() });
   actions.append(deckBtn, obsBtn);
-  capSec.body.append(capStats.el, actions, capNote);
+  // Typed only when neither Brandfetch nor the site links an Instagram account (or the one found fails).
+  const igField = field({ label: 'Instagram handle', value: '', placeholder: '@handle', onChange: v => void setHandle(v) });
+  capSec.body.append(capStats.el, igField.el, actions, capNote);
   inspector.append(modeEl, capSec.el);
 
   function renderInspector() {
@@ -98,12 +116,15 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
       ['Typefaces', s ? String(s.typefaces.length) : '—'],
       ['Logos', s ? `${pickedLogos.size} of ${allLogos().length} in deck` : '—'],
       ['Imagery', socialLoading ? 'Searching YouTube…' : s ? `${picks.length} picked · ${social?.youtube?.videos.length ?? 0} videos · ${siteImages().length} site images` : '—'],
+      ['Instagram', igLoading ? 'Loading…' : ig ? `${ig.mock ? 'Sample · ' : ''}@${ig.username} · ${ig.posts.length} posts` : igError ? 'Error' : cap && !igName ? 'No handle found' : '—'],
       ['Screenshots', shotList.length ? `${shotList.filter(x => x.status === 'done').length} of ${shotList.length}` : '—'],
       ['Timeline', timelineLoading ? 'Searching…' : timeline ? `${timeline.snapshots.length} years` : timelineError ? 'Error' : '—'],
       ['Brandfetch', !features?.brandfetch ? 'Needs BRANDFETCH_KEY' : cap?.brandfetch ? `${cap.brandfetch.logos.length} logos · ${cap.brandfetch.colors.length} colors` : cap?.brandfetchError ? 'Error' : '—'],
       ['Observations', !features?.observations ? 'Needs ANTHROPIC_API_KEY' : obsState === 'loading' ? 'Writing…' : obs ? `${obs.observations.length} generated` : obsState === 'error' ? 'Error' : '—'],
     ]);
     obsBtn.style.display = features?.observations ? '' : 'none';
+    igField.el.style.display = cap && !igLoading && (!igName || igError) ? '' : 'none';
+    if (document.activeElement !== igField.input) igField.input.value = igName ? `@${igName}` : '';
     capNote.textContent = [
       features && !features.screenshotsLimited ? 'Screenshots: Microlink, with your key.' : `Screenshots use Microlink’s free tier, a small daily quota; set MICROLINK_KEY in .env.local to lift it.${quota != null ? ` ${quota} left today.` : ''}`,
       quotaSpent ? 'The quota is spent: remaining screenshots were skipped.' : '',
@@ -120,7 +141,8 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
     const signal = controller.signal;
     palettes.cancelPending();
     cap = null; capError = null; capturing = true; timeline = null; timelineError = null; obs = null; obsState = 'idle'; obsError = null; quotaSpent = false;
-    social = null; socialError = null; picks = []; rendered = []; renderedLogos = []; logosTouched = false;
+    social = null; socialError = null; picks = []; picksTouched = false; rendered = []; renderedLogos = []; logosTouched = false;
+    ig = null; igError = null; igFrom = null; igName = null; igLoading = false; igNodes.forEach(n => igViews.unobserve(n.card)); igNodes.clear();
     shots.clear(); pickedLogos.clear();
     render();
     try {
@@ -144,7 +166,38 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
       shoot('mobile', site.url, 'mobile', 'Homepage, mobile', homeCredit('mobile'), signal, fallbackPage),
       loadTimeline(signal),
       loadSocial(signal),
+      loadInstagram(signal),
     ]);
+  }
+
+  /** The brand's Instagram: the account Brandfetch links (or the site does, or a handle typed for this
+      domain), its profile and latest 30 posts. A failure stays in this section: the audit carries on. */
+  async function loadInstagram(signal: AbortSignal) {
+    if (!cap) return;
+    const typed = settings.get<Record<string, string>>('igHandles', {})[cap.domain];
+    const fromBf = igHandle(cap.brandfetch?.social?.instagram), fromSite = igHandle(cap.site.social?.instagram);
+    igName = typed ?? fromBf ?? fromSite;
+    igFrom = typed ? 'typed' : fromBf ? 'Brandfetch' : fromSite ? 'site' : null;
+    if (!igName) { render(); return; }
+    igLoading = true; igError = null; render();
+    try { ig = await fetchInstagram(igName, signal); }
+    catch (e) { if (signal.aborted) return; ig = null; igError = e instanceof Error ? e.message : String(e); }
+    igLoading = false;
+    if (signal.aborted) return;
+    igNodes.forEach(n => igViews.unobserve(n.card)); igNodes.clear();
+    if (!picksTouched) defaultPicks();
+    render();
+  }
+  async function setHandle(v: string) {
+    if (!cap) return;
+    const h = v.trim().replace(/^@/, '').replace(/^(?:https?:\/\/)?(?:www\.)?instagram\.com\//i, '').replace(/[/?#].*$/, '').toLowerCase();
+    const map = settings.get<Record<string, string>>('igHandles', {});
+    if (!h) delete map[cap.domain];
+    else if (!/^[a-z0-9._]{1,30}$/.test(h)) { emit('toast', 'Instagram handles use letters, numbers, periods and underscores'); return; }
+    else map[cap.domain] = h;
+    settings.set('igHandles', map);
+    picks = picks.filter(k => !k.startsWith('ig:'));
+    await loadInstagram(controller?.signal ?? new AbortController().signal);
   }
 
   /** YouTube stills (the brand's channel, or its commercials) and the site's own photography. */
@@ -169,24 +222,28 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
     }
     socialLoading = false;
     if (signal.aborted) return;
-    defaultPicks(); render();
+    if (!picksTouched) defaultPicks();
+    render();
   }
-  /** The brand's own imagery first: its channel's middle frames, then its site's photography; videos
-      found by search (other people's uploads) come after the site's images. Up to the board's seven cells. */
+  /** The brand's own imagery first: its three most engaged Instagram posts, its channel's middle
+      frames, then its site's photography; videos found by search (other people's uploads) come after
+      the site's images. Up to the board's seven cells. Sample posts are never picked by default. */
   function defaultPicks() {
     const vids = social?.youtube?.videos ?? [], site = siteImages();
     const official = social?.youtube?.source === 'channel';
-    const out: string[] = [];
-    if (!official) for (let i = 0; i < site.length && out.length < 4; i++) out.push(`site:${i}`);
-    for (let i = 0; i < vids.length && out.length < (official ? 4 : 7); i++) out.push(`yt:${vids[i].id}:0`);
-    for (let i = 0; i < site.length && out.length < 7; i++) if (!out.includes(`site:${i}`)) out.push(`site:${i}`);
-    for (let i = 0; i < vids.length && out.length < 7; i++) if (!out.includes(`yt:${vids[i].id}:1`)) out.push(`yt:${vids[i].id}:1`);
+    const top = ig && !ig.mock ? [...ig.posts].sort((a, b) => b.score - a.score).slice(0, 3).map(p => `ig:${p.id}`) : [];
+    const out: string[] = [...top];
+    const add = (k: string, upTo = 7) => { if (out.length < upTo && !out.includes(k)) out.push(k); };
+    if (!official) site.forEach((_, i) => add(`site:${i}`, top.length + (top.length ? 2 : 4)));
+    vids.forEach(v => add(`yt:${v.id}:0`, official ? top.length + (top.length ? 2 : 4) : 7));
+    site.forEach((_, i) => add(`site:${i}`));
+    vids.forEach(v => add(`yt:${v.id}:1`));
     picks = out;
   }
   const siteImages = (): SiteImage[] => [...(cap?.site.images ?? []), ...rendered];
   const stillSrc = (st: { url: string; fallback: string[] }) => `/api/img?url=${encodeURIComponent(st.url)}${st.fallback.map(f => `&fallback=${encodeURIComponent(f)}`).join('')}`;
   const siteSrc = (url: string) => `/api/fetch?url=${encodeURIComponent(url)}`;
-  const togglePick = (k: string) => { picks = picks.includes(k) ? picks.filter(x => x !== k) : [...picks, k]; render(); };
+  const togglePick = (k: string) => { picksTouched = true; picks = picks.includes(k) ? picks.filter(x => x !== k) : [...picks, k]; render(); };
 
   async function shoot(key: ShotKey, pageUrl: string, device: 'desktop' | 'mobile', label: string, credit: ShotState['credit'], signal: AbortSignal, fallback: string | null = null) {
     const st: ShotState = { status: 'loading', label, pageUrl, credit };
@@ -413,6 +470,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
       b.addEventListener('click', () => togglePick(k));
       return b;
     };
+    sec.append(...instagramBlock());
     // YouTube
     const yt = social?.youtube;
     const ytHead = socialLoading ? 'Looking for the brand’s YouTube…' : socialError ? `YouTube: ${socialError}`
@@ -443,7 +501,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
       sec.append(g);
     }
     // Profiles Lathe can link but not read
-    const links = Object.entries(cap!.site.social ?? {}).filter(([k]) => k !== 'youtube');
+    const links = Object.entries({ ...cap!.site.social, ...cap!.brandfetch?.social }).filter(([k]) => k !== 'youtube' && k !== 'instagram');
     if (links.length) {
       const p = el('p', 'ab-social');
       p.append(`Also on ${links.map(([k]) => k[0].toUpperCase() + k.slice(1)).join(', ')}: `);
@@ -452,6 +510,66 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
       sec.append(p);
     }
     return sec;
+  }
+  /** The brand's Instagram posts as board picks: videos play muted on a loop while on screen, a
+      carousel shows its cover and slide count, and the post itself opens on Instagram. */
+  function instagramBlock(): HTMLElement[] {
+    const n = (x: number | null) => x == null ? null : x.toLocaleString('en-US');
+    const from = igFrom === 'typed' ? 'typed for this site' : igFrom ? `linked by ${igFrom === 'site' ? cap!.domain : 'Brandfetch'}` : '';
+    const head = el('h4', 'ab__sub', igLoading ? `Instagram · loading @${igName}…`
+      : !igName ? 'Instagram · neither Brandfetch nor the site links an account; type the handle in the inspector.'
+        : igError ? `Instagram · @${igName}: ${igError}`
+          : !ig ? `Instagram · @${igName}`
+            : ig.mock ? 'Instagram · sample posts, not from Instagram: INSTAGRAM_ACCESS_TOKEN isn’t set on the server.'
+              : [`Instagram · @${ig.username} (${from})`, ig.profile.followers != null ? `${n(ig.profile.followers)} followers` : '', ig.profile.mediaCount != null ? `${n(ig.profile.mediaCount)} posts` : ''].filter(Boolean).join(' · '));
+    if (ig && !ig.mock) { const a = el('a', 'ab-pick__link', 'Open profile') as HTMLAnchorElement; a.href = `https://www.instagram.com/${ig.username}/`; a.target = '_blank'; a.rel = 'noopener'; head.append(' · ', a); }
+    if (!ig?.posts.length) return [head];
+    const grid = el('div', 'ab-picks');
+    for (const p of ig.posts) {
+      const k = `ig:${p.id}`;
+      let node = igNodes.get(k);
+      if (!node) { node = igCard(p, n); igNodes.set(k, node); igViews.observe(node.card); }
+      const at = picks.indexOf(k);
+      node.card.querySelector('.ab-pick')!.classList.toggle('is-picked', at >= 0);
+      node.pick.textContent = at >= 0 ? String(at + 1) : '+';
+      node.pick.classList.toggle('ab-pick__n--off', at < 0);
+      node.pick.setAttribute('aria-pressed', String(at >= 0));
+      grid.append(node.card);
+    }
+    return [head, grid];
+  }
+  function igCard(p: IgPost, n: (x: number | null) => string | null) {
+    const card = el('div', 'ab-vid ab-ig'); card.dataset.key = `ig:${p.id}`;
+    const box = el('div', 'ab-pick');
+    const link = el('a', 'ab-pick__open') as HTMLAnchorElement;
+    link.href = p.permalink; link.target = '_blank'; link.rel = 'noopener';
+    link.title = p.caption ?? 'Open on Instagram';
+    const cover = p.type === 'carousel' ? p.slides[0] : { type: p.type, src: p.src, poster: p.poster };
+    const broken = () => box.classList.add('is-broken');
+    if (cover.type === 'video') {
+      const v = document.createElement('video');
+      v.muted = true; v.loop = true; v.playsInline = true; v.autoplay = true; v.preload = 'none';
+      v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
+      v.dataset.src = igSrc(cover.src);
+      if (cover.poster) v.poster = igSrc(cover.poster);
+      v.addEventListener('error', broken, { once: true });
+      link.append(v);
+    } else {
+      const img = document.createElement('img'); img.loading = 'lazy'; img.decoding = 'async'; img.src = igSrc(cover.src); img.alt = p.caption?.slice(0, 120) ?? 'Instagram post';
+      img.addEventListener('error', broken, { once: true });
+      link.append(img);
+    }
+    const pick = el('button', 'ab-pick__n') as HTMLButtonElement; pick.type = 'button';
+    pick.setAttribute('aria-label', 'Use on the board');
+    pick.addEventListener('click', () => togglePick(`ig:${p.id}`));
+    box.append(link, pick);
+    if (p.type === 'carousel') box.append(el('span', 'ab-pick__count', `1/${p.slides.length}`));
+    const meta = el('div', 'ab-vid__meta');
+    const cap2 = el('a', 'ab-vid__title', p.caption?.split('\n')[0] || 'Untitled post') as HTMLAnchorElement; cap2.href = p.permalink; cap2.target = '_blank'; cap2.rel = 'noopener';
+    const kind = p.type === 'carousel' ? 'Carousel' : p.mediaType === 'VIDEO' ? (p.type === 'video' ? 'Video' : 'Video (still)') : 'Image';
+    meta.append(cap2, el('span', 'ab-vid__by', [p.likes != null ? `${n(p.likes)} likes` : 'likes hidden', p.comments != null ? `${n(p.comments)} comments` : '', p.timestamp.slice(0, 10), kind].filter(Boolean).join(' · ')));
+    card.append(box, meta);
+    return { card, pick };
   }
   function timelineSection() {
     const sec = block('Timeline', 'Internet Archive Wayback Machine');
@@ -480,7 +598,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
       const li = el('li', 'ab-obs__item');
       li.append(el('span', 'ab-obs__area', o.area), el('p', 'ab-obs__text', o.text));
       const ev = el('div', 'ab-obs__ev');
-      for (const k of o.evidence) ev.append(el('span', 'ab-obs__chip', shots.get(k as ShotKey)?.label ?? k));
+      for (const k of o.evidence) ev.append(el('span', 'ab-obs__chip', shots.get(k as ShotKey)?.label ?? igLabels.get(k) ?? (k === 'instagram' ? 'Instagram data' : k)));
       li.append(ev); list.append(li);
     }
     sec.append(list);
@@ -488,6 +606,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   }
 
   /* ---------------- observations ---------------- */
+  const igLabels = new Map<string, string>();
   const obsKey = () => cap && `brand:obs:${cap.domain}:${cap.capturedAt}`;
   async function restoreObservations(): Promise<Observations | null> {
     const k = obsKey(); if (!k) return null;
@@ -499,7 +618,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
     if (!done.length) { emit('toast', 'Wait for at least one screenshot'); return; }
     obsState = 'loading'; obsError = null; render();
     try {
-      const captures = await Promise.all(done.map(async ([id, s]) => ({ id, label: s.label, dataUrl: await downscale(s.blob!, d.observationImagePx as number) })));
+      const captures: { id: string; label: string; dataUrl: string }[] = await Promise.all(done.map(async ([id, s]) => ({ id: id as string, label: s.label, dataUrl: await downscale(s.blob!, d.observationImagePx as number) })));
       const site = cap.site;
       const facts = {
         title: site.title, description: site.description, themeColor: site.themeColor, readFrom: site.via,
@@ -508,7 +627,21 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
         typefaces: site.typefaces.map(t => ({ family: t.family, source: t.source, weights: t.weights, stacksLed: t.uses })),
         brandfetch: cap.brandfetch ? { colors: cap.brandfetch.colors, fonts: cap.brandfetch.fonts } : null,
         timelineYears: timeline?.snapshots.map(s => s.year) ?? [],
+        instagram: ig && !ig.mock ? {
+          handle: ig.username, followers: ig.profile.followers, posts: ig.profile.mediaCount, biography: ig.profile.biography,
+          latest: ig.posts.map(p => ({ id: p.id, type: p.type, instagramType: p.mediaType, date: p.timestamp.slice(0, 10), likes: p.likes, comments: p.comments, score: p.score, caption: p.caption?.slice(0, 200) ?? null })),
+        } : null,
       };
+      // The three most engaged posts go in as captures too, so observations about them can cite them.
+      if (ig && !ig.mock) {
+        const top = [...ig.posts].sort((a, b) => b.score - a.score).slice(0, 3);
+        for (const [i, p] of top.entries()) {
+          const still = p.type === 'video' ? p.poster : p.type === 'carousel' ? (p.slides[0].poster ?? p.slides[0].src) : p.src;
+          const r = still ? await fetch(igSrc(still)).catch(() => null) : null;
+          if (r?.ok) captures.push({ id: `ig${i + 1}`, label: `Instagram @${ig.username}, ${p.mediaType.toLowerCase().replace('_album', '')} of ${p.timestamp.slice(0, 10)} (${p.likes ?? 'hidden'} likes, ${p.comments ?? 0} comments)`, dataUrl: await downscale(await r.blob(), d.observationImagePx as number) });
+        }
+      }
+      igLabels.clear(); for (const c of captures) if (c.id.startsWith('ig')) igLabels.set(c.id, c.label);
       obs = await requestObservations({ name: brandName(cap), domain: cap.domain, captures, facts }, controller?.signal);
       obsState = 'idle';
       await cacheSet(obsKey()!, obs, (d.cacheHours as number) * 3600_000);
@@ -535,7 +668,15 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   async function boardImage(k: string): Promise<DeckImage | null> {
     if (!cap) return null;
     let url: string, credit: DeckImage['credit'];
-    if (k.startsWith('yt:')) {
+    if (k.startsWith('ig:')) {
+      const p = ig?.posts.find(x => x.id === k.slice(3));
+      if (!p || !ig) return null;
+      const still = p.type === 'carousel' ? (p.slides[0].type === 'video' ? p.slides[0].poster : p.slides[0].src) : p.type === 'video' ? p.poster : p.src;
+      if (!still) return null;
+      url = igSrc(still);
+      credit = { title: p.caption?.split('\n')[0].slice(0, 90) || `Instagram post by @${ig.username}`, creator: `@${ig.username}`, date: p.timestamp.slice(0, 10) || null,
+        source: ig.mock ? 'Sample post (not from Instagram)' : 'Instagram', license: 'Post © its owner; shown for research', url: p.permalink };
+    } else if (k.startsWith('yt:')) {
       const [, id, idx] = k.split(':');
       const v = social?.youtube?.videos.find(x => x.id === id); const st = v?.stills[Number(idx)];
       if (!v || !st) return null;
@@ -641,7 +782,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   void fetchCatalog().then(c => { features = c.brand; render(); if (query) void run(query); });
 
   return {
-    unmount() { controller?.abort(); palettes.destroy(); cancelAnimationFrame(raf); urls.forEach(u => URL.revokeObjectURL(u)); },
+    unmount() { controller?.abort(); igViews.disconnect(); palettes.destroy(); cancelAnimationFrame(raf); urls.forEach(u => URL.revokeObjectURL(u)); },
     export: () => void buildDeckNow(),
   };
 }

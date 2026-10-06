@@ -14,7 +14,7 @@ export interface SourcePage { source: string; query: string; page: number; total
 
 export const proxied = (url: string) => `/api/img?url=${encodeURIComponent(url)}`;
 
-export interface BrandFeatures { capture: boolean; screenshots: boolean; screenshotsLimited: boolean; brandfetch: boolean; observations: boolean }
+export interface BrandFeatures { capture: boolean; screenshots: boolean; screenshotsLimited: boolean; brandfetch: boolean; observations: boolean; instagram?: boolean }
 interface Catalog { sources: SourceInfo[]; brand: BrandFeatures | null }
 let catalog: Promise<Catalog> | null = null;
 

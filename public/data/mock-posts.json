@@ -1,0 +1,17 @@
+{
+  "username": "sample",
+  "profile": { "username": "sample", "name": "Sample account", "biography": "Placeholder posts Lathe shows when INSTAGRAM_ACCESS_TOKEN is not set. Not from Instagram.", "picture": "/brand/apple-touch-icon.png", "followers": 1200, "mediaCount": 6 },
+  "posts": [
+    { "id": "mock-1", "type": "image", "mediaType": "IMAGE", "src": "/brand/hero-campaign.jpg", "poster": null, "slides": [], "permalink": "https://www.instagram.com/", "caption": "Sample image post. Tools for people who make tools.", "likes": 412, "comments": 18, "timestamp": "2026-09-30T15:00:00+0000", "score": 466 },
+    { "id": "mock-2", "type": "video", "mediaType": "VIDEO", "src": "/data/mock-clip.mp4", "poster": "/brand/icon-512.png", "slides": [], "permalink": "https://www.instagram.com/", "caption": "Sample video post (plays muted, on a loop).", "likes": 980, "comments": 41, "timestamp": "2026-09-26T15:00:00+0000", "score": 1103 },
+    { "id": "mock-3", "type": "carousel", "mediaType": "CAROUSEL_ALBUM", "src": "/brand/icon-512.png", "poster": null, "slides": [
+      { "type": "image", "src": "/brand/icon-512.png", "poster": null },
+      { "type": "image", "src": "/brand/hero-campaign.jpg", "poster": null },
+      { "type": "image", "src": "/brand/apple-touch-icon.png", "poster": null }
+    ], "permalink": "https://www.instagram.com/", "caption": "Sample carousel post, three slides.", "likes": 655, "comments": 22, "timestamp": "2026-09-21T15:00:00+0000", "score": 721 },
+    { "id": "mock-4", "type": "image", "mediaType": "VIDEO", "src": "/brand/apple-touch-icon.png", "poster": null, "slides": [], "permalink": "https://www.instagram.com/", "caption": "Sample reel whose file Instagram withholds (licensed audio): shown as its thumbnail.", "likes": 230, "comments": 9, "timestamp": "2026-09-15T15:00:00+0000", "score": 257 },
+    { "id": "mock-5", "type": "image", "mediaType": "IMAGE", "src": "/brand/hero-campaign.jpg", "poster": null, "slides": [], "permalink": "https://www.instagram.com/", "caption": null, "likes": null, "comments": 3, "timestamp": "2026-09-08T15:00:00+0000", "score": 9 },
+    { "id": "mock-6", "type": "image", "mediaType": "IMAGE", "src": "/brand/icon-512.png", "poster": null, "slides": [], "permalink": "https://www.instagram.com/", "caption": "Sample post with likes hidden.", "likes": null, "comments": 12, "timestamp": "2026-09-01T15:00:00+0000", "score": 36 }
+  ],
+  "fetchedAt": "2026-10-06T00:00:00.000Z"
+}

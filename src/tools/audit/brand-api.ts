@@ -22,6 +22,8 @@ export interface SiteCapture {
 export interface Brandfetch {
   name: string | null; description: string | null; claimed: boolean; url: string;
   logos: LogoCandidate[]; colors: { hex: string; type: string | null }[]; fonts: { name: string; type: string | null; origin: string | null }[];
+  /** Social profiles by platform (instagram, youtube, x, …). */
+  social?: Record<string, string>;
 }
 export interface BrandCapture {
   query: string; domain: string; capturedAt: string;
@@ -40,17 +42,28 @@ export interface Social {
   notes?: string[]; ms: number;
 }
 
-export class ApiError extends Error { constructor(message: string, readonly status: number) { super(message); } }
+export interface IgSlide { type: 'image' | 'video'; src: string; poster: string | null }
+export interface IgPost {
+  id: string; type: 'image' | 'video' | 'carousel'; /** Instagram's own type (a reel without its file is type image, mediaType VIDEO). */ mediaType: string;
+  src: string; poster: string | null; slides: IgSlide[]; permalink: string; caption: string | null;
+  likes: number | null; comments: number | null; timestamp: string; score: number;
+}
+export interface Instagram {
+  username: string; posts: IgPost[]; fetchedAt: string; mock?: boolean;
+  profile: { username: string; name: string | null; biography: string | null; picture: string | null; followers: number | null; mediaCount: number | null };
+}
+
+export class ApiError extends Error { constructor(message: string, readonly status: number, readonly code?: string) { super(message); } }
 
 async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
   const r = await fetch(url, { signal });
   const body = await r.json().catch(() => ({ error: `HTTP ${r.status}` }));
-  if (!r.ok || body.error) throw new ApiError(body.error || `HTTP ${r.status}`, r.status);
+  if (!r.ok || body.error) throw new ApiError(body.error || `HTTP ${r.status}`, r.status, body.code);
   return body as T;
 }
 
 export async function captureBrand(q: string, o: { merge: number; top: number; cacheHours: number }, signal?: AbortSignal): Promise<BrandCapture & { cached?: boolean }> {
-  const key = `brand:capture2:${q.trim().toLowerCase()}:${o.merge}:${o.top}`;
+  const key = `brand:capture3:${q.trim().toLowerCase()}:${o.merge}:${o.top}`;
   const hit = await cacheGet<BrandCapture>(key);
   if (hit) return { ...hit, cached: true };
   const out = await getJson<BrandCapture>(`/api/brand/capture?q=${encodeURIComponent(q)}&merge=${o.merge}&top=${o.top}`, signal);
@@ -137,3 +150,22 @@ export async function logoFromUrl(url: string, label: string): Promise<LogoCandi
     return { kind: blob.type === 'image/svg+xml' ? 'svg' : 'img', label, url, dataUri, type: blob.type, bytes: blob.size, sizes: null };
   } catch { return null; }
 }
+
+/** The handle in an Instagram profile URL, or null (posts, reels and the like are not profiles). */
+export function igHandle(url: string | undefined | null): string | null {
+  const m = /^(?:https?:\/\/)?(?:www\.)?instagram\.com\/([A-Za-z0-9._]{1,30})\/?(?:[?#].*)?$/i.exec(url?.trim() ?? '');
+  return m && !/^(p|reel|reels|explore|stories|accounts|tv)$/i.test(m[1]) ? m[1].toLowerCase() : null;
+}
+
+/** A business or creator account's profile and latest posts (/api/ig), cached for an hour. Sample
+    posts (no token on the server) are not cached, so adding the token takes effect at once. */
+export async function fetchInstagram(handle: string, signal?: AbortSignal): Promise<Instagram> {
+  const key = `brand:ig:${handle.toLowerCase()}`;
+  const hit = await cacheGet<Instagram>(key);
+  if (hit) return hit;
+  const out = await getJson<Instagram>(`/api/ig/${encodeURIComponent(handle)}`, signal);
+  if (!out.mock) await cacheSet(key, out, 3600_000);
+  return out;
+}
+/** Instagram media through Lathe's proxy (CDN links expire and refuse hotlinking); sample files are local. */
+export const igSrc = (url: string) => url.startsWith('/') ? url : `/api/ig-media?url=${encodeURIComponent(url)}`;

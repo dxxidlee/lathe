@@ -1,6 +1,6 @@
 // @ts-check
 /* Brand audit helpers: resolve a company name to its website (Wikidata P856), Brandfetch's official
-   assets (BRANDFETCH_KEY), and which brand features the deployment's keys unlock. */
+   assets and social links (BRANDFETCH_KEY), and which brand features the deployment's keys unlock. */
 import { getJson, mapLimit } from './http.js';
 import { fetchImageData, LIMITS } from './site.js';
 
@@ -11,6 +11,7 @@ export const brandFeatures = env => ({
   screenshotsLimited: !env.MICROLINK_KEY, // the free tier has a small daily quota; MICROLINK_KEY lifts it
   brandfetch: !!env.BRANDFETCH_KEY,
   observations: !!env.ANTHROPIC_API_KEY,
+  instagram: !!env.INSTAGRAM_ACCESS_TOKEN && !!env.INSTAGRAM_USER_ID, // without them, sample posts
 });
 
 /** Input that looks like a domain or URL rather than a company name. @param {string} q */
@@ -64,6 +65,8 @@ export async function brandfetch(domain, key) {
     logos,
     colors: (b.colors || []).filter((/** @type {any} */ c) => /^#[0-9a-f]{6}$/i.test(c.hex)).map((/** @type {any} */ c) => ({ hex: c.hex.toUpperCase(), type: c.type || null })),
     fonts: (b.fonts || []).filter((/** @type {any} */ f) => f.name).map((/** @type {any} */ f) => ({ name: f.name, type: f.type || null, origin: f.origin || null })),
+    // Social profiles by platform (instagram, youtube, x, …), from Brandfetch's links.
+    social: Object.fromEntries((b.links || []).filter((/** @type {any} */ l) => l?.name && /^https?:\/\//.test(l.url || '')).map((/** @type {any} */ l) => [String(l.name).toLowerCase() === 'twitter' ? 'x' : String(l.name).toLowerCase(), l.url])),
     url: `https://brandfetch.com/${domain}`,
   };
 }

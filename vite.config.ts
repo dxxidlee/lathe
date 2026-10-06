@@ -1,6 +1,6 @@
 import { defineConfig, loadEnv, type Plugin } from 'vite';
 import react from '@vitejs/plugin-react';
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -9,9 +9,10 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 const SERVER_KEYS = [
   'ARENA_TOKEN', 'COOPER_HEWITT_KEY', 'SMITHSONIAN_KEY', 'HARVARD_KEY', 'EUROPEANA_KEY', 'RIJKS_KEY',
   'UNSPLASH_KEY', 'MICROLINK_KEY', 'BRANDFETCH_KEY', 'ANTHROPIC_API_KEY', 'LATHE_CONTACT_URL',
+  'INSTAGRAM_ACCESS_TOKEN', 'INSTAGRAM_USER_ID',
 ];
 
-/** Resolve /api/a/b to api/a/b.js, api/a/b/index.js, or a [param].js sibling, like Vercel. */
+/** Resolve /api/a/b to api/a/b.js, api/a/b/index.js, or a [param].js sibling (e.g. [source].js, [username].js), like Vercel. */
 function resolveApi(root: string, pathname: string): string | null {
   const segs = pathname.replace(/^\/api\/?/, '').split('/').filter(Boolean);
   const tryFile = (p: string) => (existsSync(p) ? p : null);
@@ -19,7 +20,9 @@ function resolveApi(root: string, pathname: string): string | null {
   const direct = tryFile(dir + '.js') ?? tryFile(join(dir, 'index.js'));
   if (direct) return direct;
   if (!segs.length) return null;
-  return tryFile(join(root, 'api', ...segs.slice(0, -1), '[source].js'));
+  const parent = join(root, 'api', ...segs.slice(0, -1));
+  const param = existsSync(parent) ? readdirSync(parent).find(f => /^\[[\w-]+\]\.js$/.test(f)) : undefined;
+  return param ? join(parent, param) : null;
 }
 
 /* Runs the /api Web-standard handlers (export GET(request)) inside Vite's dev and preview servers,
@@ -61,7 +64,9 @@ function apiRoutes(): Plugin {
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
-  for (const k of SERVER_KEYS) if (env[k] && !process.env[k]) process.env[k] = env[k];
+  // A key already in the environment wins, even when empty: the verify suites blank keys this way to
+  // run keyless whatever .env.local holds.
+  for (const k of SERVER_KEYS) if (env[k] && !(k in process.env)) process.env[k] = env[k];
   return {
     plugins: [react(), apiRoutes()],
     server: { port: 5173 },

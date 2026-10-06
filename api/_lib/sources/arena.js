@@ -1,6 +1,7 @@
 // @ts-check
 /* Are.na v3 search. CLAUDE.md lists public search as keyless, but as of 2026-10 v3 search returns
-   401 without a token and v2 sits behind a bot challenge, so this source needs ARENA_TOKEN. */
+   401 without a token (403 with a token from a free account: search needs Are.na Premium) and v2 is
+   shut down, so this source needs ARENA_TOKEN from a Premium account. */
 import { getJson, rateLimit } from '../http.js';
 import { result, str } from '../normalize.js';
 

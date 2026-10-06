@@ -18,6 +18,8 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
 const OUT = join(HERE, 'out', 'brand');
 const PORT = 4323, ML_PORT = 4324;
+// Every key blanked (an empty variable overrides .env.local), so the suite runs as a keyless deployment.
+const KEYLESS = Object.fromEntries(['ARENA_TOKEN', 'COOPER_HEWITT_KEY', 'SMITHSONIAN_KEY', 'HARVARD_KEY', 'EUROPEANA_KEY', 'RIJKS_KEY', 'UNSPLASH_KEY', 'MICROLINK_KEY', 'BRANDFETCH_KEY', 'ANTHROPIC_API_KEY', 'INSTAGRAM_ACCESS_TOKEN', 'INSTAGRAM_USER_ID'].map(k => [k, '']));
 const BASE = `http://127.0.0.1:${PORT}`;
 const SITE = 'stripe.com';
 state.out = OUT;
@@ -239,7 +241,7 @@ const ml = http.createServer(async (req, res) => {
 });
 await new Promise(r => ml.listen(ML_PORT, '127.0.0.1', r));
 const server = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], { cwd: ROOT, stdio: 'pipe',
-  env: { ...process.env, MICROLINK_API: `http://127.0.0.1:${ML_PORT}/`, BRANDFETCH_KEY: '', ANTHROPIC_API_KEY: '', MICROLINK_KEY: '' } });
+  env: { ...process.env, MICROLINK_API: `http://127.0.0.1:${ML_PORT}/`, ...KEYLESS } });
 for (let i = 0; i < 100; i++) { try { if ((await fetch(BASE + '/')).ok) break; } catch { /* starting */ } await new Promise(r => setTimeout(r, 100)); }
 
 /* The Internet Archive goes down or rate-limits at times. When it does, the checks that need it are
@@ -255,7 +257,7 @@ await check('/api/sources: 8 keyless sources available, keyed ones hidden, brand
   const avail = j.sources.filter(s => s.available).map(s => s.id);
   for (const id of ['met', 'aic', 'archive', 'wikimedia', 'loc', 'openverse', 'cooperhewitt', 'rijks']) assert(avail.includes(id), `${id} missing`);
   for (const id of ['arena', 'smithsonian', 'harvard', 'europeana', 'unsplash']) assert(!avail.includes(id), `${id} available without key`);
-  assert(j.brand && j.brand.capture && j.brand.screenshots && !j.brand.brandfetch && !j.brand.observations, JSON.stringify(j.brand));
+  assert(j.brand && j.brand.capture && j.brand.screenshots && !j.brand.brandfetch && !j.brand.observations && !j.brand.instagram, JSON.stringify(j.brand));
   return `${avail.length} available; brand ${JSON.stringify(j.brand)}`;
 });
 await check('Cooper Hewitt and Rijksmuseum (keyless now) return the schema; their images pass the proxy', async () => {
@@ -361,6 +363,29 @@ await check('Script-built sites: images read from the rendered page (Microlink s
   const j = await (await fetch(`${BASE}/api/brand/social?render=${encodeURIComponent('https://stripe.com/')}`)).json();
   assert(Array.isArray(j.images) && j.images.length > 0 && j.images.every(i => !/\.svg(\?|$)|logo|icon/i.test(i.url)) && Array.isArray(j.logos), JSON.stringify(j).slice(0, 200));
   return `${j.images.length} images, ${j.logos.length} logos`;
+});
+
+await check('Instagram: profile and 30 posts in the normalized shape (Graph API, or sample posts without a token)', async () => {
+  const r = await fetch(`${BASE}/api/ig/glossier`); const j = await r.json();
+  const keys = ['id', 'type', 'src', 'poster', 'slides', 'permalink', 'caption', 'likes', 'comments', 'timestamp', 'score'];
+  assert(r.ok && j.posts.length && j.posts.every(p => keys.every(k => k in p) && ['image', 'video', 'carousel'].includes(p.type) && p.score === (p.likes ?? 0) + (p.comments ?? 0) * 3 && (p.type !== 'carousel' || p.slides.length && p.src === p.slides[0].src)), JSON.stringify(j).slice(0, 300));
+  const body = JSON.stringify(j); assert(!/access_token|EAA[A-Za-z0-9]{20}/.test(body), 'token in response');
+  const types = j.posts.reduce((a, p) => (a[p.type] = (a[p.type] || 0) + 1, a), {});
+  return `${j.mock ? 'sample posts (no token)' : `@${j.username}, ${j.profile.followers} followers`}: ${j.posts.length} posts ${JSON.stringify(types)}`;
+});
+await check('Instagram errors are JSON with a code; the media proxy serves only Instagram CDNs', async () => {
+  const bad = await fetch(`${BASE}/api/ig/${encodeURIComponent('no spaces!')}`);
+  const missing = await fetch(`${BASE}/api/ig/thisdoesnotexist_lathe_9x7`); const mj = await missing.json();
+  assert(bad.status === 400 && (await bad.json()).code === 'bad_username', `bad ${bad.status}`);
+  assert(mj.mock || (missing.status === 404 && mj.code === 'not_found'), `missing ${missing.status} ${JSON.stringify(mj)}`);
+  const refused = await Promise.all(['https://evil.com/a.jpg', 'https://cdninstagram.com.evil.com/a.jpg', 'http://scontent.cdninstagram.com/a.jpg'].map(u => fetch(`${BASE}/api/ig-media?url=${encodeURIComponent(u)}`).then(r => r.status)));
+  assert(refused.every(x => x === 403), refused.join());
+  const g = await (await fetch(`${BASE}/api/ig/glossier`)).json();
+  if (g.mock) return 'no token: sample posts; bad name 400; proxy refuses 3 foreign hosts';
+  const img = g.posts.find(p => p.type !== 'video');
+  const r = await fetch(`${BASE}/api/ig-media?url=${encodeURIComponent(img.src)}`);
+  assert(r.ok && /^image\//.test(r.headers.get('content-type')) && /immutable/.test(r.headers.get('cache-control')), `media ${r.status}`);
+  return `bad name 400; @thisdoesnotexist 404 not_found; media ${(Number(r.headers.get('content-length')) / 1024).toFixed(0)} KB; 3 foreign hosts refused`;
 });
 
 /* ================= UI ================= */

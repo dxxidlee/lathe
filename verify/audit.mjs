@@ -19,7 +19,7 @@ const Q = 'poster';
 state.out = OUT;
 
 async function startPreview() {
-  const proc = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], { cwd: ROOT, stdio: 'pipe', env: { ...process.env, ARENA_TOKEN: '' } });
+  const proc = spawn('npx', ['vite', 'preview', '--port', String(PORT), '--strictPort', '--host', '127.0.0.1'], { cwd: ROOT, stdio: 'pipe', env: { ...process.env, ARENA_TOKEN: '', SMITHSONIAN_KEY: '', HARVARD_KEY: '', EUROPEANA_KEY: '', UNSPLASH_KEY: '' } }); // keyless, whatever .env.local holds
   for (let i = 0; i < 100; i++) { try { if ((await fetch(BASE + '/')).ok) return proc; } catch { /* starting */ } await new Promise(r => setTimeout(r, 100)); }
   proc.kill(); throw new Error('vite preview did not start');
 }

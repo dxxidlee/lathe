@@ -190,7 +190,7 @@ export function buildBrandDeck(inp: BrandDeckInput): Deck {
     tl.length ? 'Timeline: Internet Archive Wayback Machine, one capture per year.' : '',
     inp.cap.brandfetch ? 'Official assets: Brandfetch Brand API.' : '',
     inp.cap.company ? (inp.cap.company.wikidata ? `Company resolved via Wikidata: ${inp.cap.company.wikidata}` : `Site found from the name: ${inp.cap.company.website}`) : '',
-    inp.board.length ? 'Board imagery: the brand’s YouTube stills and its site’s photography, picked in Audit.' : '',
+    inp.board.length ? 'Board imagery: the brand’s Instagram posts (Graph API Business Discovery), YouTube stills and its site’s photography, picked in Audit.' : '',
     obs ? `Observations: ${obs.model} (Anthropic), generated, cited to captures.` : '',
   ].filter(Boolean);
   slides.push({ id: uid('s'), variant: 0, tiles: [

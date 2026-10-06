@@ -140,5 +140,12 @@
 .ab-pick.is-broken { display: none; }
 .ab-pick__n { position: absolute; top: var(--s-1); left: var(--s-1); min-width: var(--s-5); padding: 0 var(--s-1); border-radius: var(--radius); background: var(--accent); color: var(--on-accent); font-size: var(--fs-micro); line-height: var(--s-5); text-align: center; font-variant-numeric: tabular-nums; }
 .ab-pick__link { color: var(--ink-2); }
+/* Instagram posts reuse the pick tiles; the post opens on Instagram, the badge picks it for the board. */
+.ab-pick__open { display: block; width: 100%; height: 100%; }
+.ab-pick video { display: block; width: 100%; height: 100%; object-fit: cover; }
+button.ab-pick__n { border: 0; cursor: pointer; font: inherit; font-size: var(--fs-micro); }
+.ab-pick__n--off { background: var(--fill-strong); color: var(--ink); }
+.ab-pick__count { position: absolute; top: var(--s-1); right: var(--s-1); padding: 0 var(--s-1); border-radius: var(--radius); background: var(--fill-strong); color: var(--ink); font-size: var(--fs-micro); line-height: var(--s-5); font-variant-numeric: tabular-nums; pointer-events: none; }
+.ab-ig .ab-pick.is-broken { display: block; }
 .ab-social { margin: 0; color: var(--ink-3); font-size: var(--fs-small); line-height: var(--lh-body); }
 .ab-social a { color: var(--ink-2); }

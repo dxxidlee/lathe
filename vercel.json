@@ -20,6 +20,13 @@
     },
     "api/brand/social.js": {
       "maxDuration": 30
+    },
+    "api/ig/[username].js": {
+      "maxDuration": 30,
+      "includeFiles": "public/data/mock-posts.json"
+    },
+    "api/ig-media.js": {
+      "maxDuration": 30
     }
   }
 }

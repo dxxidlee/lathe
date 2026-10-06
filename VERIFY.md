@@ -598,3 +598,46 @@ Without Brandfetch, Glossier's palette picks up the blue and red that its site's
 Bug fixed along the way: when the Wayback availability API answered empty for a walled-off site, the capture failed. It now asks the CDX index for a capture from the past year first.
 
 The brand suite passed 34 / 35. Vitra's Wayback read was skipped because archive.org rate-limited the third consecutive run; it passed on 2026-10-04. Other suites rerun: audit 33 / 33, shell 27 / 27, defaults 17 / 17.
+
+## Audit brand mode: Instagram (2026-10-06)
+
+Instagram is one more feed into the brand audit. It appears in the Imagery section, on the board and in the observations. No new layout: posts reuse the pick tiles and video cards.
+
+How it works:
+- **Data.** `/api/ig/:username` calls the Graph API's Business Discovery (v26.0) with `INSTAGRAM_ACCESS_TOKEN` (a never-expiring Page token) and `INSTAGRAM_USER_ID`. Both are read on the server only.
+  - Usernames are sanitized to letters, numbers, periods and underscores.
+  - Responses are cached for an hour, on the server and in IndexedDB.
+  - Posts are normalized to `{ id, type, src, poster, slides, permalink, caption, likes, comments, timestamp, score }`, plus `mediaType` (Instagram's own type).
+- **Handle.** It comes from Brandfetch's social links, then the site's own Instagram link. When neither has one, or the account fails, an "Instagram handle" field appears in the inspector; a typed handle is remembered for that domain.
+- **Media.** Images and videos stream through `/api/ig-media`. Only `*.cdninstagram.com` and `*.fbcdn.net` over https are fetched, redirects are re-checked, Range is passed on, and responses are cached as immutable.
+- **Display.**
+  - Videos play muted on a loop while on screen and pause off screen (IntersectionObserver). Their files load only when scrolled near.
+  - Carousels show their cover and a "1/n" count.
+  - Clicking a post opens it on Instagram in a new tab; the corner badge picks it for the board.
+  - Tiles are kept between repaints, so playback doesn't restart.
+- **Board.** By default it leads with the three most engaged posts (score = likes + comments × 3), credited `@handle · Instagram` with the post link.
+- **Observations.** Claude receives the 30 posts' types, dates, engagement and captions, plus the top three as images (`ig1`–`ig3`). Observations about the feed cite those, or "instagram" for the data.
+- **No token.** Sample posts from `public/data/mock-posts.json` are served (Lathe's own images and the test clip). They are labelled as samples and never picked for the board by default.
+- **Removed.** `INSTAGRAM_APP_ID` and `INSTAGRAM_APP_SECRET`. There is no token refresh.
+
+| Check | Result |
+|---|---|
+| @nike: profile and 30 posts | pass: 291,042,090 followers; 6 images, 9 carousels, 15 reels. Instagram withholds every reel's file (licensed audio), so each is shown as its thumbnail, labelled "Video (still)". |
+| @glossier: profile and 30 posts | pass: 3,128,698 followers; 7 images, 18 carousels, 5 playable videos |
+| Handle found by Brandfetch for both | pass |
+| Second request served from the hour cache; `@Glossier` → `glossier` | pass (2 ms) |
+| Errors are JSON with a code | pass: bad name 400 `bad_username`; missing account 404 `not_found`; bad token 401 `invalid_token`; Graph codes 4 and 17 → 429 `rate_limited`; code 10 → 403 `permission` |
+| Token never appears in any response | pass |
+| Media proxy: image 200, video Range 206, carousel slide; foreign, look-alike and http hosts refused | pass |
+| UI: 30 cards; videos muted, looping, inline, with poster; play on screen, pause off screen; permalinks open in a new tab; badge toggles the pick | pass |
+| Board: 3 Instagram posts, then YouTube and site imagery; Glossier's official palette from Brandfetch | pass |
+| Claude observations for Glossier cover the feed (cadence, post mix, top posts, captions against the site), each citing ig1–ig3 or "instagram" | pass |
+| Keyless: sample posts, labelled; not on the board | pass |
+
+Not separable: Business Discovery answers the same error (code 110, subcode 2207013) for a username that doesn't exist and for a personal account. The message says it could be either; a separate "personal account" message is used only if Graph's text says so.
+
+Seen locally only: a video can wait several seconds to start while the page's other images load. The local server serves six requests at a time per page; Vercel's HTTP/2 doesn't have that limit.
+
+Not yet checked on Vercel: whether streamed video responses get past Vercel's 4.5 MB function response limit. Images are well under it; most feed videos are a few MB.
+
+Test servers now treat an empty environment variable as set, so the verify suites stay keyless whatever `.env.local` holds. Suites: brand 35 / 37 (archive.org rate-limited the vitra and timeline checks), audit 33 / 33, shell 27 / 27, defaults 17 / 17.
