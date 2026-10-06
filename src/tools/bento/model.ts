@@ -23,8 +23,12 @@ export interface Tile {
   fit?: 'cover' | 'contain';
   caption?: boolean;     // show the credit line under the image
   credit?: Credit;
+  /** Background of a logo tile (a dark mark on light, a light mark on dark). */
+  fill?: string;
   /* palette / hexlist */
   colors?: string[];
+  /** Palette tiles print each hex under its swatch unless this is false. */
+  hexLabels?: boolean;
   /* text */
   text?: string;
   role?: TextRole;

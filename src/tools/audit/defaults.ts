@@ -29,5 +29,6 @@ export const defaults: DefaultsManifest = [
   { key: 'timelineSnapshots', label: 'Timeline snapshots', value: 6, min: 1, max: 16, step: 1, chosenBy: DL, reason: TODO, inheritedFrom: null },
   { key: 'timelineSpan', label: 'Timeline reaches back', value: 20, unit: 'years', min: 1, max: 30, step: 1, chosenBy: DL, reason: TODO, inheritedFrom: null },
   { key: 'observationImagePx', label: 'Captures sent for observations', value: 1280, unit: 'px longest edge', min: 512, max: 1568, step: 16, chosenBy: DL, reason: TODO, inheritedFrom: null },
+  { key: 'boardVideos', label: 'YouTube videos looked at', value: 6, min: 1, max: 12, step: 1, chosenBy: DL, reason: TODO, inheritedFrom: null },
   { key: 'observationModel', label: 'Observations model', value: 'claude-opus-5-5', editable: false, chosenBy: DL, reason: TODO, inheritedFrom: null },
 ];

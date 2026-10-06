@@ -1,6 +1,7 @@
-/* Build a Bento deck from a brand audit: cover, palette, typography, imagery, timeline, observations,
-   method (credits are added by Bento from every image's credit). */
-import type { Swatch } from '../../lib/color';
+/* Build a Bento deck from a brand audit: the board (logo at the centre, palette top right, the brand's
+   imagery around them), cover, palette, typography, imagery, timeline, observations, method (credits
+   are added by Bento from every image's credit). */
+import { hexToOklab, type Swatch } from '../../lib/color';
 import { layoutSlide } from '../bento/layout';
 import { uid, type Credit, type Deck, type Slide, type Tile } from '../bento/model';
 import type { BrandCapture, LogoCandidate, Observations, Typeface } from './brand-api';
@@ -20,13 +21,48 @@ export interface BrandDeckInput {
   theme: Deck['theme'];
   imagesPerSlide: number;
   paletteSize: number;
+  /** Imagery picked for the board (video stills, site photography), in order of preference. */
+  board: DeckImage[];
+  /** The mark for the board's centre, and the tile color that sets it off. */
+  boardLogo: { logo: LogoCandidate; fill: string | null } | null;
+  /** The logo's own colors (measured from its pixels), which usually are the brand's palette. */
+  logoColors: string[];
 }
+
+/* The board on the 12 × 8 grid: the logo in a wide centre cell, the palette in the top-right cell,
+   imagery in every other cell (filled in order; cells without an image are left out). */
+const BOARD = {
+  logo: { x: 3, y: 3, w: 6, h: 3 },
+  palette: { x: 9, y: 0, w: 3, h: 3 },
+  images: [
+    { x: 4, y: 0, w: 5, h: 3 }, { x: 0, y: 0, w: 4, h: 3 }, { x: 0, y: 3, w: 3, h: 5 }, { x: 9, y: 3, w: 3, h: 3 },
+    { x: 3, y: 6, w: 3, h: 2 }, { x: 6, y: 6, w: 3, h: 2 }, { x: 9, y: 6, w: 3, h: 2 },
+  ],
+};
 
 const imageTile = (im: DeckImage, caption = true): Tile => ({ id: uid(), type: 'image', src: im.src, aspect: im.aspect, fit: 'cover', caption, credit: im.credit });
 const logoTile = (l: LogoCandidate, site: string, date: string): Tile => ({
   id: uid(), type: 'logo', src: l.dataUri, fit: 'contain',
   credit: { title: l.label, creator: null, date, source: l.kind === 'brandfetch' ? 'Brandfetch' : site, license: 'Trademark of its owner; shown for research', url: l.url ?? `https://${site}` },
 });
+/** Drop colors within ΔE 0.06 (OKLab) of one already kept. */
+function distinct(hexes: string[]): string[] {
+  const kept: { h: string; l: [number, number, number] }[] = [];
+  for (const h of hexes) {
+    const l = hexToOklab(h); if (!l) continue;
+    if (!kept.some(k => Math.hypot(k.l[0] - l[0], k.l[1] - l[1], k.l[2] - l[2]) < 0.06)) kept.push({ h, l });
+  }
+  return kept.map(k => k.h);
+}
+/** Chromatic colors first (OKLCH chroma ≥ 0.04, in the given order), then the lightest and darkest neutral; up to `n`. */
+export function brandHues(hexes: string[], n = 6): string[] {
+  const lab = hexes.map(h => ({ h, l: hexToOklab(h) })).filter(x => x.l) as { h: string; l: [number, number, number] }[];
+  const chroma = (x: { l: [number, number, number] }) => Math.hypot(x.l[1], x.l[2]);
+  const hues = lab.filter(x => chroma(x) >= 0.04);
+  const neutrals = lab.filter(x => chroma(x) < 0.04).sort((a, b) => b.l[0] - a.l[0]);
+  const ends = neutrals.length ? [neutrals[0], ...(neutrals.length > 1 ? [neutrals[neutrals.length - 1]] : [])] : [];
+  return [...ends.slice(0, 1), ...hues.slice(0, n - ends.length), ...ends.slice(1)].map(x => x.h).slice(0, n);
+}
 const weightsText = (t: Typeface) => (t.weights.length ? (t.weights.length === 2 && t.weights[1] - t.weights[0] > 100 ? `${t.weights[0]}–${t.weights[1]}` : t.weights.join(' / ')) : '');
 
 export function buildBrandDeck(inp: BrandDeckInput): Deck {
@@ -37,6 +73,19 @@ export function buildBrandDeck(inp: BrandDeckInput): Deck {
   const how = site.via === 'wayback' && site.snapshot
     ? `From the Wayback Machine capture of ${site.snapshot.timestamp.slice(0, 4)}-${site.snapshot.timestamp.slice(4, 6)}-${site.snapshot.timestamp.slice(6, 8)} (the live site refused automated requests)`
     : 'Captured from the live site';
+
+  // The board: the brand at a glance. Official colors when Brandfetch has them; otherwise the logo's
+  // colors, then those measured on the homepage, then the CSS colors (which mix in interface states),
+  // hue first, then at most one light and one dark neutral.
+  const boardColors = inp.cap.brandfetch?.colors.length ? inp.cap.brandfetch.colors.map(c => c.hex).slice(0, 6) : brandHues(distinct([...inp.logoColors, ...inp.pixelPalette.map(p => p.hex), ...site.colors.map(c => c.hex)]));
+  if (inp.boardLogo || inp.board.length) {
+    const tiles: Tile[] = [];
+    if (inp.boardLogo) tiles.push({ ...logoTile(inp.boardLogo.logo, cap.domain, date), fill: inp.boardLogo.fill ?? undefined, rect: BOARD.logo });
+    else tiles.push({ id: uid(), type: 'text', role: 'display', text: inp.name, rect: BOARD.logo });
+    if (boardColors.length) tiles.push({ id: uid(), type: 'palette', colors: boardColors, hexLabels: false, rect: BOARD.palette });
+    inp.board.slice(0, BOARD.images.length).forEach((im, i) => tiles.push({ ...imageTile(im, false), rect: BOARD.images[i] }));
+    slides.push({ id: uid('s'), variant: 0, tiles });
+  }
 
   // Cover: fixed composition like the subject deck; the desktop capture on the right.
   const hero = inp.desktop ?? inp.og;
@@ -140,7 +189,8 @@ export function buildBrandDeck(inp: BrandDeckInput): Deck {
     inp.desktop || inp.mobile ? 'Screenshots: Microlink headless browser.' : '',
     tl.length ? 'Timeline: Internet Archive Wayback Machine, one capture per year.' : '',
     inp.cap.brandfetch ? 'Official assets: Brandfetch Brand API.' : '',
-    inp.cap.company ? `Company resolved via Wikidata: ${inp.cap.company.wikidata}` : '',
+    inp.cap.company ? (inp.cap.company.wikidata ? `Company resolved via Wikidata: ${inp.cap.company.wikidata}` : `Site found from the name: ${inp.cap.company.website}`) : '',
+    inp.board.length ? 'Board imagery: the brand’s YouTube stills and its site’s photography, picked in Audit.' : '',
     obs ? `Observations: ${obs.model} (Anthropic), generated, cited to captures.` : '',
   ].filter(Boolean);
   slides.push({ id: uid('s'), variant: 0, tiles: [

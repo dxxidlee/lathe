@@ -565,3 +565,36 @@ Its availability API was still degraded: it returned empty results for years it 
 | image | 35 / 35 |
 | m8 | 26 / 26 |
 | make | 9 / 9 |
+
+## Audit brand mode: the board (social imagery)
+
+David asked for a brand board, to be built before Milestone 10. A brand or product name gives a bento: the logo in the centre, the palette top right, and imagery around them from the site and its social channels. The reference was an Erleada board.
+
+Agent-Reach (Panniantong/Agent-Reach) is a Python CLI for agents (yt-dlp, Jina, OpenCLI with a signed-in Chrome) and cannot run in a Vercel function. Its public channels were rebuilt in Node instead:
+- **YouTube, no key.** Lathe uses the channel the site links to. Failing that, it uses the brand's own channel if a search shows one. Failing that, it searches for videos whose titles name the brand, then "<name> commercial".
+- **Stills.** Each video gives four stills from i.ytimg.com: three frames YouTube captured from the video, and the thumbnail. When the 1280 × 720 frames are missing, the stills fall back to the 16:9 thumbnail. Letterbox bars are trimmed before a still goes on the board.
+- **Instagram, TikTok, X and the rest** need a signed-in session. Scraping them would break their terms, so they are listed as links only.
+- **Site imagery.** Large photos are read from the homepage HTML. For script-built sites (erleada.com), they are read from the rendered page through Microlink.
+- **Site guessing.** A product with no Wikidata website is matched to `<name>.com` when that page's title names it.
+- **Palette.** Brandfetch colours are used when its key is set. Otherwise the palette is the logo's colours and the measured homepage colours, chromatic ones first.
+
+| Check | Result |
+|---|---|
+| Capture finds social profiles and photography (stripe.com) | pass: youtube, instagram, x, facebook, linkedin; 9 images |
+| YouTube from the linked channel: 4 videos × 4 stills, a still through /api/img | pass |
+| A product with no channel (Erleada): site guessed from its title, videos found by search | pass: erleada.com; 4 videos naming it |
+| /api/img tries fallbacks in order | pass |
+| Rendered-page images (Microlink stand-in): icons and logos kept out | pass: 16 images |
+| Imagery section: 7 picked in order, YouTube and site mixed; un-pick and re-pick keeps order | pass |
+| Deck slide 1 is the board: logo {3,3,6,3}, palette {9,0,3,3}, 7 credited image tiles | pass |
+| pptx / pdf / png / svg exports with the board added | pass: 9 slides |
+
+Live boards were checked by eye:
+- **Erleada:** the SVG logo on white in the centre; a white, purple, slate, chartreuse and blue-grey palette; the site's photography, then stills from the ads.
+- **Glossier:** stills from its own channel, plus product images from the site.
+
+Without Brandfetch, Glossier's palette picks up the blue and red that its site's CSS uses. Setting the Brandfetch key gives the official colours.
+
+Bug fixed along the way: when the Wayback availability API answered empty for a walled-off site, the capture failed. It now asks the CDX index for a capture from the past year first.
+
+The brand suite passed 34 / 35. Vitra's Wayback read was skipped because archive.org rate-limited the third consecutive run; it passed on 2026-10-04. Other suites rerun: audit 33 / 33, shell 27 / 27, defaults 17 / 17.

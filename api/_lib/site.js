@@ -7,7 +7,7 @@ import { parse } from 'node-html-parser';
 import { safeFetch } from './safefetch.js';
 import { mapLimit } from './http.js';
 import { COLOR_RE, parseColor, clusterColors } from './color.js';
-import { archiveUrl, closestSnapshot, rawUrl } from './wayback.js';
+import { archiveUrl, closestSnapshot, firstCapture, rawUrl } from './wayback.js';
 
 export const LIMITS = { html: 3_000_000, css: 2_000_000, cssTotal: 6_000_000, sheets: 48, asset: 300_000, og: 900_000, logos: 12 };
 
@@ -201,7 +201,59 @@ export function scanHtml(html, base) {
     out.logos.push({ kind: 'img', label: img.getAttribute('alt') ? `Image “${img.getAttribute('alt')}”` : 'Image in header', url: src });
     imgs++;
   }
-  return out;
+
+  // Social profiles linked from the page (first link per platform).
+  /** @type {Record<string, string>} */ const social = {};
+  const PLATFORMS = /** @type {[string, RegExp][]} */ ([
+    ['youtube', /^https?:\/\/(www\.|m\.)?youtube\.com\/(@[\w.-]+|channel\/UC[\w-]{20,}|c\/[\w.-]+|user\/[\w.-]+)/i],
+    ['instagram', /^https?:\/\/(www\.)?instagram\.com\/[\w.]+\/?$/i], ['tiktok', /^https?:\/\/(www\.)?tiktok\.com\/@[\w.]+/i],
+    ['x', /^https?:\/\/(www\.)?(x|twitter)\.com\/\w+\/?$/i], ['facebook', /^https?:\/\/(www\.)?facebook\.com\/[\w.-]+\/?$/i],
+    ['linkedin', /^https?:\/\/(www\.)?linkedin\.com\/(company|showcase)\/[\w-]+/i], ['pinterest', /^https?:\/\/(www\.)?pinterest\.\w+\/[\w-]+\/?$/i],
+    ['behance', /^https?:\/\/(www\.)?behance\.net\/[\w-]+/i], ['dribbble', /^https?:\/\/(www\.)?dribbble\.com\/[\w-]+/i],
+  ]);
+  for (const a of root.querySelectorAll('a[href]')) {
+    const href = abs(a.getAttribute('href') || '', base);
+    if (!href) continue;
+    for (const [k, re] of PLATFORMS) if (!social[k] && re.test(href) && !/\/(share|sharer|intent|watch)\b/i.test(href)) social[k] = href.replace(/[?#].*$/, '');
+  }
+  // Sites that render their footer in script still carry the profile URLs in their page data.
+  const text = html.replace(/\\u002F/gi, '/').replace(/\\\//g, '/');
+  for (const [k, re] of PLATFORMS) {
+    if (social[k]) continue;
+    const loose = new RegExp(re.source.replace('^https?:\\/\\/', 'https?:\\/\\/').replace(/\$$/, ''), 'ig');
+    const m = text.match(loose)?.find(u => !/\/(share|sharer|intent|watch)\b/i.test(u));
+    if (m) social[k] = m.replace(/[?#"'\\].*$/, '');
+  }
+
+  // Large content images (hero, product and campaign photography), largest srcset candidate first.
+  /** @type {{ url: string, alt: string | null, w: number | null }[]} */ const images = [];
+  const seenImg = new Set();
+  const best = (/** @type {string | undefined} */ srcset) => {
+    if (!srcset) return null;
+    const c = srcset.split(',').map(x => x.trim().split(/\s+/)).filter(x => x[0]).map(([u, d]) => ({ u, w: parseInt(d || '0', 10) || (parseFloat(d || '1') * 1000) }));
+    c.sort((a, b) => b.w - a.w);
+    return c[0] ? { u: c[0].u, w: c[0].w } : null;
+  };
+  const consider = (/** @type {string | null} */ raw, /** @type {string | null} */ alt, /** @type {number | null} */ w, /** @type {import('node-html-parser').HTMLElement} */ el) => {
+    const url = raw ? abs(raw, base) : null;
+    if (!url || seenImg.has(url) || /\.svg(\?|$)|\.gif(\?|$)|data:|pixel|spacer|sprite|icon|logo|avatar|badge|favicon/i.test(url)) return;
+    if (named(el) || (w != null && w < 480)) return;
+    const hAttr = parseInt(el.getAttribute('height') || '', 10);
+    if (Number.isFinite(hAttr) && hAttr < 240) return;
+    seenImg.add(url); images.push({ url, alt: alt?.trim() || null, w });
+  };
+  for (const pic of root.querySelectorAll('picture')) {
+    const b = pic.querySelectorAll('source').map(x => best(x.getAttribute('srcset') || x.getAttribute('data-srcset'))).filter(Boolean).sort((a, b) => (b?.w ?? 0) - (a?.w ?? 0))[0];
+    const img = pic.querySelector('img');
+    if (b && img) consider(b.u, img.getAttribute('alt') ?? null, b.w || null, img);
+  }
+  for (const img of root.querySelectorAll('img')) {
+    const b = best(img.getAttribute('srcset') || img.getAttribute('data-srcset'));
+    const wAttr = parseInt(img.getAttribute('width') || '', 10);
+    consider(b?.u ?? img.getAttribute('data-src') ?? img.getAttribute('src') ?? null, img.getAttribute('alt') ?? null, b?.w || (Number.isFinite(wAttr) ? wAttr : null), img);
+    if (images.length >= 24) break;
+  }
+  return { ...out, social, images: images.slice(0, 24) };
 }
 
 /* ------------------------------------------------------------------ fetch + assemble */
@@ -265,6 +317,9 @@ export async function captureSite(site, o) {
     const why = liveError ?? `The site answered ${liveStatus}`;
     try { snap = await closestSnapshot(site.toString(), new Date().toISOString().slice(0, 10).replace(/-/g, '')); }
     catch (e) { throw new Error(`${why}, and the Wayback Machine fallback failed (${e instanceof Error ? e.message : e})`); }
+    // The availability API sometimes comes back empty for a site it has; the CDX index is asked for a
+    // capture from the past year before giving up.
+    if (!snap) { const y = new Date().getFullYear(); snap = await firstCapture(site.hostname, `${y - 1}0101`, `${y}1231`).catch(() => null); }
     if (!snap) throw new Error(`${why}, and the Wayback Machine has no capture of it`);
     page = await safeFetch(rawUrl(snap.timestamp, snap.original), { maxBytes: LIMITS.html, accept: 'text/html', timeout: 20000 });
     if (page.status >= 400) throw new Error(`The site answered ${liveStatus || liveError} and its Wayback capture answered ${page.status}`);
@@ -361,7 +416,7 @@ export async function captureSite(site, o) {
     snapshot: snap ? { timestamp: snap.timestamp, archiveUrl: archiveUrl(snap.timestamp, snap.original) } : null,
     title: h.title, description: h.description, siteName: h.siteName, themeColor: theme?.hex ?? null, lang: h.lang, generator: h.generator,
     og: { title: h.og.title, type: h.og.type, image: h.og.image, imageData: og?.dataUri ?? null },
-    logos, typefaces, colors,
+    logos, typefaces, colors, social: h.social, images: h.images,
     declared: [...facts.colors.entries()].sort((a, b) => b[1] - a[1]).slice(0, 400).map(([hex]) => hex), // every declared color, for matching screenshot colors
     colorStats: { declarations: [...facts.colors.values()].reduce((s, n) => s + n, 0), unique: facts.colors.size, clusters: clusters.length },
     stylesheets: sheets, adobeKits: h.adobeKits, googleFonts: [...new Set(h.googleFonts)],

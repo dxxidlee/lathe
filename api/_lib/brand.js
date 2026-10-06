@@ -67,3 +67,24 @@ export async function brandfetch(domain, key) {
     url: `https://brandfetch.com/${domain}`,
   };
 }
+
+/**
+ * For products and brands Wikidata lists without a website: try the name as a .com and keep it only
+ * when the page's title names the brand (so "Erleada" finds erleada.com, and a squatter's page is refused).
+ * @param {string} name
+ * @returns {Promise<{ name: string, description: string | null, website: string, wikidata: null } | null>}
+ */
+export async function guessSite(name) {
+  const slug = name.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]/g, '');
+  if (slug.length < 3) return null;
+  const { safeFetch } = await import('./safefetch.js');
+  for (const host of [`${slug}.com`, `www.${slug}.com`]) {
+    try {
+      const r = await safeFetch(`https://${host}/`, { maxBytes: 1_500_000, accept: 'text/html', timeout: 8000 });
+      if (r.status >= 400) continue;
+      const title = /<title[^>]*>([^<]*)/i.exec(r.buffer.toString('utf8'))?.[1] ?? '';
+      if (title.toLowerCase().replace(/[^a-z0-9]/g, '').includes(slug)) return { name, description: title.trim() || null, website: r.url, wikidata: null };
+    } catch { /* not this one */ }
+  }
+  return null;
+}

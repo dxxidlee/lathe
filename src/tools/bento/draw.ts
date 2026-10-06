@@ -89,28 +89,29 @@ function drawTile(t: Tile, cfg: DrawConfig, th: Theme): Prim[] {
       break;
     }
     case 'logo': {
-      out.push({ kind: 'rect', ...b, fill: th.tile });
+      out.push({ kind: 'rect', ...b, fill: t.fill ?? th.tile });
       const inset = Math.min(b.w, b.h) * 0.12;
       out.push({ kind: 'image', x: b.x + inset, y: b.y + inset, w: b.w - 2 * inset, h: b.h - 2 * inset, src: t.src!, thumb: t.thumb, fit: 'contain', aspect: t.aspect, tileId: t.id });
       break;
     }
     case 'palette': {
       const cols = t.colors?.length ? t.colors : ['#808080'];
-      const labelH = s.hex * PT_TO_IN * 1.4 + 0.06, gap = 0.06;
+      const labels = t.hexLabels !== false;
+      const labelH = labels ? s.hex * PT_TO_IN * 1.4 + 0.06 : 0, gap = 0.06;
       const vertical = b.w / b.h < 1;
       if (vertical) {
         const rh = (b.h - gap * (cols.length - 1)) / cols.length;
         cols.forEach((c, i) => {
           const y = b.y + i * (rh + gap);
-          out.push({ kind: 'rect', x: b.x, y, w: b.w * 0.62, h: rh, fill: c });
-          out.push(textPrim(cfg, { x: b.x + b.w * 0.62 + 0.08, y: y + rh / 2 - s.hex * PT_TO_IN * 0.6, w: b.w * 0.38 - 0.08, h: s.hex * PT_TO_IN * 1.3, text: c.toUpperCase(), size: s.hex, weight: 400, color: th.fg, align: 'left', valign: 'top', maxLines: 1 }));
+          out.push({ kind: 'rect', x: b.x, y, w: labels ? b.w * 0.62 : b.w, h: rh, fill: c });
+          if (labels) out.push(textPrim(cfg, { x: b.x + b.w * 0.62 + 0.08, y: y + rh / 2 - s.hex * PT_TO_IN * 0.6, w: b.w * 0.38 - 0.08, h: s.hex * PT_TO_IN * 1.3, text: c.toUpperCase(), size: s.hex, weight: 400, color: th.fg, align: 'left', valign: 'top', maxLines: 1 }));
         });
       } else {
         const sw = (b.w - gap * (cols.length - 1)) / cols.length;
         cols.forEach((c, i) => {
           const x = b.x + i * (sw + gap);
           out.push({ kind: 'rect', x, y: b.y, w: sw, h: b.h - labelH, fill: c });
-          out.push(textPrim(cfg, { x, y: b.y + b.h - labelH + 0.06, w: sw, h: labelH - 0.06, text: c.toUpperCase(), size: s.hex, weight: 400, color: th.fg, align: 'left', valign: 'top', maxLines: 1 }));
+          if (labels) out.push(textPrim(cfg, { x, y: b.y + b.h - labelH + 0.06, w: sw, h: labelH - 0.06, text: c.toUpperCase(), size: s.hex, weight: 400, color: th.fg, align: 'left', valign: 'top', maxLines: 1 }));
         });
       }
       break;

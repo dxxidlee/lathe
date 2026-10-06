@@ -2,13 +2,14 @@
 /* GET /api/img?url=[&fallback=] → the image, same-origin, so the browser can read its pixels (palettes)
    and embed it in exports. Only hosts that the registered sources serve images from are allowed;
    redirects are followed manually and re-checked; responses must be images under 4 MB (Vercel caps
-   function responses at 4.5 MB). When `url` is refused or too large, `fallback` (also checked) is
-   served instead, with `x-lathe-fallback: 1`. */
+   function responses at 4.5 MB). When `url` is refused or too large, the first `fallback` that works
+   (each also checked; the parameter may repeat) is served instead, with `x-lathe-fallback: 1`. */
 import { SOURCES } from './_lib/sources/index.js';
 import { uaFor } from './_lib/http.js';
 
 export const MAX_BYTES = 4 * 1024 * 1024;
-const HOSTS = SOURCES.flatMap(s => s.imageHosts);
+// Brand mode adds YouTube's still images (thumbnails and auto-captured frames).
+const HOSTS = [...SOURCES.flatMap(s => s.imageHosts), 'i.ytimg.com'];
 
 /** @param {string} host */
 const allowed = host => HOSTS.some(h => host === h || host.endsWith('.' + h));
@@ -44,10 +45,13 @@ async function fetchImage(raw) {
 export async function GET(request) {
   const params = new URL(request.url).searchParams;
   const first = await fetchImage(params.get('url'));
-  const fallback = params.get('fallback');
-  if (first.ok || !fallback || first.status === 400 || first.status === 403) return first;
-  const second = await fetchImage(fallback);
-  if (!second.ok) return first;
-  const headers = new Headers(second.headers); headers.set('x-lathe-fallback', '1');
-  return new Response(second.body, { status: 200, headers });
+  if (first.ok || first.status === 400 || first.status === 403) return first;
+  // Fallbacks are tried in order (`fallback` may repeat); the first that works is served.
+  for (const fallback of params.getAll('fallback').slice(0, 3)) {
+    const next = await fetchImage(fallback);
+    if (!next.ok) continue;
+    const headers = new Headers(next.headers); headers.set('x-lathe-fallback', '1');
+    return new Response(next.body, { status: 200, headers });
+  }
+  return first;
 }

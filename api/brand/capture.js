@@ -5,7 +5,7 @@
 import { json, rateLimit } from '../_lib/http.js';
 import { toSiteUrl } from '../_lib/safefetch.js';
 import { captureSite } from '../_lib/site.js';
-import { brandfetch, looksLikeDomain, resolveCompany } from '../_lib/brand.js';
+import { brandfetch, guessSite, looksLikeDomain, resolveCompany } from '../_lib/brand.js';
 
 /** @param {string | null} v @param {number} def @param {number} lo @param {number} hi */
 const clampNum = (v, def, lo, hi) => { const n = Number(v); return Number.isFinite(n) && v !== null && v !== '' ? Math.min(hi, Math.max(lo, n)) : def; };
@@ -18,13 +18,14 @@ export async function GET(request) {
   const merge = clampNum(p.get('merge'), 0.04, 0, 0.3), top = clampNum(p.get('top'), 12, 3, 32);
   await rateLimit('brand-capture', 30);
 
-  /** @type {{ name: string, description: string | null, website: string, wikidata: string } | null} */
+  /** @type {{ name: string, description: string | null, website: string, wikidata: string | null } | null} */
   let company = null;
   const asDomain = looksLikeDomain(q);
   let site = asDomain ? toSiteUrl(q) : null;
   if (asDomain && !site) return json({ error: 'That is not a public web address' }, { status: 400 });
   if (!site) {
     try { company = await resolveCompany(q); } catch (e) { return json({ error: `Could not look up “${q}”: ${e instanceof Error ? e.message : e}` }, { status: 502 }); }
+    company ??= /** @type {any} */ (await guessSite(q));
     if (!company) return json({ error: `No website found for “${q}”. Try its domain, like example.com.` }, { status: 404 });
     site = toSiteUrl(company.website);
   }

@@ -228,6 +228,10 @@ const ml = http.createServer(async (req, res) => {
     const pg = await ctx.newPage();
     await pg.goto(p.get('url'), { waitUntil: 'load', timeout: 45000 }).catch(() => {});
     await pg.waitForTimeout(Number(p.get('waitForTimeout') || 0));
+    if (p.has('data.images.selectorAll')) { // rendered-image extraction, like Microlink's `data` rules
+      const data = await pg.evaluate(() => ({ images: [...document.querySelectorAll('img')].map(i => i.getAttribute('src')).filter(Boolean), sources: [...document.querySelectorAll('picture source')].map(x => x.getAttribute('srcset')).filter(Boolean) }));
+      res.writeHead(200, { 'content-type': 'application/json' }); res.end(JSON.stringify({ status: 'success', data })); return;
+    }
     const buf = await pg.screenshot({ type: 'jpeg', quality: 80 });
     res.writeHead(200, { 'content-type': 'image/jpeg', 'x-rate-limit-limit': '999', 'x-rate-limit-remaining': '998' }); res.end(buf);
   } catch (e) { res.writeHead(500, { 'content-type': 'application/json' }); res.end(JSON.stringify({ status: 'fail', message: e.message })); }
@@ -325,6 +329,40 @@ await check('Screenshot endpoint: desktop and mobile sizes, same-origin JPEG, ba
   return `desktop ${di.w}×${di.h}, mobile ${mi.w}×${mi.h} (2×); javascript:, file:, junk → 400`;
 });
 
+let socialStripe;
+await check('Capture finds the social profiles and the photography on the page', async () => {
+  const s = capture.site;
+  assert(/youtube\.com\/@stripe/i.test(s.social?.youtube ?? '') && /instagram\.com/.test(s.social?.instagram ?? '') && s.images?.length >= 3, JSON.stringify(s.social) + ` ${s.images?.length} images`);
+  return `${Object.keys(s.social).join(', ')}; ${s.images.length} images`;
+});
+await check('YouTube: the channel the site links to; its latest videos, each with four stills', async () => {
+  const r = await fetch(`${BASE}/api/brand/social?name=Stripe&youtube=${encodeURIComponent(capture.site.social.youtube)}&videos=4`);
+  socialStripe = await r.json();
+  const y = socialStripe.youtube;
+  assert(r.ok && y?.source === 'channel' && /stripe/i.test(y.channel.title) && y.videos.length === 4 && y.videos.every(v => /^[\w-]{11}$/.test(v.id) && v.stills.length === 4), JSON.stringify(socialStripe).slice(0, 300));
+  const still = y.videos[0].stills[0];
+  const img = await fetch(`${BASE}/api/img?url=${encodeURIComponent(still.url)}${still.fallback.map(f => `&fallback=${encodeURIComponent(f)}`).join('')}`);
+  const buf = Buffer.from(await img.arrayBuffer());
+  assert(img.ok && /^image\//.test(img.headers.get('content-type')) && buf.length > 5000, `still ${img.status}`);
+  return `${y.channel.title}: ${y.videos.map(v => v.title.slice(0, 24)).join(' | ')}; still ${(buf.length / 1024).toFixed(0)} KB`;
+});
+await check('A product without a channel: its site is found from the name, and videos that name it are found by search', async () => {
+  const c = await (await fetch(`${BASE}/api/brand/capture?q=Erleada`)).json();
+  const r = await (await fetch(`${BASE}/api/brand/social?name=Erleada&videos=4`)).json();
+  assert(c.domain === 'erleada.com' && c.company?.wikidata === null && r.youtube?.source === 'search' && r.youtube.videos.length >= 2 && r.youtube.videos.every(v => /erleada/i.test(v.title)), JSON.stringify({ d: c.domain, err: c.error, y: r.youtube?.source, n: r.youtube?.videos?.length }));
+  return `erleada.com (from its title); ${r.youtube.videos.length} videos naming it`;
+});
+await check('/api/img tries fallbacks in order; the first that works is served', async () => {
+  const id = socialStripe.youtube.videos[0].id;
+  const r = await fetch(`${BASE}/api/img?url=${encodeURIComponent(`https://i.ytimg.com/vi/${id}/maxres9.jpg`)}&fallback=${encodeURIComponent(`https://i.ytimg.com/vi/${id}/nothing.jpg`)}&fallback=${encodeURIComponent(`https://i.ytimg.com/vi/${id}/hqdefault.jpg`)}`);
+  assert(r.ok && r.headers.get('x-lathe-fallback') === '1', `${r.status}`); return 'second fallback served';
+});
+await check('Script-built sites: images read from the rendered page (Microlink stand-in), icons and logos kept apart', async () => {
+  const j = await (await fetch(`${BASE}/api/brand/social?render=${encodeURIComponent('https://stripe.com/')}`)).json();
+  assert(Array.isArray(j.images) && j.images.length > 0 && j.images.every(i => !/\.svg(\?|$)|logo|icon/i.test(i.url)) && Array.isArray(j.logos), JSON.stringify(j).slice(0, 200));
+  return `${j.images.length} images, ${j.logos.length} logos`;
+});
+
 /* ================= UI ================= */
 state.tool = 'ui';
 const ctx = await browser.newContext({ acceptDownloads: true, viewport: { width: 1440, height: 900 } });
@@ -413,6 +451,17 @@ await check('Logo picks toggle; re-running from cache spends no screenshots', as
 /* ---- deck ---- */
 state.tool = 'bento';
 let thumbs = [];
+await check('Imagery: YouTube stills and the site’s photography, seven picked for the board in order', async () => {
+  await page.waitForFunction(() => !/Searching YouTube/.test(document.querySelector('.inspector')?.textContent ?? ''), null, { timeout: 60000 });
+  await page.waitForSelector('.ab-pick');
+  const picked = await page.$$eval('.ab-pick.is-picked', b => b.map(x => [x.dataset.key, x.querySelector('.ab-pick__n')?.textContent]));
+  const one = page.locator(`.ab-pick[data-key="${picked[6][0]}"]`).first(); // the last pick: dropping and re-adding it keeps the order
+  await one.click(); await page.waitForTimeout(100);
+  const after = await page.locator('.ab-pick.is-picked').count();
+  await one.click(); await page.waitForTimeout(100);
+  assert(picked.length === 7 && picked.some(p => p[0].startsWith('yt:')) && picked.some(p => p[0].startsWith('site:')) && after === 6, JSON.stringify(picked));
+  return picked.map(p => `${p[1]}:${p[0].split(':')[0]}`).join(' ');
+});
 await check('Build deck in Bento: cover, palette, typography, homepage, identity, timeline, method, credits', async () => {
   await page.click('.inspector .l-btn--primary:has-text("Build deck in Bento")');
   await page.waitForURL('**/t/bento');
@@ -423,9 +472,15 @@ await check('Build deck in Bento: cover, palette, typography, homepage, identity
   const all = texts.join(' | ');
   for (const t of ['Stripe', 'Brand audit · stripe.com', 'Palette', 'Typography', 'Homepage', 'Identity', 'Method', 'Credits', ...(yearsShown ? ['Timeline'] : [])]) assert(all.includes(t), `missing “${t}”`);
   assert(/Microlink/.test(all) && (!yearsShown || /Wayback Machine/.test(all)), 'credits');
+  // The board leads: logo in the centre cell, palette in the top-right cell, imagery around them.
+  const deck = await page.evaluate(() => new Promise(res => { const r = indexedDB.open('lathe'); r.onsuccess = () => { const q = r.result.transaction('assets').objectStore('assets').getAll(); q.onsuccess = async () => { const d = q.result.filter(a => a.type === 'application/vnd.lathe.deck+json').sort((a, b) => b.createdAt - a.createdAt)[0]; res(JSON.parse(await d.blob.text())); }; }; }));
+  const board = deck.slides[0].tiles;
+  const at = (t, r) => t.rect.x === r[0] && t.rect.y === r[1] && t.rect.w === r[2] && t.rect.h === r[3];
+  const logo = board.find(t => t.type === 'logo'), pal = board.find(t => t.type === 'palette'), imgs = board.filter(t => t.type === 'image');
+  assert(logo && at(logo, [3, 3, 6, 3]) && pal && at(pal, [9, 0, 3, 3]) && pal.hexLabels === false && pal.colors.length >= 3 && imgs.length === 7 && imgs.every(t => t.credit && t.src.startsWith('asset:')) && imgs.some(t => /YouTube/.test(t.credit.source)), JSON.stringify(board.map(t => [t.type, t.rect])));
   await page.locator('.bt__thumb').nth(0).click();
   await page.screenshot({ path: join(OUT, 'brand-deck-cover.png') });
-  return `${thumbs.length} slides (${yearsShown ? 'with' : 'without'} timeline)`;
+  return `${thumbs.length} slides (${yearsShown ? 'with' : 'without'} timeline); the board leads with the logo, ${pal.colors.length} colors and 7 images`;
 });
 await check('.pptx: opens in python-pptx; every slide; screenshots embedded; editable text', async () => {
   const f = await download(page, () => page.click('.inspector .l-btn--primary:text-is(".pptx")'), 180000);
@@ -450,8 +505,9 @@ await check('.pdf: every slide; Ghostscript renders; text includes cover, method
   return `${n} pages; page 4 renders (σ ${st.std.toFixed(0)})`;
 });
 await check('.png and .svg of the homepage slide embed the screenshots', async () => {
-  const idx = thumbs.findIndex(t => /Homepage/.test(t));
-  await page.locator('.bt__thumb').nth(idx >= 0 ? idx : 3).click();
+  let idx = -1; // thumbnails are labelled by number, so find the homepage slide by its text
+  for (let i = 0; i < thumbs.length && idx < 0; i++) { await page.locator('.bt__thumb').nth(i).click(); if (/Homepage/.test(await page.textContent('.bt__svg') ?? '')) idx = i; }
+  assert(idx >= 0, 'no homepage slide');
   const p = await download(page, () => page.click('.inspector .l-btn:text-is(".png")'), 120000);
   const { w, h } = pngInfo(readFileSync(p));
   const s = await download(page, () => page.click('.inspector .l-btn:text-is(".svg")'), 120000);
@@ -462,7 +518,7 @@ await check('.png and .svg of the homepage slide embed the screenshots', async (
 });
 await check('No console errors across the brand flow', async () => {
   // A Wayback outage shows as the timeline's 5xx; it is reported by the timeline checks above.
-  const real = errors.filter(e => !/favicon/.test(e) && !(archiveDown && /api\/brand\/timeline|status of 50[23]/.test(e)));
+  const real = errors.filter(e => !/favicon/.test(e) && !(archiveDown && /api\/brand\/timeline|status of (50[23]|429)/.test(e)));
   assert(!real.length, real.slice(0, 3).join(' | ')); return 'clean';
 });
 

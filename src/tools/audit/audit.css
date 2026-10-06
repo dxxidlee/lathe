@@ -123,3 +123,22 @@
 .ab-obs__ev { display: flex; flex-wrap: wrap; gap: var(--s-1); }
 .ab-obs__chip { padding: 0 var(--s-2); border-radius: var(--radius); background: var(--fill-strong); color: var(--ink-2); font-size: var(--fs-micro); line-height: var(--chip-h); font-variant-numeric: tabular-nums; }
 @media (max-width: 720px) { .ab-shots { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---- brand mode: imagery for the board ---- */
+.ab-vids { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--card-w) * 1.7), 1fr)); gap: var(--s-5); }
+.ab-vid { display: flex; flex-direction: column; gap: var(--s-2); min-width: 0; }
+.ab-vid__stills { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--hairline); }
+.ab-vid__meta { display: flex; flex-direction: column; gap: var(--hairline); min-width: 0; }
+.ab-vid__title { color: var(--ink); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ab-vid__title:hover { color: var(--accent); }
+.ab-vid__by { color: var(--ink-3); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
+.ab-picks { display: grid; grid-template-columns: repeat(auto-fill, minmax(var(--card-w-s), 1fr)); gap: var(--s-2); }
+.ab-pick { position: relative; padding: 0; border: 0; background: var(--fill); border-radius: var(--hairline); overflow: hidden; cursor: pointer; aspect-ratio: 16 / 9; }
+.ab-picks .ab-pick { aspect-ratio: 1; }
+.ab-pick img { display: block; width: 100%; height: 100%; object-fit: cover; }
+.ab-pick.is-picked { outline: var(--stroke-bold) solid var(--accent); outline-offset: calc(var(--stroke-bold) * -1); }
+.ab-pick.is-broken { display: none; }
+.ab-pick__n { position: absolute; top: var(--s-1); left: var(--s-1); min-width: var(--s-5); padding: 0 var(--s-1); border-radius: var(--radius); background: var(--accent); color: var(--on-accent); font-size: var(--fs-micro); line-height: var(--s-5); text-align: center; font-variant-numeric: tabular-nums; }
+.ab-pick__link { color: var(--ink-2); }
+.ab-social { margin: 0; color: var(--ink-3); font-size: var(--fs-small); line-height: var(--lh-body); }
+.ab-social a { color: var(--ink-2); }

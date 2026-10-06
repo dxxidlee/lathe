@@ -1,9 +1,25 @@
 {
-  "rewrites": [{ "source": "/((?!api/).*)", "destination": "/index.html" }],
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/index.html"
+    }
+  ],
   "functions": {
-    "api/brand/capture.js": { "maxDuration": 60 },
-    "api/brand/timeline.js": { "maxDuration": 60 },
-    "api/brand/shot.js": { "maxDuration": 60 },
-    "api/brand/observe.js": { "maxDuration": 120 }
+    "api/brand/capture.js": {
+      "maxDuration": 60
+    },
+    "api/brand/timeline.js": {
+      "maxDuration": 60
+    },
+    "api/brand/shot.js": {
+      "maxDuration": 60
+    },
+    "api/brand/observe.js": {
+      "maxDuration": 120
+    },
+    "api/brand/social.js": {
+      "maxDuration": 30
+    }
   }
 }
