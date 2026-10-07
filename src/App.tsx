@@ -1,4 +1,4 @@
-import { BrowserRouter, Route, Routes, useParams } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
 import { ShellProvider, useShell } from './shell/state';
 import { ShellLayout } from './shell/ShellLayout';
 import { PlannedTool, ToolHost } from './shell/ToolHost';
@@ -56,6 +56,7 @@ export function App() {
           <Route path="/" element={<Home />} />
           <Route path="/t/:toolId" element={<ToolRoute />} />
           <Route path="/make" element={<Make />} />
+          <Route path="/resize" element={<Navigate to="/t/resize" replace />} />
           <Route path="*" element={<Home />} />
         </Routes>
         <Overlays />

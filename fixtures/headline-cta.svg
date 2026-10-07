@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1080 1080">
+  <defs>
+    <style>
+      .cls-1 { fill: #000; }
+      .cls-2 { fill: #e8ff1a; }
+      .cls-3 { font-family: Inter-Bold, Inter; font-size: 120px; font-weight: 700; letter-spacing: -.03em; }
+      .cls-3, .cls-4 { fill: #fff; }
+      .cls-4 { font-family: Inter-Regular, Inter; font-size: 40px; }
+      .cls-5 { font-family: Inter-SemiBold, Inter; font-size: 34px; font-weight: 600; }
+      .cls-6 { fill: #fff; }
+    </style>
+  </defs>
+  <rect id="bg" data-name="bg [stretch-x, stretch-y]" class="cls-1" width="1080" height="1080"/>
+  <rect id="bar" data-name="bar [stretch-x, anchor:bc]" class="cls-2" y="1044" width="1080" height="36"/>
+  <g id="logo" data-name="logo [anchor:tl, scale:0.3-1, reflow:ultrawide=cl]">
+    <rect class="cls-2" x="72" y="72" width="72" height="72"/>
+    <circle class="cls-1" cx="108" cy="108" r="22"/>
+  </g>
+  <text id="headline" data-name="headline [text:headline, fit:shrink, min:20, scale:0.3-1, anchor:cl, reflow:ultrawide=c]" class="cls-3" transform="translate(72 560)"><tspan x="0" y="0">Summer sale</tspan></text>
+  <text id="subline" data-name="subline [text:subline, fit:wrap, lines:2, anchor:cl, hide-below:h400]" class="cls-4" transform="translate(72 650)"><tspan x="0" y="0">Everything 30% off, this week only.</tspan></text>
+  <g id="cta" data-name="cta [anchor:br, scale:0.35-1, reflow:ultrawide=cr]">
+    <rect class="cls-2" x="760" y="888" width="248" height="84" rx="4" ry="4"/>
+    <text id="label" data-name="label [text:cta, fit:truncate]" class="cls-5" transform="translate(884 942)" text-anchor="middle"><tspan x="0" y="0">Shop now</tspan></text>
+  </g>
+</svg>

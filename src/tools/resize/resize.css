@@ -1,0 +1,22 @@
+/* Resize: a wrapping grid of variants, each as wide as its ratio allows at one row height. */
+.rz { position: absolute; inset: 0; overflow: auto; padding: var(--s-7); --rz-h: calc(var(--thumb) * 3.5); }
+.rz__grid { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--s-7) var(--s-6); }
+.rz__empty { display: grid; place-items: center; height: 100%; color: var(--ink-3); text-align: center; }
+.rz-card { margin: 0; display: flex; flex-direction: column; gap: var(--s-2); max-width: 100%; }
+.rz-card__art { position: relative; overflow: hidden; outline: var(--hairline) solid var(--hairline-color); background: var(--fill); }
+.rz-card__art svg { display: block; width: 100%; height: 100%; }
+.rz-card.is-overflow .rz-card__art { outline: calc(var(--hairline) * 2) solid var(--alert); }
+.rz-card__cap { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--s-1) var(--s-4); font-size: var(--fs-small); line-height: var(--lh-ui); font-variant-numeric: tabular-nums; }
+.rz-card__size { color: var(--ink); }
+.rz-card__meta { color: var(--ink-3); }
+.rz-card__flags { display: flex; flex-wrap: wrap; gap: var(--s-1); width: 100%; }
+.rz-flag { padding: 0 var(--s-2); border-radius: var(--radius); line-height: var(--chip-h); font-size: var(--fs-micro); background: var(--fill-strong); color: var(--ink-2); }
+.rz-flag--overflow { background: var(--alert); color: var(--white); }
+
+.rz-fields .l-textarea { min-height: 0; resize: vertical; }
+.rz-field__state { color: var(--ink-3); font-size: var(--fs-small); font-variant-numeric: tabular-nums; }
+.rz-field__state.is-overflow { color: var(--alert); }
+.rz-warn { margin: 0; padding: var(--s-2) var(--s-3); border-left: calc(var(--hairline) * 2) solid var(--accent); color: var(--ink-2); font-size: var(--fs-small); line-height: var(--lh-body); }
+.rz-fonts { display: grid; gap: var(--s-1); margin: 0; padding: 0; list-style: none; font-size: var(--fs-small); }
+.rz-fonts li { display: flex; justify-content: space-between; gap: var(--s-4); }
+.rz-fonts .is-missing { color: var(--ink-3); }

@@ -9,6 +9,9 @@
   --lathe: #E8FF1A;
   --black: #000000;
   --white: #FFFFFF;
+  /* The one exception to the three colors: Resize flags overflowing variants in red, as asked
+     for (2026-10-07). Used only for that warning. */
+  --alert: #FF3B30;
 
   /* ---- Opacity steps: 100 / 64 / 40 / 16 / 8 ---- */
   --o-100: 1;

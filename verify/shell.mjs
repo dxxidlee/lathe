@@ -79,9 +79,9 @@ await check('Home: the drawing traces in with every tool on it; accessible title
   const drawn = await page.$$eval('.graph__draw', ps => ps.every(p => Math.abs(parseFloat(getComputedStyle(p).strokeDashoffset)) < 0.001));
   const labels = await page.$$eval('.graph__label', ls => ls.filter(l => getComputedStyle(l).opacity === '1').length);
   assert(/Tools for people who make tools/.test(h1), h1);
-  assert(n === 16 && labels === 16 && drawn && bg === 'rgb(232, 255, 26)', `${n} tools, ${labels} labels shown, drawn ${drawn}, ${bg}`);
+  assert(n === 17 && labels === 17 && drawn && bg === 'rgb(232, 255, 26)', `${n} tools, ${labels} labels shown, drawn ${drawn}, ${bg}`);
   await shot(page, 'home-graph');
-  return `${n} entries (15 tools + Make a tool), all routes drawn, on chartreuse`;
+  return `${n} entries (16 tools + Make a tool), all routes drawn, on chartreuse`;
 });
 await check('Home: hovering a tool draws its route and fades the rest; click opens it; Tools shows the list', async () => {
   await page.hover('.graph__tool[data-tool="palette"] .graph__label');
@@ -101,7 +101,7 @@ await check('Home: hovering a tool draws its route and fades the rest; click ope
   await page.click('.graph__tool[data-tool="palette"] .graph__label');
   await page.waitForURL('**/t/palette');
   await page.goto(BASE + '/', { waitUntil: 'networkidle' });
-  assert(listed === 15, `${listed} in list`);
+  assert(listed === 16, `${listed} in list`);
   return `route ${st.act}, others ${st.other}; footer “${st.foot.slice(0, 60)}…”; list of ${listed}; click → /t/palette`;
 });
 await check('Brand: favicons, apple-touch-icon and manifest resolve', async () => {

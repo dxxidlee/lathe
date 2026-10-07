@@ -27,10 +27,13 @@ The IMG.LY model files (ONNX weights and WebAssembly) are not in this repository
 | [fix-webm-duration](https://github.com/yusitnikov/fix-webm-duration) 1.0.6 | WebM duration metadata | MIT |
 | [node-html-parser](https://github.com/taoqf/node-html-parser) 9.0.4 | Audit brand capture (server) | MIT |
 | [@anthropic-ai/sdk](https://github.com/anthropics/anthropic-sdk-typescript) 0.131.0 | Audit observations (server) | MIT |
+| [harfbuzzjs](https://github.com/harfbuzz/harfbuzzjs) 1.6.3 (HarfBuzz compiled to WebAssembly) | Resize (text measurement) | MIT (HarfBuzz itself: Old MIT) |
+| [Vitest](https://vitest.dev) 5.0.3 | Unit tests (development only) | MIT |
 
 ## Fonts and brand
 
 - `verify/fixtures/inter-latin.woff2` (Inter, Latin subset, by Rasmus Andersson) is a test fixture under the SIL Open Font License 1.1; Lathe does not ship it.
+- `fixtures/fonts/inter-latin.ttf` is the same Inter subset decompressed to TrueType, because HarfBuzz reads TrueType and OpenType, not WOFF2. Resize ships it as the stand-in for missing fonts, under the SIL Open Font License 1.1 (font software may be bundled and redistributed with software).
 - Helvetica Neue is never bundled. It is licensed, so Lathe uses the system copy (macOS, iOS) with Helvetica and Arial as fallbacks.
 - The original suite's McCann typefaces were not copied (see VERIFY.md, Milestone 3).
 - The Lathe mark, logo and campaign image in `/brand` belong to David Lee.

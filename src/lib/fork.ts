@@ -10,7 +10,7 @@ import { saveExport } from './download';
 const TOOL_SOURCES = import.meta.glob('../tools/**/*', { query: '?raw', import: 'default' }) as Record<string, () => Promise<string>>;
 /* The contract and primitives a forked tool needs to run in (or outside) Lathe. */
 const SHARED_SOURCES = import.meta.glob(
-  ['../tools/types.ts', '../tools/registry.ts', '../ui/primitives.ts', '../lib/*.ts', '../styles/tokens.css', '../styles/primitives.css'],
+  ['../tools/types.ts', '../tools/registry.ts', '../ui/primitives.ts', '../lib/*.ts', '../lib/resize-engine/*.ts', '../styles/tokens.css', '../styles/primitives.css'],
   { query: '?raw', import: 'default' },
 ) as Record<string, () => Promise<string>>;
 

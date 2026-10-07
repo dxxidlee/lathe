@@ -9,6 +9,7 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --port 4318 --strictPort",
     "typecheck": "tsc -b",
+    "test": "vitest run",
     "check:tokens": "node scripts/check-tokens.mjs",
     "verify:shell": "npm run build && node verify/shell.mjs",
     "verify:port": "npm run build && node verify/port.mjs",
@@ -17,7 +18,8 @@
     "verify:brand": "npm run build && node verify/brand.mjs",
     "verify:image": "npm run build && node verify/image.mjs",
     "verify:m8": "npm run build && node verify/m8.mjs",
-    "verify:make": "npm run build && node verify/make.mjs"
+    "verify:make": "npm run build && node verify/make.mjs",
+    "verify:resize": "npm run build && node verify/resize.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
@@ -25,6 +27,7 @@
     "esm-potrace-wasm": "^0.5.1",
     "fix-webm-duration": "^1.0.6",
     "gif.js": "^0.2.0",
+    "harfbuzzjs": "^1.6.3",
     "imagetracerjs": "^1.2.6",
     "jspdf": "^4.2.1",
     "jszip": "^3.10.2",
@@ -42,6 +45,7 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
     "typescript": "^7.0.2",
-    "vite": "^8.3.2"
+    "vite": "^8.3.2",
+    "vitest": "^5.0.3"
   }
 }

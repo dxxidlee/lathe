@@ -641,3 +641,63 @@ Seen locally only: a video can wait several seconds to start while the page's ot
 Not yet checked on Vercel: whether streamed video responses get past Vercel's 4.5 MB function response limit. Images are well under it; most feed videos are a few MB.
 
 Test servers now treat an empty environment variable as set, so the verify suites stay keyless whatever `.env.local` holds. Suites: brand 35 / 37 (archive.org rate-limited the vitra and timeline checks), audit 33 / 33, shell 27 / 27, defaults 17 / 17.
+
+## Resize, Phase 1 (2026-10-07)
+
+An adaptive resize tool (Bannerflow-style) at `/t/resize` (`/resize` redirects there), in the Layout group. Phase 1 is the parser, the rules engine, text fields and the batch grid. No export yet.
+
+**Engine.** `src/lib/resize-engine/` is plain TypeScript with no DOM or UI imports. It is typechecked under `tsconfig.node.json`, which has no DOM types, so a stray DOM call fails the build.
+
+| Function | What it does |
+|---|---|
+| `parse(svg)` → Master | Reads the SVG with its own small XML parser, which handles Illustrator's DOCTYPE entities, `<switch>`, escaped ids (`_x5B_`) and `data-name`. It inlines class styles, flattens every transform into each node's absolute matrix, and resolves clip groups (including `<use>` inside `clipPath`) to absolute shapes. Live text stays text; a field layer holding outlines gets a warning. Rules are read from layer names. Ids are stable (slug of the name, else tag plus path). |
+| `render(master, {w, h}, fields, { shaper })` → Layout | Places each layer by its rules and fits each text field, returning overflow flags per field. |
+| `layoutToSVG(layout)` | Writes one variant as SVG; clip and pattern ids are prefixed per variant. |
+| `createShaper(loadFonts(bytes))` | HarfBuzz (WASM) on the actual font files: TTF, OTF, TTC, and WOFF2 decompressed in the UI. Fonts are matched by PostScript name, then family and nearest weight, using the `wght` axis on variable fonts. A missing font is measured and drawn with Inter, with a warning. |
+
+**Placement rules.**
+- **Scale.** The artboard scale is s0 = min(W/W0, H/H0). Layer sizes scale by s0 (`fixed`: 1; `scale:min-max`: clamped). Margins and offsets always scale by s0, so a layer kept large on a thin banner still lands on the artboard.
+- **Position.** `anchor` keeps the distance from an edge, or the offset from the centre. `reflow:bp=pos` swaps the position per breakpoint; a percent position (`30/50`) puts the layer's centre there. A layer with no rule keeps its relative position.
+- **Stretch.** `stretch-x` / `stretch-y` keep both margins and fill the rest of that axis.
+- **Hide.** `hide-below:px` (or `w…` / `h…`) drops the layer.
+- **Tile.** `tile` repeats the layer's unclipped content over its clip box (stretched), or over the whole artboard when it has no clip.
+- **Breakpoints.** They come from a `breakpoints [square:0-1.5, …]` layer, else the defaults.
+
+**Text rules.** Text is laid out in output pixels:
+- **Box and size.** The master text box is carried through the layer's placement. The font size is the master size times the layer's scale.
+- **Fitting.** `fit:shrink` goes down to `min` (absolute px). `fit:wrap` goes up to `lines`. `fit:truncate` cuts with "…".
+- **Overflow.** A field overflows when its text is wider than its box, has more lines than allowed, or runs off the artboard.
+
+**Fixtures.** Three tagged SVGs in `/fixtures`:
+- `logo-lockup.svg`: old Illustrator export with nested transforms and repositioning per breakpoint.
+- `headline-cta.svg`: newer export with shrink, wrap, truncate and hide-below.
+- `tiled-pattern.svg`: two tiled layers, one inside a clip group.
+
+**Data model.** Project → Master → SizeSet → Variant { size, fieldValues, overrides[] }, stored as JSON in the tool's settings. Overrides are stored but not applied (stub).
+
+**Unit tests** (`npm test`, Vitest): 27 pass.
+- **Parse:** names, every rule, breakpoints, old and new Illustrator exports, flattened transforms, clips, outlined-text warning, kerned tspans, stable ids.
+- **Render:** each placement rule; shrink, wrap and truncate on HarfBuzz-measured Inter; the six sizes from 1:1 to 20:1 with no overflow on the default copy; missing font; deterministic output.
+
+**Browser checks** (`npm run verify:resize`, Chrome against `vite preview`): 10 / 10.
+
+| Check | Result |
+|---|---|
+| `/resize` opens `/t/resize` with the sample | pass |
+| Upload `logo-lockup.svg`: 3 layers, field "brand", 3 breakpoints | pass |
+| Upload `headline-cta.svg`, type six sizes (`x`, ` x `, `×` all accepted) | pass: 1080², 1920×1080 and 1080×1920 at 120 px; 1200×300, 1500×150 and 2000×100 at 36 px; no overflow |
+| Variants draw with the measured face (`lr-inter`, loaded via FontFace) | pass |
+| A longer headline updates all six at once | pass: the three banners overflow at the 20 px minimum, with a red outline and a "Headline overflows" label; the squares shrink to 41 px; the inspector says "Overflows in 3 of 6 · shrunk in 3" |
+| Typing "Sale" key by key re-renders all six each time | pass |
+| CTA truncation and subline hide-below are labelled per variant | pass |
+| Reload restores sizes and field values | pass |
+| Tiled pattern: 2 patterns × 6 variants | pass |
+| No console errors | pass |
+
+Also checked:
+- The dev server serves `harfbuzz.wasm`. harfbuzzjs is excluded from Vite's dependency pre-bundling, because it finds its WASM next to its own module.
+- The shell suite's home-page tool counts were updated from 15 to 16 tools. Shell 27 / 27, defaults 17 / 17, Make 9 / 9.
+
+Departures from the brief:
+- **Controls in the right inspector.** The brief puts them in a left panel, but in Lathe the left rail is the tool list, so the controls follow the tool contract.
+- **One extra color.** The overflow outline uses a new `--alert` red token, the one color outside Lathe's three; it's used only for that warning.

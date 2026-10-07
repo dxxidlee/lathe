@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" data-name="Layer 1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1080 1080">
+  <defs>
+    <style>
+      .cls-1 { fill: #e8ff1a; }
+      .cls-2 { fill: none; }
+      .cls-3 { fill: #000; }
+      .cls-4 { clip-path: url(#clippath); }
+      .cls-5 { font-family: Inter-Bold, Inter; font-size: 72px; font-weight: 700; fill: #e8ff1a; }
+    </style>
+    <clipPath id="clippath">
+      <rect class="cls-2" y="380" width="1080" height="320"/>
+    </clipPath>
+  </defs>
+  <rect id="bg" data-name="bg [stretch-x, stretch-y]" class="cls-1" width="1080" height="1080"/>
+  <g id="dots" data-name="dots [tile]">
+    <rect class="cls-2" width="90" height="90"/>
+    <circle class="cls-3" cx="45" cy="45" r="9"/>
+  </g>
+  <g id="stripes" data-name="stripes [tile]">
+    <g class="cls-4">
+      <rect class="cls-2" y="380" width="60" height="320"/>
+      <rect class="cls-3" y="380" width="30" height="320"/>
+    </g>
+  </g>
+  <g id="badge" data-name="badge [anchor:c, scale:0.2-1]">
+    <circle class="cls-3" cx="540" cy="540" r="190"/>
+    <text id="badge-text" data-name="label [text:badge, fit:shrink, min:12]" class="cls-5" transform="translate(540 565)" text-anchor="middle"><tspan x="0" y="0">New in</tspan></text>
+  </g>
+</svg>

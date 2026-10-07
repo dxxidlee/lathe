@@ -72,5 +72,7 @@ export default defineConfig(({ mode }) => {
     server: { port: 5173 },
     build: { target: 'es2022', sourcemap: true },
     worker: { format: 'es' },
+    // harfbuzzjs loads harfbuzz.wasm relative to its own module; pre-bundling would move it away.
+    optimizeDeps: { exclude: ['harfbuzzjs'] },
   };
 });

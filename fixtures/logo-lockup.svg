@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Generator: Adobe Illustrator 24.3.0, SVG Export Plug-In . SVG Version: 6.00 Build 0)  -->
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd" [
+	<!ENTITY ns_extend "http://ns.adobe.com/Extensibility/1.0/">
+	<!ENTITY ns_ai "http://ns.adobe.com/AdobeIllustrator/10.0/">
+	<!ENTITY ns_svg "http://www.w3.org/2000/svg">
+	<!ENTITY ns_xlink "http://www.w3.org/1999/xlink">
+]>
+<svg version="1.1" id="Layer_1" xmlns="&ns_svg;" xmlns:xlink="&ns_xlink;" xmlns:i="&ns_ai;" x="0px" y="0px"
+	 viewBox="0 0 1080 1080" style="enable-background:new 0 0 1080 1080;" xml:space="preserve">
+<style type="text/css">
+	.st0{fill:#E8FF1A;}
+	.st1{fill:#000000;}
+	.st2{fill:none;stroke:#000000;stroke-width:12;stroke-miterlimit:10;}
+	.st3{font-family:'Inter-Medium';}
+	.st4{font-size:150px;}
+	.st5{letter-spacing:-0.02em;}
+</style>
+<switch>
+	<foreignObject requiredExtensions="&ns_ai;" x="0" y="0" width="1" height="1">
+		<i:pgfRef  xlink:href="#adobe_illustrator_pgf"></i:pgfRef>
+	</foreignObject>
+	<g i:extraneous="self">
+		<g id="breakpoints_x5B_square_x3A_0-1.5_x2C__wide_x3A_1.5-4_x2C__ultrawide_x3A_4-_x5D_">
+			<rect class="st2" width="1" height="1"/>
+		</g>
+		<g id="background_x5B_stretch-x_x2C__stretch-y_x5D_">
+			<rect class="st0" width="1080" height="1080"/>
+		</g>
+		<g id="mark_x5B_scale_x3A_0.15-1.5_x2C__reflow_x3A_wide_x3D_30_x2F_50_x2C__reflow_x3A_ultrawide_x3D_22_x2F_50_x5D_">
+			<g transform="translate(390 230)">
+				<g transform="rotate(45 150 150)">
+					<rect x="44" y="44" class="st1" width="212" height="212"/>
+				</g>
+				<circle class="st0" cx="150" cy="150" r="78"/>
+				<circle class="st2" cx="150" cy="150" r="40"/>
+			</g>
+		</g>
+		<text id="wordmark_x5B_text_x3A_brand_x2C__fit_x3A_shrink_x2C__min_x3A_14_x2C__scale_x3A_0.15-1.5_x2C__reflow_x3A_wide_x3D_64_x2F_50_x2C__reflow_x3A_ultrawide_x3D_60_x2F_50_x5D_" transform="matrix(1 0 0 1 540 820)" class="st1 st3 st4 st5" text-anchor="middle">Lathe</text>
+	</g>
+</switch>
+</svg>

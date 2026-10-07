@@ -74,6 +74,11 @@ export const TOOLS: ToolEntry[] = [
     load: () => import('./grid').then(m => m.tool),
   },
   {
+    id: 'resize', name: 'Resize', group: 'Layout', milestone: 11, accepts: ['image/svg+xml', 'font/*', 'application/font-woff', 'application/x-font-ttf', 'application/x-font-otf', 'application/vnd.ms-opentype'],
+    blurb: 'One tagged SVG, every size: rules, live text fields, overflow flags.',
+    load: () => import('./resize').then(m => m.tool),
+  },
+  {
     id: 'kinetic-type', name: 'Kinetic-type', group: 'Motion', milestone: 8, accepts: ['font/*', 'text/plain', 'application/font-woff', 'application/x-font-ttf', 'application/x-font-otf', 'application/vnd.ms-opentype'],
     blurb: 'Animated type presets, GIF and WebM out.',
     load: () => import('./kinetic-type').then(m => m.tool),
