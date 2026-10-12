@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { TOOLS, isReady } from '../tools/registry';
+import { allTools, isReady } from '../tools/registry';
 import { resetEverything } from '../lib/reset';
 import { useShell } from './state';
 import { Modal } from './Modal';
@@ -35,10 +35,10 @@ export function CommandPalette() {
     const mod = modKey();
     const open = (path: string) => () => { close(); navigate(path); };
     return [
-      ...TOOLS.map((t, i) => ({
+      ...allTools().map((t, i) => ({
         id: `tool:${t.id}`, label: t.name,
-        hint: isReady(t) ? t.group : `${t.group} · Milestone ${t.milestone}`,
-        keys: i < 9 ? String(i + 1) : undefined,
+        hint: isReady(t) ? (t.custom ? `${t.group} · Custom` : t.group) : `${t.group} · Milestone ${t.milestone}`,
+        keys: i < 9 && !t.custom ? String(i + 1) : undefined,
         run: open(`/t/${t.id}`),
       })),
       { id: 'home', label: 'Go home', run: open('/') },

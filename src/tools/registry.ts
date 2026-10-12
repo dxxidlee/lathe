@@ -1,5 +1,6 @@
 import type { LatheTool, ToolGroup } from './types';
 import { GROUPS } from './types';
+import type { CustomTool } from '../lib/custom-tools';
 
 /* Every tool Lathe will ship, in rail order. Tools without `load` are not built yet:
    they appear in the rail and index, dimmed, with the milestone that brings them. */
@@ -14,6 +15,8 @@ export interface ToolEntry {
   accepts?: string[];
   /** Development-only tool used to prove the contract; removed once real tools land. */
   dev?: boolean;
+  /** True for user-generated tools. */
+  custom?: boolean;
   load?: () => Promise<LatheTool>;
 }
 
@@ -105,12 +108,54 @@ export const TOOLS: ToolEntry[] = [
   },
 ];
 
-export const findTool = (id: string | undefined) => TOOLS.find(t => t.id === id);
+export const findTool = (id: string | undefined) => TOOLS.find(t => t.id === id) ?? customEntries.find(t => t.id === id);
 export const isReady = (t: ToolEntry) => !!t.load;
 
 export function toolsByGroup(): { group: ToolGroup; tools: ToolEntry[] }[] {
-  return GROUPS.map(group => ({ group, tools: TOOLS.filter(t => t.group === group) })).filter(g => g.tools.length);
+  const all = [...TOOLS, ...customEntries];
+  const groups = [...GROUPS.map(group => ({ group, tools: all.filter(t => t.group === group) })).filter(g => g.tools.length)];
+  const yours = all.filter(t => t.custom && !GROUPS.includes(t.group as ToolGroup));
+  if (yours.length) groups.push({ group: 'Reference' as ToolGroup, tools: yours });
+  return groups;
 }
 
 /** Keyboard 1–9 follow rail order. */
 export const numberedTools = () => TOOLS.slice(0, 9);
+
+/** All tools including user-generated ones. */
+export const allTools = () => [...TOOLS, ...customEntries];
+
+/* ---- Custom (user-generated) tools ---- */
+const customEntries: ToolEntry[] = [];
+
+function entryFor(t: CustomTool): ToolEntry {
+  return {
+    id: t.id,
+    name: t.name,
+    group: (GROUPS.includes(t.group as ToolGroup) ? t.group : 'Reference') as ToolGroup,
+    blurb: t.description,
+    milestone: 0,
+    custom: true,
+    load: () => import('../lib/custom-tools').then(m => ({
+      id: t.id, name: t.name, group: (GROUPS.includes(t.group as ToolGroup) ? t.group : 'Reference') as ToolGroup,
+      defaults: t.defaults as LatheTool['defaults'],
+      mount: (ctx) => m.mountCustomTool(t, ctx),
+    })),
+  };
+}
+
+export function addCustomEntry(t: CustomTool) {
+  if (customEntries.some(e => e.id === t.id)) return;
+  customEntries.push(entryFor(t));
+}
+
+export function removeCustomEntry(id: string) {
+  const i = customEntries.findIndex(e => e.id === id);
+  if (i >= 0) customEntries.splice(i, 1);
+}
+
+export async function loadCustomEntries() {
+  const { loadCustomTools } = await import('../lib/custom-tools');
+  const tools = await loadCustomTools();
+  for (const t of tools) addCustomEntry(t);
+}

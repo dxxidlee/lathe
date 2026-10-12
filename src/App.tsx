@@ -5,10 +5,10 @@ import { PlannedTool, ToolHost } from './shell/ToolHost';
 import { CommandPalette } from './shell/CommandPalette';
 import { ShortcutSheet } from './shell/ShortcutSheet';
 import { Keyboard } from './shell/Keyboard';
-import { findTool } from './tools/registry';
+import { findTool, loadCustomEntries } from './tools/registry';
 import { Home } from './routes/Home';
 import { Make } from './routes/Make';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { modKey } from './lib/format';
 
 function ToolRoute() {
@@ -49,6 +49,9 @@ function Overlays() {
 }
 
 export function App() {
+  const [ready, setReady] = useState(false);
+  useEffect(() => { void loadCustomEntries().then(() => setReady(true)); }, []);
+  if (!ready) return null;
   return (
     <BrowserRouter>
       <ShellProvider>
