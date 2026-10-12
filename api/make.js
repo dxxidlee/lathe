@@ -38,7 +38,7 @@ Available CSS classes for inspector controls:
 
 Keep the tool focused on one task. Make it genuinely useful.`;
 
-const TOOL_DEF = {
+const TOOL_DEF = /** @type {const} */ ({
   name: 'lathe_tool',
   description: 'A generated Lathe tool definition',
   input_schema: {
@@ -67,7 +67,7 @@ const TOOL_DEF = {
       code: { type: 'string', description: 'The JavaScript function body string. Will be called as new Function("ctx", code). Must return an unmount function.' },
     },
   },
-};
+});
 
 /** @param {Request} request */
 export async function POST(request) {
