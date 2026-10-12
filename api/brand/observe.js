@@ -50,7 +50,8 @@ const parseDataUrl = s => {
 
 /** @param {Request} request */
 export async function POST(request) {
-  if (!process.env.ANTHROPIC_API_KEY) return json({ error: 'Observations need ANTHROPIC_API_KEY in .env.local' }, { status: 404 });
+  const apiKey = process.env.ANTHROPIC_WORKSPACE_KEY || process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return json({ error: 'Observations need ANTHROPIC_WORKSPACE_KEY or ANTHROPIC_API_KEY in .env.local' }, { status: 404 });
   /** @type {any} */ let body;
   try { body = await request.json(); } catch { return json({ error: 'Send JSON' }, { status: 400 }); }
   const captures = (Array.isArray(body?.captures) ? body.captures : []).slice(0, MAX_CAPTURES)
@@ -69,7 +70,7 @@ export async function POST(request) {
   const facts = body?.facts && typeof body.facts === 'object' ? body.facts : {};
   content.push({ type: 'text', text: `Company: ${String(body?.name || body?.domain || '').slice(0, 120)} (${String(body?.domain || '').slice(0, 120)})\nExtracted data:\n${JSON.stringify(facts).slice(0, 24000)}\n\nWrite the audit.` });
 
-  const client = new Anthropic();
+  const client = new Anthropic({ apiKey });
   try {
     const msg = await client.beta.messages.create({
       model: MODEL,
