@@ -9,7 +9,6 @@ export function ShortcutSheet() {
     ['1 – 9', 'Switch tool (rail order)'],
     [`${mod} K`, 'Command palette'],
     [`${mod} E`, 'Export'],
-    [`${mod} ⇧ F`, 'Fork this tool'],
     ['?', 'This sheet'],
     ['Esc', 'Close any panel'],
     ['Drop a file', 'Load it into the active tool'],

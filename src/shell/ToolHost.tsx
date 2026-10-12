@@ -6,7 +6,6 @@ import type { Asset, DefaultsManifest, EmitFn, MountContext, MountResult } from 
 import { assets, loadAssets, loadInto, markMounted } from '../lib/assets';
 import { loadSettings } from '../lib/settings';
 import { changedKeys, effective, loadApplied, loadEdits, same, saveApplied, saveEdits, type Edits } from '../lib/defaults';
-import { forkTool } from '../lib/fork';
 import { useShell } from './state';
 import { resetTool } from '../lib/reset';
 import { DefaultsPanel } from './DefaultsPanel';
@@ -67,7 +66,6 @@ export function ToolHost({ entry }: { entry: ToolEntry }) {
           stage, inspector, assets, settings, emit,
           statusbar: { set: info => shell.setStatus(info), clear: () => shell.setStatus({}) },
         };
-        shell.forkRef.current = () => void doFork(tool.defaults);
         shell.resetToolRef.current = () => onResetTool();
         result = tool.mount(ctx);
         shell.exportRef.current = typeof result === 'object' && result.export ? result.export : null;
@@ -83,7 +81,6 @@ export function ToolHost({ entry }: { entry: ToolEntry }) {
       cancelled = true;
       unmarkMounted?.();
       shell.exportRef.current = null;
-      shell.forkRef.current = null;
       shell.resetToolRef.current = null;
       try { if (result) (typeof result === 'function' ? result : result.unmount)(); }
       catch (e) { console.error(`[lathe] ${entry.id} failed to unmount`, e); }
@@ -94,17 +91,6 @@ export function ToolHost({ entry }: { entry: ToolEntry }) {
     // Shell callbacks are stable; remount when the tool or its defaults change.
   }, [entry.id, version]);
 
-  async function doFork(m: DefaultsManifest) {
-    try {
-      const r = await forkTool({ id: entry.id, name: entry.name, group: entry.group, manifest: m, edits: editsRef.current });
-      const n = Object.keys(editsRef.current).length;
-      shell.toast(`Forked ${entry.name}: ${r.files.length} files, ${n} ${n === 1 ? 'change' : 'changes'} from the maker`);
-    } catch (e) {
-      console.error('[lathe] fork failed', e);
-      shell.toast('Fork failed');
-    }
-  }
-
   const persist = async (next: Edits, remount: boolean) => {
     setEdits(next); editsRef.current = next;
     await saveEdits(entry.id, next);
@@ -114,12 +100,8 @@ export function ToolHost({ entry }: { entry: ToolEntry }) {
     const d = manifest.find(x => x.key === key)!;
     const next = { ...edits };
     if (same(value, d.value)) delete next[key];
-    else next[key] = { value, reason: edits[key]?.reason, at: Date.now() };
+    else next[key] = { value, at: Date.now() };
     void persist(next, true);
-  };
-  const onReason = (key: string, reason: string) => {
-    if (!edits[key] || (edits[key].reason ?? '') === reason) return;
-    void persist({ ...edits, [key]: { ...edits[key], reason } }, false);
   };
   const onResetRow = (key: string) => { const next = { ...edits }; delete next[key]; void persist(next, true); };
   const onResetAll = () => void persist({}, true);
@@ -148,8 +130,8 @@ export function ToolHost({ entry }: { entry: ToolEntry }) {
       </section>
       <aside className="inspector" aria-label="Inspector">
         <div className="inspector__tool" ref={inspectorRef} />
-        <DefaultsPanel manifest={manifest} edits={edits} onEdit={onEdit} onReason={onReason}
-          onResetRow={onResetRow} onResetAll={onResetAll} onFork={() => shell.runFork()} onResetTool={onResetTool} />
+        <DefaultsPanel manifest={manifest} edits={edits} onEdit={onEdit}
+          onResetRow={onResetRow} onResetAll={onResetAll} onResetTool={onResetTool} />
       </aside>
     </>
   );

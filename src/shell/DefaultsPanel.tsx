@@ -1,10 +1,7 @@
-import { useEffect, useState } from 'react';
-import type { DefaultEntry, DefaultsManifest } from '../tools/types';
-import type { Edits } from '../lib/defaults';
-import { formatValue, isEditable, same } from '../lib/defaults';
-
-/* Every starting default, editable. An edited row shows the maker's value struck through, says
-   "Edited by you", and takes an optional reason that travels into a fork. */
+import { useState } from ‘react’;
+import type { DefaultEntry, DefaultsManifest } from ‘../tools/types’;
+import type { Edits } from ‘../lib/defaults’;
+import { formatValue, isEditable, same } from ‘../lib/defaults’;
 
 const HEX = /^#[0-9a-f]{6}$/i;
 
@@ -12,41 +9,37 @@ interface Props {
   manifest: DefaultsManifest;
   edits: Edits;
   onEdit: (key: string, value: unknown) => void;
-  onReason: (key: string, reason: string) => void;
   onResetRow: (key: string) => void;
   onResetAll: () => void;
-  onFork: () => void;
-  /** Clears the tool's saved image and settings as well as these edits. */
+  /** Clears the tool’s saved image and settings as well as these edits. */
   onResetTool: () => void;
 }
 
-export function DefaultsPanel({ manifest, edits, onEdit, onReason, onResetRow, onResetAll, onFork, onResetTool }: Props) {
+export function DefaultsPanel({ manifest, edits, onEdit, onResetRow, onResetAll, onResetTool }: Props) {
   if (!manifest.length) return null;
   const n = Object.keys(edits).length;
   return (
     <section className="l-section defaults" aria-label="Defaults">
       <div className="defaults__head">
         <h3 className="l-section__title">Defaults</h3>
-        <span className="defaults__count tabular" data-testid="defaults-edited">{n ? `${n} edited` : 'Maker’s'}</span>
+        <span className="defaults__count tabular" data-testid="defaults-edited">{n ? `${n} edited` : ‘Maker’s’}</span>
       </div>
-      <p className="l-note">Every default was someone else's decision. Change one to make it yours; the tool updates at once.</p>
       <div className="defaults__list">
         {manifest.map(d => (
-          <Row key={d.key} d={d} edit={edits[d.key]} onEdit={onEdit} onReason={onReason} onReset={onResetRow} />
+          <Row key={d.key} d={d} edit={edits[d.key]} onEdit={onEdit} onReset={onResetRow} />
         ))}
       </div>
       <div className="defaults__actions">
         <button type="button" className="l-btn" disabled={!n} onClick={onResetAll}>Reset to maker’s defaults</button>
-        <button type="button" className="l-btn" onClick={onFork}>Fork this tool</button>
-        <button type="button" className="l-btn" onClick={onResetTool} title="Forget this tool's image, settings and edits">Reset tool</button>
+        <button type="button" className="l-btn" onClick={onResetTool} title="Forget this tool’s image, settings and edits">Reset tool</button>
       </div>
     </section>
   );
 }
 
-function Row({ d, edit, onEdit, onReason, onReset }: {
+function Row({ d, edit, onEdit, onReset }: {
   d: DefaultEntry; edit?: Edits[string];
-  onEdit: Props['onEdit']; onReason: Props['onReason']; onReset: Props['onResetRow'];
+  onEdit: Props[‘onEdit’]; onReset: Props[‘onResetRow’];
 }) {
   const edited = !!edit;
   const value = edited ? edit!.value : d.value;
@@ -54,7 +47,7 @@ function Row({ d, edit, onEdit, onReason, onReset }: {
   const commit = (v: unknown) => { if (!same(v, value)) onEdit(d.key, v); };
   const id = `def-${d.key}`;
   return (
-    <div className={`defaults__row${edited ? ' is-edited' : ''}`} data-key={d.key}>
+    <div className={`defaults__row${edited ? ‘ is-edited’ : ‘’}`} data-key={d.key}>
       <label className="defaults__label" htmlFor={id}>{d.label}</label>
       <div className="defaults__editor">
         {isEditable(d) ? <Editor id={id} d={d} value={value} commit={commit} /> : <span className="defaults__static tabular" id={id}>{formatValue(value)}</span>}
@@ -62,29 +55,11 @@ function Row({ d, edit, onEdit, onReason, onReset }: {
       </div>
       {edited && (
         <div className="defaults__was">
-          Maker: <s className="tabular">{formatValue(d.value)}{d.unit ? ` ${d.unit}` : ''}</s>
-          <button type="button" className="defaults__reset" onClick={() => onReset(d.key)} aria-label={`Reset ${d.label} to the maker's value`}>Reset</button>
+          Maker: <s className="tabular">{formatValue(d.value)}{d.unit ? ` ${d.unit}` : ‘’}</s>
+          <button type="button" className="defaults__reset" onClick={() => onReset(d.key)} aria-label={`Reset ${d.label} to the maker’s value`}>Reset</button>
         </div>
       )}
-      <div className="defaults__who">
-        {edited
-          ? <ReasonField value={edit!.reason ?? ''} onCommit={r => onReason(d.key, r)} label={d.label} />
-          : <>{d.inheritedFrom ? `Inherited from ${d.inheritedFrom}` : `Chosen by ${d.chosenBy}`}<span className="defaults__why"> · {d.reason}</span></>}
-        {!isEditable(d) && <span className="defaults__why"> · descriptive</span>}
-      </div>
     </div>
-  );
-}
-
-function ReasonField({ value, onCommit, label }: { value: string; onCommit: (r: string) => void; label: string }) {
-  const [v, setV] = useState(value);
-  useEffect(() => setV(value), [value]);
-  return (
-    <span className="defaults__reason">
-      Edited by you ·{' '}
-      <input className="defaults__reason-input" value={v} placeholder="Why? (optional)" aria-label={`Why you changed ${label}`}
-        onChange={e => setV(e.target.value)} onBlur={() => onCommit(v)} onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }} />
-    </span>
   );
 }
 

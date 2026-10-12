@@ -1,13 +1,11 @@
 import type { DefaultsManifest } from '../types';
 
-const TODO = 'TODO(David)';
-const DL = 'David Lee';
 const setting = (key: string, label: string, value: number) =>
-  ({ key, label, value, unit: '0–1', min: 0, max: 1, step: 0.01, chosenBy: DL, reason: TODO, inheritedFrom: null });
+  ({ key, label, value, unit: '0–1', min: 0, max: 1, step: 0.01 });
 
 export const defaults: DefaultsManifest = [
   {
-    key: 'palette', label: 'Target palette', chosenBy: DL, reason: TODO, inheritedFrom: null,
+    key: 'palette', label: 'Target palette',
     // Hex values kept from the original; swatch names neutralised (see VERIFY.md, Milestone 3).
     value: [
       { name: 'Red', hex: '#E71324', role: 'Primary', weight: 100, enabled: true, locked: false },
@@ -33,7 +31,7 @@ export const defaults: DefaultsManifest = [
   setting('separation', 'Color separation', 0.55),
   setting('skin', 'Skin-tone protection', 0.55),
   {
-    key: 'presets', label: 'Presets', chosenBy: DL, reason: TODO, inheritedFrom: null,
+    key: 'presets', label: 'Presets',
     value: {
       'Balanced': {},
       'Red Dominant': { accentFreq: 0.08, neutral: 0.40, strength: 0.95, separation: 0.70, satLimit: 0.62 },
@@ -44,10 +42,10 @@ export const defaults: DefaultsManifest = [
       'Subtle Brand Grade': { strength: 0.34, lumaPreserve: 0.92, satLimit: 0.36, accentFreq: 0.10, neutral: 0.80, softness: 0.65, texture: 0.85, temporal: 0.70 },
     },
   },
-  { key: 'analysisFrames', min: 1, max: 60, step: 1, label: 'Frames sampled per video', value: 12, chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'exportResolution', options: ['original', '1080', '720', '480'], label: 'Export resolution', value: 'original', chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'exportFps', options: ['original', '30', '24'], label: 'Export frame rate', value: 'original', chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'exportQuality', options: ['high', 'medium', 'small'], label: 'Export quality', value: 'high', chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'exportAudio', label: 'Include audio', value: true, chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'videoFormat', editable: false, label: 'Video format', value: 'WebM (VP9/VP8, Opus)', chosenBy: DL, reason: TODO, inheritedFrom: null },
+  { key: 'analysisFrames', min: 1, max: 60, step: 1, label: 'Frames sampled per video', value: 12 },
+  { key: 'exportResolution', options: ['original', '1080', '720', '480'], label: 'Export resolution', value: 'original' },
+  { key: 'exportFps', options: ['original', '30', '24'], label: 'Export frame rate', value: 'original' },
+  { key: 'exportQuality', options: ['high', 'medium', 'small'], label: 'Export quality', value: 'high' },
+  { key: 'exportAudio', label: 'Include audio', value: true },
+  { key: 'videoFormat', editable: false, label: 'Video format', value: 'WebM (VP9/VP8, Opus)' },
 ];

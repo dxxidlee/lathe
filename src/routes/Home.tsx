@@ -112,7 +112,7 @@ export function Home() {
         <span className="home__foot-main">
           {active === 'make' ? 'Make a tool — describe a tool you wish existed.'
             : current ? <>{current.name} <span className="home__foot-dim">{current.group} · {current.blurb} · {isReady(current) ? 'Open' : `Milestone ${current.milestone}`}</span></>
-              : <>Lathe <span className="home__foot-dim">A suite of design tools that shows its working. Each tool lists its defaults, who chose them and why, and can be forked.</span></>}
+              : <>Lathe <span className="home__foot-dim">Tools for people who make tools.</span></>}
         </span>
         <span className="home__foot-dim tabular">{ready} of {tools.length} tools built</span>
       </footer>

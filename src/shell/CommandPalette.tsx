@@ -44,7 +44,6 @@ export function CommandPalette() {
       { id: 'home', label: 'Go home', run: open('/') },
       { id: 'make', label: 'Make a tool', run: open('/make') },
       { id: 'export', label: 'Export', keys: `${mod}E`, run: () => { close(); shell.runExport(); } },
-      { id: 'fork', label: 'Fork this tool', keys: `${mod}⇧F`, run: () => { close(); shell.runFork(); } },
       { id: 'nav', label: 'Toggle tool rail', run: () => { close(); shell.toggleNav(); } },
       { id: 'tray', label: 'Toggle asset tray', run: () => { close(); shell.toggleTray(); } },
       { id: 'keys', label: 'Keyboard shortcuts', keys: '?', run: () => { close(); shell.setSheetOpen(true); } },
@@ -54,7 +53,7 @@ export function CommandPalette() {
         if (window.confirm('Reset Lathe? This forgets every tool’s settings and edits and empties the tray. Files you downloaded stay on your computer.')) void resetEverything();
       } },
     ];
-  }, [navigate, shell.runExport, shell.runFork]);
+  }, [navigate, shell.runExport]);
 
   const results = useMemo(() => commands
     .map(c => ({ c, s: score(q, `${c.label} ${c.hint ?? ''}`) }))

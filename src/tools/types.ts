@@ -10,12 +10,6 @@ export interface DefaultEntry<V = unknown> {
   label: string;
   value: V;
   unit?: string;
-  /** Who made the call. */
-  chosenBy: string;
-  /** Why. Never invented: 'TODO(David)' until David writes it. */
-  reason: string;
-  /** Only for verifiable industry conventions (sRGB, 72 dpi, WCAG thresholds, 8pt grid). */
-  inheritedFrom: string | null;
   /* ---- Editing hints for the Defaults panel (all optional) ---- */
   /** Allowed values: a select for scalars, toggle chips for arrays. */
   options?: (string | number)[];

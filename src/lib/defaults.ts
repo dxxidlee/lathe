@@ -3,7 +3,7 @@
 import type { DefaultEntry, DefaultsManifest } from '../tools/types';
 import { idbGet, idbSet } from './idb';
 
-export interface DefaultEdit { value: unknown; reason?: string; at: number }
+export interface DefaultEdit { value: unknown; at: number }
 export type Edits = Record<string, DefaultEdit>;
 
 const EDITS = (id: string) => `__defaults:${id}`;

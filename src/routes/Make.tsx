@@ -134,10 +134,9 @@ export function Make() {
           <DefaultsPanel
             manifest={script.defaults.slice(0, seen('default'))}
             edits={edits}
-            onEdit={(k, v) => set(k, v)} onReason={() => {}}
+            onEdit={(k, v) => set(k, v)}
             onResetRow={k => set(k, script.defaults.find(d => d.key === k)!.value)}
-            onResetAll={() => setValues(Object.fromEntries(script.defaults.map(d => [d.key, d.value])))}
-            onFork={() => shell.toast('Forking a generated tool arrives with tool generation in v2')}
+            onResetAll={() => setValues(Object.fromEntries(script.defaults.map(d => [d.key, d.value]))}
             onResetTool={() => { setScript(null); setPrompt(''); setShown(0); }}
           />
         )}

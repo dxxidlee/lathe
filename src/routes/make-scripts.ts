@@ -30,8 +30,8 @@ export const EXAMPLES = [
   'Animate my logo letters falling into place',
 ];
 
-const you = (key: string, label: string, value: unknown, words: string, extra: Partial<DefaultsManifest[number]> = {}) =>
-  ({ key, label, value, chosenBy: 'You', reason: `From your words: “${words}”`, inheritedFrom: null, ...extra }) as DefaultsManifest[number];
+const you = (key: string, label: string, value: unknown, _words: string, extra: Partial<DefaultsManifest[number]> = {}) =>
+  ({ key, label, value, ...extra }) as DefaultsManifest[number];
 
 export function scriptFor(prompt: string): Script {
   const p = prompt.toLowerCase();

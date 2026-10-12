@@ -19,7 +19,6 @@ export function TopBar({ tool, title }: { tool?: ToolEntry; title?: string }) {
         <span className="l-kbd">{mod}K</span>
       </button>
       <div className="topbar__actions">
-        <button type="button" className="l-btn" onClick={shell.runFork} title={`Fork (${mod}⇧F)`}>Fork</button>
         <button type="button" className="l-btn l-btn--primary" onClick={shell.runExport} title={`Export (${mod}E)`}>Export</button>
       </div>
     </header>

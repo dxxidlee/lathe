@@ -1,8 +1,4 @@
 import type { DefaultsManifest } from '../types';
-
-const TODO = 'TODO(David)';
-const DL = 'David Lee';
-
 /* Each format names a canvas (in its own unit) and a starting grid for it. Paper sizes follow
    their standards; screen sizes are common device and slide sizes. */
 export const FORMATS = [
@@ -19,11 +15,11 @@ export const FORMATS = [
 ];
 
 export const defaults: DefaultsManifest = [
-  { key: 'format', label: 'Format', value: 'desktop', options: FORMATS.map(f => f.id), chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'formats', label: 'Formats and their starting grids', value: FORMATS, chosenBy: DL, reason: TODO, inheritedFrom: 'A4/A3: ISO 216; Letter/Tabloid: ANSI; 8 px baseline: the 8-point grid' },
-  { key: 'overlayColor', label: 'Overlay color', value: '#FF0000', chosenBy: DL, reason: TODO, inheritedFrom: 'Figma layout grid default (red)' },
-  { key: 'overlayOpacity', label: 'Overlay opacity', value: 0.1, min: 0.02, max: 1, step: 0.01, chosenBy: DL, reason: TODO, inheritedFrom: 'Figma layout grid default (10%)' },
-  { key: 'baselineOpacity', label: 'Baseline opacity', value: 0.35, min: 0.02, max: 1, step: 0.01, chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'pxPerUnitMm', label: 'PNG resolution for paper formats', value: 300, unit: 'dpi', min: 72, max: 600, step: 1, chosenBy: DL, reason: TODO, inheritedFrom: '300 dpi, the common print resolution' },
-  { key: 'snapToBaseline', label: 'Snap row heights to the baseline', value: true, chosenBy: DL, reason: TODO, inheritedFrom: null },
+  { key: 'format', label: 'Format', value: 'desktop', options: FORMATS.map(f => f.id) },
+  { key: 'formats', label: 'Formats and their starting grids', value: FORMATS },
+  { key: 'overlayColor', label: 'Overlay color', value: '#FF0000' },
+  { key: 'overlayOpacity', label: 'Overlay opacity', value: 0.1, min: 0.02, max: 1, step: 0.01 },
+  { key: 'baselineOpacity', label: 'Baseline opacity', value: 0.35, min: 0.02, max: 1, step: 0.01 },
+  { key: 'pxPerUnitMm', label: 'PNG resolution for paper formats', value: 300, unit: 'dpi', min: 72, max: 600, step: 1 },
+  { key: 'snapToBaseline', label: 'Snap row heights to the baseline', value: true },
 ];

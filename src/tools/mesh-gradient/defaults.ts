@@ -1,29 +1,25 @@
 import type { DefaultsManifest } from '../types';
-
-const TODO = 'TODO(David)';
-const DL = 'David Lee';
-
 export const defaults: DefaultsManifest = [
-  { key: 'family', options: ['conic', 'field', 'sphere'], label: 'Family', value: 'conic', chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'variant', options: ['conic', 'sweep', 'radial', 'bloom', 'horizon', 'columns', 'stripes', 'weave', 'spheres', 'aura', 'mesh', 'orbit'], label: 'Variant', value: 'conic', chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'palette', options: ['electric', 'sunset', 'aura', 'candy', 'ember', 'cyber', 'moss', 'bloom'], label: 'Palette', value: 'electric', chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'ratio', options: ['16:9', '4:5', '1:1', '9:16', '4:3', '3:2'], label: 'Ratio', value: '16:9', chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'seed', min: 0, max: 999999, step: 1, label: 'Seed', value: 42, chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'density', min: 1, max: 12, step: 0.5, label: 'Density', value: 5, chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'angle', min: 0, max: 360, step: 1, label: 'Angle', value: 90, unit: '°', chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'blur', min: 0, max: 100, step: 1, label: 'Blur', value: 14, chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'grain', min: 0, max: 100, step: 1, label: 'Grain', value: 55, chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'drift', min: 0, max: 100, step: 1, label: 'Drift', value: 0, chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'cycle', min: 0, max: 3, step: 1, label: 'Hue cycle', value: 0, unit: 'turns per loop', chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'loopSeconds', min: 0.5, max: 10, step: 0.5, label: 'Loop length', value: 2, unit: 's', chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'exportLandscapeWidth', min: 256, max: 8192, step: 1, label: 'Still width, landscape', value: 3840, unit: 'px', chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'exportPortraitWidth', min: 256, max: 8192, step: 1, label: 'Still width, portrait', value: 2160, unit: 'px', chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'jpegQuality', min: 1, max: 100, step: 1, label: 'JPEG quality', value: 95, unit: '%', chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'gifSize', min: 64, max: 1920, step: 1, label: 'GIF size', value: 720, unit: 'px landscape width', chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'gifFps', min: 1, max: 50, step: 1, label: 'GIF frame rate', value: 20, unit: 'fps', chosenBy: DL, reason: TODO, inheritedFrom: null },
-  { key: 'gifQuality', min: 1, max: 30, step: 1, label: 'GIF quantizer sampling', value: 8, unit: '(1 best – 30 fastest)', chosenBy: DL, reason: TODO, inheritedFrom: null },
+  { key: 'family', options: ['conic', 'field', 'sphere'], label: 'Family', value: 'conic' },
+  { key: 'variant', options: ['conic', 'sweep', 'radial', 'bloom', 'horizon', 'columns', 'stripes', 'weave', 'spheres', 'aura', 'mesh', 'orbit'], label: 'Variant', value: 'conic' },
+  { key: 'palette', options: ['electric', 'sunset', 'aura', 'candy', 'ember', 'cyber', 'moss', 'bloom'], label: 'Palette', value: 'electric' },
+  { key: 'ratio', options: ['16:9', '4:5', '1:1', '9:16', '4:3', '3:2'], label: 'Ratio', value: '16:9' },
+  { key: 'seed', min: 0, max: 999999, step: 1, label: 'Seed', value: 42 },
+  { key: 'density', min: 1, max: 12, step: 0.5, label: 'Density', value: 5 },
+  { key: 'angle', min: 0, max: 360, step: 1, label: 'Angle', value: 90, unit: '°' },
+  { key: 'blur', min: 0, max: 100, step: 1, label: 'Blur', value: 14 },
+  { key: 'grain', min: 0, max: 100, step: 1, label: 'Grain', value: 55 },
+  { key: 'drift', min: 0, max: 100, step: 1, label: 'Drift', value: 0 },
+  { key: 'cycle', min: 0, max: 3, step: 1, label: 'Hue cycle', value: 0, unit: 'turns per loop' },
+  { key: 'loopSeconds', min: 0.5, max: 10, step: 0.5, label: 'Loop length', value: 2, unit: 's' },
+  { key: 'exportLandscapeWidth', min: 256, max: 8192, step: 1, label: 'Still width, landscape', value: 3840, unit: 'px' },
+  { key: 'exportPortraitWidth', min: 256, max: 8192, step: 1, label: 'Still width, portrait', value: 2160, unit: 'px' },
+  { key: 'jpegQuality', min: 1, max: 100, step: 1, label: 'JPEG quality', value: 95, unit: '%' },
+  { key: 'gifSize', min: 64, max: 1920, step: 1, label: 'GIF size', value: 720, unit: 'px landscape width' },
+  { key: 'gifFps', min: 1, max: 50, step: 1, label: 'GIF frame rate', value: 20, unit: 'fps' },
+  { key: 'gifQuality', min: 1, max: 30, step: 1, label: 'GIF quantizer sampling', value: 8, unit: '(1 best – 30 fastest)' },
   {
-    key: 'palettes', label: 'Palettes', chosenBy: DL, reason: TODO, inheritedFrom: null,
+    key: 'palettes', label: 'Palettes',
     value: {
       electric: ['#12082e', '#2b2be6', '#7b5cff', '#ff2e7e', '#ff4d3d'],
       sunset: ['#3a0d0d', '#d94a2a', '#ecdcc4', '#0b1a5e', '#2b6bff'],
