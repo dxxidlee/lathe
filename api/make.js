@@ -3,7 +3,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { json } from './_lib/http.js';
 
-const MODEL = 'claude-sonnet-4-5-20250514';
+const MODEL = 'claude-3-5-sonnet-20241022';
 
 const GROUPS = ['Color', 'Image', 'Type', 'Layout', 'Motion', 'Export', 'Reference'];
 
