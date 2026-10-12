@@ -136,7 +136,7 @@ export function Make() {
             edits={edits}
             onEdit={(k, v) => set(k, v)}
             onResetRow={k => set(k, script.defaults.find(d => d.key === k)!.value)}
-            onResetAll={() => setValues(Object.fromEntries(script.defaults.map(d => [d.key, d.value]))}
+            onResetAll={() => setValues(Object.fromEntries(script.defaults.map(d => [d.key, d.value])))}
             onResetTool={() => { setScript(null); setPrompt(''); setShown(0); }}
           />
         )}

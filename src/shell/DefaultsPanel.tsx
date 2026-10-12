@@ -1,4 +1,4 @@
-import { useState } from ‘react’;
+import { useEffect, useState } from ‘react’;
 import type { DefaultEntry, DefaultsManifest } from ‘../tools/types’;
 import type { Edits } from ‘../lib/defaults’;
 import { formatValue, isEditable, same } from ‘../lib/defaults’;
@@ -22,7 +22,7 @@ export function DefaultsPanel({ manifest, edits, onEdit, onResetRow, onResetAll,
     <section className="l-section defaults" aria-label="Defaults">
       <div className="defaults__head">
         <h3 className="l-section__title">Defaults</h3>
-        <span className="defaults__count tabular" data-testid="defaults-edited">{n ? `${n} edited` : ‘Maker’s’}</span>
+        <span className="defaults__count tabular" data-testid="defaults-edited">{n ? `${n} edited` : "Maker\u2019s"}</span>
       </div>
       <div className="defaults__list">
         {manifest.map(d => (
@@ -30,7 +30,7 @@ export function DefaultsPanel({ manifest, edits, onEdit, onResetRow, onResetAll,
         ))}
       </div>
       <div className="defaults__actions">
-        <button type="button" className="l-btn" disabled={!n} onClick={onResetAll}>Reset to maker’s defaults</button>
+        <button type="button" className="l-btn" disabled={!n} onClick={onResetAll}>Reset to defaults</button>
         <button type="button" className="l-btn" onClick={onResetTool} title="Forget this tool’s image, settings and edits">Reset tool</button>
       </div>
     </section>
@@ -56,7 +56,7 @@ function Row({ d, edit, onEdit, onReset }: {
       {edited && (
         <div className="defaults__was">
           Maker: <s className="tabular">{formatValue(d.value)}{d.unit ? ` ${d.unit}` : ‘’}</s>
-          <button type="button" className="defaults__reset" onClick={() => onReset(d.key)} aria-label={`Reset ${d.label} to the maker’s value`}>Reset</button>
+          <button type="button" className="defaults__reset" onClick={() => onReset(d.key)} aria-label={`Reset ${d.label}`}>Reset</button>
         </div>
       )}
     </div>
@@ -142,7 +142,7 @@ function JsonEditor({ id, d, value, commit }: { id: string; d: DefaultEntry; val
   const apply = () => {
     try {
       const parsed = JSON.parse(v);
-      if (Array.isArray(d.value) !== Array.isArray(parsed) || typeof parsed !== typeof d.value || parsed === null) throw new Error(`Must be ${Array.isArray(d.value) ? 'a list' : 'an object'}, like the maker's`);
+      if (Array.isArray(d.value) !== Array.isArray(parsed) || typeof parsed !== typeof d.value || parsed === null) throw new Error(`Must be ${Array.isArray(d.value) ? 'a list' : 'an object'}`);
       setErr(''); commit(parsed);
     } catch (e) { setErr(e instanceof Error ? e.message : 'Not valid JSON'); }
   };
