@@ -8,7 +8,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { json } from '../_lib/http.js';
 
-export const MODEL = 'claude-opus-5-5';
+export const MODEL = 'claude-haiku-4-5-20251001';
 const MAX_CAPTURES = 13; // homepage ×2, up to 8 timeline years, 3 Instagram posts
 const AREAS = ['consistency', 'hierarchy', 'type', 'color', 'tone'];
 
