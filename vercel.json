@@ -27,6 +27,9 @@
     },
     "api/ig-media.js": {
       "maxDuration": 30
+    },
+    "api/make.js": {
+      "maxDuration": 60
     }
   }
 }

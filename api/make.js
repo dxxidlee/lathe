@@ -1,5 +1,5 @@
 // @ts-check
-/* POST /api/make → generate a Lathe tool from a natural-language prompt (ANTHROPIC_API_KEY). */
+/* POST /api/make -> generate a Lathe tool from a natural-language prompt. */
 import Anthropic from '@anthropic-ai/sdk';
 import { json } from './_lib/http.js';
 
@@ -7,36 +7,34 @@ const MODEL = 'claude-haiku-4-5-20251001';
 
 const GROUPS = ['Color', 'Image', 'Type', 'Layout', 'Motion', 'Export', 'Reference'];
 
-const SYSTEM = `You generate self-contained browser tools for Lathe, a design-tool suite.
+const SYSTEM = `You generate tools for Lathe, a browser design-tool suite. You output ONLY a JavaScript function body (no HTML, no markdown, no wrapping).
 
-The code you write will be wrapped as: new Function('ctx', code)
-ctx has these properties:
-- stage: HTMLElement — the center canvas area where the tool renders its output.
-- inspector: HTMLElement — the right panel for controls.
-- statusbar: { set(info: { name?, width?, height?, bytes?, state? }): void, clear(): void } — bottom status bar. Example: ctx.statusbar.set({ name: 'My Tool', state: 'Ready' }).
-- emit: function — call ctx.emit('toast', 'message') to show a transient message.
-- defaults: Record<string, any> — the tool's default values.
+The code field must be a plain JavaScript function body. It will run as:
+  const fn = new Function('ctx', code);
+  const unmount = fn(ctx);
 
-Your function body MUST return an unmount function () => void that cleans up all DOM, listeners, and timers.
+ctx is an object with:
+  ctx.stage      - HTMLElement, the center canvas. Append your output here.
+  ctx.inspector  - HTMLElement, the right sidebar. Append controls here.
+  ctx.statusbar  - { set({ name, state }), clear() }
+  ctx.emit       - call ctx.emit('toast', 'msg') for notifications
+  ctx.defaults   - Record<string, any> of default values from the defaults array
 
-Rules:
-- Create DOM elements directly with document.createElement. No frameworks, no imports.
-- Use canvas for image/pixel manipulation, SVG for vector output.
-- Everything must be self-contained — no external scripts, imports, or CDN links.
-- Production quality: error handling, cleanup, responsive layout.
-- Tools typically: create controls in ctx.inspector, render output in ctx.stage, update ctx.statusbar.
+RULES:
+1. The code field is PURE JAVASCRIPT. Not HTML. Not a full page. Just the function body.
+2. You MUST return a cleanup function: return () => { /* remove listeners, timers */ };
+3. Create elements with document.createElement(). No frameworks, no imports, no CDN.
+4. Use canvas for raster work, inline SVG strings for vector.
+5. Keep it focused, useful, and under 3000 characters.
 
-Available CSS classes for inspector controls:
-- l-section, l-section__title, l-section__body — collapsible sections
-- l-label, l-note — labels and helper text
-- l-input, l-textarea — text inputs
-- l-btn, l-btn--primary — buttons
-- l-slider — range inputs
-- l-chip-row, l-chip — chip/tag rows
-- l-field — form field wrapper
-- l-stats, l-stat, l-stat__label, l-stat__value — stat readouts
+EXAMPLE of a valid code field:
+  const el = document.createElement('div');
+  el.textContent = 'Hello';
+  ctx.stage.appendChild(el);
+  ctx.statusbar.set({ name: 'My Tool', state: 'Ready' });
+  return () => el.remove();
 
-Keep the tool focused on one task. Make it genuinely useful.`;
+CSS classes for controls: l-section, l-section__title, l-section__body, l-label, l-note, l-input, l-btn, l-btn--primary, l-slider, l-chip-row, l-chip, l-field, l-stats, l-stat, l-stat__label, l-stat__value.`;
 
 const TOOL_DEF = {
   name: 'lathe_tool',
@@ -49,7 +47,7 @@ const TOOL_DEF = {
       id: { type: 'string', description: 'kebab-case identifier, e.g. "pixel-sort"' },
       name: { type: 'string', description: 'Human-readable name, e.g. "Pixel Sort"' },
       group: { type: 'string', enum: GROUPS, description: 'Tool group' },
-      description: { type: 'string', description: 'One-line description of what the tool does' },
+      description: { type: 'string', description: 'One-line description' },
       defaults: {
         type: 'array',
         items: {
@@ -62,9 +60,9 @@ const TOOL_DEF = {
             value: {},
           },
         },
-        description: 'Default settings for the tool',
+        description: 'Default settings the tool reads from ctx.defaults',
       },
-      code: { type: 'string', description: 'The JavaScript function body string. Will be called as new Function("ctx", code). Must return an unmount function.' },
+      code: { type: 'string', description: 'PURE JAVASCRIPT function body. NOT HTML. Will run as new Function("ctx", code). Must return an unmount function.' },
     },
   },
 };
@@ -89,23 +87,30 @@ export async function POST(request) {
       system: SYSTEM,
       tools: /** @type {any[]} */ ([TOOL_DEF]),
       tool_choice: { type: 'tool', name: 'lathe_tool' },
-      messages: [{ role: 'user', content: `Create a Lathe tool for this request: ${prompt}` }],
+      messages: [{ role: 'user', content: `Create a Lathe tool for: ${prompt}` }],
     });
 
     const block = msg.content.find(b => b.type === 'tool_use');
     if (!block || block.type !== 'tool_use') return json({ error: 'Model did not return a tool definition' }, { status: 502 });
 
     const tool = /** @type {any} */ (block.input);
-    // Validate group
     if (!GROUPS.includes(tool.group)) tool.group = 'Image';
+
+    let code = String(tool.code || '');
+    if (code.includes('<!DOCTYPE') || code.includes('<html')) {
+      return json({ error: 'Model returned HTML instead of JavaScript. Try a simpler prompt.' }, { status: 502 });
+    }
+    // If the model wrapped the code in a function, unwrap it so new Function('ctx', code) works
+    const wrapped = /^\s*return\s+function\s*\(\s*ctx\s*\)\s*\{([\s\S]*)\}\s*;?\s*$/.exec(code.trim());
+    if (wrapped) code = wrapped[1];
 
     return json({
       id: tool.id,
       name: tool.name,
       group: tool.group,
       description: tool.description,
-      defaults: tool.defaults,
-      code: tool.code,
+      defaults: tool.defaults || [],
+      code,
     }, { cache: 'no-store' });
   } catch (e) {
     if (e instanceof Anthropic.AuthenticationError) return json({ error: 'ANTHROPIC_API_KEY was rejected' }, { status: 401 });
