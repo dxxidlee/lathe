@@ -1,7 +1,7 @@
-import { useEffect, useState } from ‘react’;
-import type { DefaultEntry, DefaultsManifest } from ‘../tools/types’;
-import type { Edits } from ‘../lib/defaults’;
-import { formatValue, isEditable, same } from ‘../lib/defaults’;
+import { useEffect, useState } from 'react';
+import type { DefaultEntry, DefaultsManifest } from '../tools/types';
+import type { Edits } from '../lib/defaults';
+import { formatValue, isEditable, same } from '../lib/defaults';
 
 const HEX = /^#[0-9a-f]{6}$/i;
 
@@ -11,7 +11,6 @@ interface Props {
   onEdit: (key: string, value: unknown) => void;
   onResetRow: (key: string) => void;
   onResetAll: () => void;
-  /** Clears the tool’s saved image and settings as well as these edits. */
   onResetTool: () => void;
 }
 
@@ -22,7 +21,7 @@ export function DefaultsPanel({ manifest, edits, onEdit, onResetRow, onResetAll,
     <section className="l-section defaults" aria-label="Defaults">
       <div className="defaults__head">
         <h3 className="l-section__title">Defaults</h3>
-        <span className="defaults__count tabular" data-testid="defaults-edited">{n ? `${n} edited` : "Maker\u2019s"}</span>
+        <span className="defaults__count tabular" data-testid="defaults-edited">{n ? `${n} edited` : 'Default'}</span>
       </div>
       <div className="defaults__list">
         {manifest.map(d => (
@@ -31,7 +30,7 @@ export function DefaultsPanel({ manifest, edits, onEdit, onResetRow, onResetAll,
       </div>
       <div className="defaults__actions">
         <button type="button" className="l-btn" disabled={!n} onClick={onResetAll}>Reset to defaults</button>
-        <button type="button" className="l-btn" onClick={onResetTool} title="Forget this tool’s image, settings and edits">Reset tool</button>
+        <button type="button" className="l-btn" onClick={onResetTool} title="Forget this tool's image, settings and edits">Reset tool</button>
       </div>
     </section>
   );
@@ -39,7 +38,7 @@ export function DefaultsPanel({ manifest, edits, onEdit, onResetRow, onResetAll,
 
 function Row({ d, edit, onEdit, onReset }: {
   d: DefaultEntry; edit?: Edits[string];
-  onEdit: Props[‘onEdit’]; onReset: Props[‘onResetRow’];
+  onEdit: Props['onEdit']; onReset: Props['onResetRow'];
 }) {
   const edited = !!edit;
   const value = edited ? edit!.value : d.value;
@@ -47,7 +46,7 @@ function Row({ d, edit, onEdit, onReset }: {
   const commit = (v: unknown) => { if (!same(v, value)) onEdit(d.key, v); };
   const id = `def-${d.key}`;
   return (
-    <div className={`defaults__row${edited ? ‘ is-edited’ : ‘’}`} data-key={d.key}>
+    <div className={`defaults__row${edited ? ' is-edited' : ''}`} data-key={d.key}>
       <label className="defaults__label" htmlFor={id}>{d.label}</label>
       <div className="defaults__editor">
         {isEditable(d) ? <Editor id={id} d={d} value={value} commit={commit} /> : <span className="defaults__static tabular" id={id}>{formatValue(value)}</span>}
@@ -55,7 +54,7 @@ function Row({ d, edit, onEdit, onReset }: {
       </div>
       {edited && (
         <div className="defaults__was">
-          Maker: <s className="tabular">{formatValue(d.value)}{d.unit ? ` ${d.unit}` : ‘’}</s>
+          Default: <s className="tabular">{formatValue(d.value)}{d.unit ? ` ${d.unit}` : ''}</s>
           <button type="button" className="defaults__reset" onClick={() => onReset(d.key)} aria-label={`Reset ${d.label}`}>Reset</button>
         </div>
       )}
@@ -149,7 +148,7 @@ function JsonEditor({ id, d, value, commit }: { id: string; d: DefaultEntry; val
   return (
     <span className="defaults__json">
       <button type="button" className="l-btn" aria-expanded={open} aria-controls={id} onClick={() => setOpen(o => !o)}>
-        {formatValue(value)} · {open ? 'Close' : 'Edit'}
+        {formatValue(value)} {open ? 'Close' : 'Edit'}
       </button>
       {open && (
         <>
