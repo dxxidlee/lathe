@@ -3,7 +3,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { json } from './_lib/http.js';
 
-const MODEL = 'claude-sonnet-4-5-20250514';
+const MODEL = 'claude-sonnet-4-6-20250627';
 
 const GROUPS = ['Color', 'Image', 'Type', 'Layout', 'Motion', 'Export', 'Reference'];
 
@@ -110,7 +110,7 @@ export async function POST(request) {
     if (e instanceof Anthropic.AuthenticationError) return json({ error: 'ANTHROPIC_API_KEY was rejected' }, { status: 401 });
     if (e instanceof Anthropic.RateLimitError) return json({ error: 'Claude rate limit reached; try again shortly' }, { status: 429 });
     if (e instanceof Anthropic.BadRequestError) return json({ error: `Claude rejected the request: ${e.message}` }, { status: 400 });
-    if (e instanceof Anthropic.APIError) return json({ error: `Claude API error ${e.status ?? ''}`.trim() }, { status: 502 });
-    return json({ error: 'Could not reach Claude' }, { status: 502 });
+    if (e instanceof Anthropic.APIError) return json({ error: `Claude API error ${e.status ?? ''}: ${e.message}` }, { status: 502 });
+    return json({ error: `Could not reach Claude: ${e instanceof Error ? e.message : String(e)}` }, { status: 502 });
   }
 }
