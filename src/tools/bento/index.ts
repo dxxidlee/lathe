@@ -8,7 +8,7 @@ import { allSlides, drawSlide, type DrawConfig } from './draw';
 import { slideSvg } from './render-svg';
 import { copyForFigma, deckToPdf, deckToPptx, slideToPng, slideToSvg, slidesToPngZip, type ExportCtx } from './export';
 import { proxied } from './images';
-import { button, chips, field, note, section, select, textarea } from '../../ui/primitives';
+import { advancedSection, button, chips, field, note, section, select, slider, textarea } from '../../ui/primitives';
 import { assetUrl } from '../../lib/assets';
 import { saveExport } from '../../lib/download';
 import './bento.css';
@@ -78,8 +78,9 @@ export const tool: LatheTool = {
     const deckSec = section('Deck');
     const titleField = field({ label: 'Title', value: deck.title, onChange: v => { deck.title = v.trim() || 'Untitled deck'; commit(); } });
     const themeChips = chips<'dark' | 'light'>({ label: 'Theme', value: deck.theme, options: [{ value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }], onChange: v => { deck.theme = v as Deck['theme']; commit(); } });
+    const captionChips = chips<'true' | 'false'>({ label: 'Credit lines', value: String(cfg.showCaptions) as 'true' | 'false', options: [{ value: 'true', label: 'On' }, { value: 'false', label: 'Off' }], onChange: v => { cfg.showCaptions = v === 'true'; render(); } });
     const deckInfo = note('');
-    deckSec.body.append(titleField.el, themeChips.el, deckInfo);
+    deckSec.body.append(titleField.el, themeChips.el, captionChips.el, deckInfo);
 
     const slideSec = section('Slide');
     const slideInfo = note('');
@@ -136,7 +137,22 @@ export const tool: LatheTool = {
       await cloudSaveItem(user.id, { type: 'deck', name: deck.title || 'Untitled deck', toolId: 'deck', data: deck });
       emit('toast', 'Saved to Library');
     }}), note('Decks export with an auto-generated credits slide. Fonts: Helvetica Neue, with Arial declared as the fallback.'));
-    inspector.append(deckSec.el, slideSec.el, addSec.el, tileSec.el, outSec.el);
+    const advSec = advancedSection();
+    advSec.body.append(
+      note(`Font: ${cfg.font}`),
+      slider({ label: 'Margin', min: 0, max: 150, value: Math.round(cfg.margin * 100), format: v => `${(v / 100).toFixed(2)} in`, onChange: v => { cfg.margin = v / 100; render(); } }).el,
+      slider({ label: 'Gutter', min: 0, max: 60, value: Math.round(cfg.gutter * 100), format: v => `${(v / 100).toFixed(2)} in`, onChange: v => { cfg.gutter = v / 100; render(); } }).el,
+      slider({ label: 'Tile padding', min: 0, max: 60, value: Math.round(cfg.pad * 100), format: v => `${(v / 100).toFixed(2)} in`, onChange: v => { cfg.pad = v / 100; render(); } }).el,
+      slider({ label: 'Display text', min: 12, max: 200, value: cfg.sizes.display, unit: ' pt', onChange: v => { cfg.sizes.display = v; render(); } }).el,
+      slider({ label: 'Title text', min: 8, max: 120, value: cfg.sizes.title, unit: ' pt', onChange: v => { cfg.sizes.title = v; render(); } }).el,
+      slider({ label: 'Body text', min: 6, max: 48, value: cfg.sizes.body, unit: ' pt', onChange: v => { cfg.sizes.body = v; render(); } }).el,
+      slider({ label: 'Caption text', min: 5, max: 24, value: cfg.sizes.caption, unit: ' pt', onChange: v => { cfg.sizes.caption = v; render(); } }).el,
+      slider({ label: 'Stat value', min: 12, max: 240, value: cfg.sizes.stat, unit: ' pt', onChange: v => { cfg.sizes.stat = v; render(); } }).el,
+      slider({ label: 'Stat label', min: 6, max: 48, value: cfg.sizes.statLabel, unit: ' pt', onChange: v => { cfg.sizes.statLabel = v; render(); } }).el,
+      slider({ label: 'Hex labels', min: 5, max: 24, value: cfg.sizes.hex, unit: ' pt', onChange: v => { cfg.sizes.hex = v; render(); } }).el,
+      slider({ label: 'Image max px', min: 400, max: 6000, value: xctx.imageMaxPx, unit: ' px', onChange: v => { xctx.imageMaxPx = v; } }).el,
+    );
+    inspector.append(deckSec.el, slideSec.el, addSec.el, tileSec.el, advSec.el, outSec.el);
 
     /* ---------------- render ---------------- */
     function render() {

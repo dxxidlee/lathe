@@ -9,7 +9,7 @@
    - The Tauri desktop branches are gone (v1 is browser-only). */
 import type { Asset, LatheTool } from '../types';
 import { defaults } from './defaults';
-import { button, field, modal, note, section, statList } from '../../ui/primitives';
+import { advancedSection, button, field, modal, note, section, slider, statList } from '../../ui/primitives';
 import { assetUrl } from '../../lib/assets';
 import { downloadBlob } from '../../lib/download';
 import './mood-strip.css';
@@ -179,7 +179,11 @@ export const tool: LatheTool = {
     const addLink = () => { const v = linkField.input.value.trim(); if (v) { addUrl(v); linkField.input.value = ''; } };
     linkField.input.addEventListener('keydown', e => { if (e.key === 'Enter') addLink(); });
     link.body.append(linkField.el, button({ label: 'Add link', onClick: addLink }));
-    inspector.append(board.el, link.el);
+    const advSec = advancedSection();
+    advSec.body.append(
+      slider({ label: 'Swatches per image', min: 1, max: 12, value: SWATCHES, unit: '', onChange: v => { (d as Record<string, unknown>).paletteSize = v; } }).el,
+    );
+    inspector.append(board.el, link.el, advSec.el);
 
     /* ============ ADD REFS ============ */
     async function addFile(file: File | Blob, name?: string) {

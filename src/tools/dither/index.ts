@@ -6,7 +6,7 @@ import { dither, drawHalftone, halftone, halftoneSvg, hexToRgbTriple, isHalftone
 import { kmeans, rgbToOklab, oklabToRgb, type Lab } from '../../lib/color';
 import { canvasBlob, decodePixels, imageInput, sendControl } from '../../lib/image-input';
 import { saveExport } from '../../lib/download';
-import { button, chips, note, section, slider, statList } from '../../ui/primitives';
+import { advancedSection, button, chips, note, section, slider, statList } from '../../ui/primitives';
 import './dither.css';
 
 const METHODS: { value: Method; label: string }[] = [
@@ -70,33 +70,44 @@ export const tool: LatheTool = {
     const ordered = document.createElement('div'); const halfCtl = document.createElement('div');
     mSec.body.append(
       chips<Method>({ value: s.method, options: METHODS, onChange: v => { set('method', v as Method); sync(); } }).el,
-      slider({ label: 'Threshold', min: 0, max: 100, value: Math.round(s.threshold * 100), format: v => (v / 100).toFixed(2), onChange: v => set('threshold', v / 100) }).el,
-      ordered, halfCtl,
+      ordered,
     );
     ordered.append(slider({ label: 'Pixel size', min: 1, max: 16, value: s.scale, unit: ' px', onChange: v => set('scale', v) }).el);
-    halfCtl.append(
-      slider({ label: 'Cell', min: 3, max: 80, value: s.cell, unit: ' px', onChange: v => set('cell', v) }).el,
-      slider({ label: 'Angle', min: 0, max: 180, value: s.angle, unit: '°', onChange: v => set('angle', v) }).el,
-      slider({ label: 'Gain', min: 20, max: 300, value: Math.round(s.gain * 100), format: v => (v / 100).toFixed(2), onChange: v => set('gain', v / 100) }).el,
-    );
 
     const cSec = section('Colors');
     const twoCtl = document.createElement('div'); twoCtl.className = 'l-row dt-two';
     const palCtl = document.createElement('div');
-    const colorIn = (label: string, k: 'ink' | 'paper') => {
+    const colorIn = (lbl: string, k: 'ink' | 'paper') => {
       const w = document.createElement('label'); w.className = 'dt-color';
-      const c = document.createElement('input'); c.type = 'color'; c.className = 'l-swatch-input'; c.value = s[k].toLowerCase(); c.setAttribute('aria-label', label);
+      const c = document.createElement('input'); c.type = 'color'; c.className = 'l-swatch-input'; c.value = s[k].toLowerCase(); c.setAttribute('aria-label', lbl);
       c.addEventListener('input', () => set(k, c.value.toUpperCase()));
-      w.append(c, document.createTextNode(label)); return w;
+      w.append(c, document.createTextNode(lbl)); return w;
     };
     twoCtl.append(colorIn('Ink', 'ink'), colorIn('Paper', 'paper'), button({ label: 'Swap', onClick: () => { const t = s.ink; s.ink = s.paper; s.paper = t; settings.set('ink', s.ink); settings.set('paper', s.paper); twoCtl.querySelectorAll('input').forEach((el, i) => { (el as HTMLInputElement).value = (i ? s.paper : s.ink).toLowerCase(); }); schedule(); } }));
     const palView = document.createElement('div'); palView.className = 'dt-pal';
-    palCtl.append(slider({ label: 'Colors from the image', min: 2, max: 16, value: s.count, onChange: v => { s.count = v; settings.set('paletteCount', v); buildPalette(); schedule(); } }).el, palView);
     cSec.body.append(
       chips<ColorMode>({ value: s.colorMode, options: [{ value: 'two', label: 'Two colors' }, { value: 'palette', label: 'Palette' }], onChange: v => { set('colorMode', v as ColorMode); sync(); } }).el,
-      twoCtl, palCtl,
+      twoCtl,
       note('Halftones always print one ink on paper.'),
     );
+
+    const advSec = advancedSection();
+    advSec.body.append(
+      slider({ label: 'Threshold', min: 0, max: 100, value: Math.round(s.threshold * 100), format: v => (v / 100).toFixed(2), onChange: v => set('threshold', v / 100) }).el,
+      halfCtl,
+      slider({ label: 'Palette colors', min: 2, max: 16, value: s.count, onChange: v => { s.count = v; settings.set('paletteCount', v); buildPalette(); schedule(); } }).el,
+      palCtl,
+      slider({ label: 'Gain', min: 20, max: 300, value: Math.round(s.gain * 100), format: v => (v / 100).toFixed(2), onChange: v => set('gain', v / 100) }).el,
+      chips<'true' | 'false'>({ label: 'Serpentine scan', value: String(d.serpentine) as 'true' | 'false', options: [{ value: 'true', label: 'On' }, { value: 'false', label: 'Off' }],
+        onChange: v => { (d as Record<string, unknown>).serpentine = v === 'true'; schedule(); } }).el,
+      chips<'true' | 'false'>({ label: 'Transparent paper (halftone exports)', value: String(d.transparentPaper) as 'true' | 'false', options: [{ value: 'true', label: 'On' }, { value: 'false', label: 'Off' }],
+        onChange: v => { (d as Record<string, unknown>).transparentPaper = v === 'true'; } }).el,
+    );
+    halfCtl.append(
+      slider({ label: 'Cell', min: 3, max: 80, value: s.cell, unit: ' px', onChange: v => set('cell', v) }).el,
+      slider({ label: 'Angle', min: 0, max: 180, value: s.angle, unit: '\u00b0', onChange: v => set('angle', v) }).el,
+    );
+    palCtl.append(palView);
 
     const vSec = section('View');
     vSec.body.append(chips<View>({ value: s.view, options: [{ value: 'fit', label: 'Fit' }, { value: 'actual', label: 'Actual pixels' }], onChange: v => { s.view = v as View; settings.set('view', v); paintView(); } }).el,
@@ -108,7 +119,7 @@ export const tool: LatheTool = {
     const oRow = document.createElement('div'); oRow.className = 'l-row'; oRow.append(pngBtn, svgBtn);
     const send = sendControl({ from: 'dither', type: () => (pixels ? 'image/png' : null), get: () => resultAsset(), emit });
     oSec.body.append(oRow, note('PNG at the source size. SVG for halftones: dots and bands as vector paths.'), send.el);
-    inspector.append(srcSec.el, mSec.el, cSec.el, vSec.el, oSec.el);
+    inspector.append(srcSec.el, mSec.el, cSec.el, advSec.el, vSec.el, oSec.el);
 
     function sync() {
       const ht = isHalftone(s.method);

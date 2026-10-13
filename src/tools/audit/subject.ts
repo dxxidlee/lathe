@@ -105,8 +105,7 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
   colSec.body.append(
     hexRow,
     chips<'sort' | 'filter'>({ label: 'Use it to', value: filters.mode, options: [{ value: 'sort', label: 'Sort by closeness' }, { value: 'filter', label: 'Filter' }], onChange: v => { filters.mode = v as 'sort' | 'filter'; settings.set('colorMode', v); renderGrid(); } }).el,
-    slider({ label: 'Match distance (ΔE OKLab × 100)', min: 1, max: 50, value: Math.round(filters.threshold * 100), onChange: v => { filters.threshold = v / 100; settings.set('colorThreshold', filters.threshold); if (filters.mode === 'filter') renderGrid(); } }).el,
-    note('Distance is measured in OKLab to the closest swatch of each image.'),
+    note('Distance threshold is in Advanced below. Measured in OKLab to the closest swatch of each image.'),
   );
 
   const collSec = section('Collection');
@@ -114,6 +113,11 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
   const collName = field({ label: 'Name', value: coll().name, onChange: v => { coll().name = v.trim() || coll().name; saveColl(); renderColl(); } });
   const collStats = statList();
   const aggHost = document.createElement('div'); aggHost.className = 'au-agg';
+  const deckOpts = document.createElement('div'); deckOpts.className = 'l-row';
+  deckOpts.append(
+    chips<'dark' | 'light'>({ label: 'Deck theme', value: d.deckTheme as 'dark' | 'light', options: [{ value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }], onChange: v => { (d as Record<string, unknown>).deckTheme = v; } }).el,
+    slider({ label: 'Images per slide', min: 1, max: 8, value: d.imagesPerSlide as number, onChange: v => { (d as Record<string, unknown>).imagesPerSlide = v; } }).el,
+  );
   const collRow = document.createElement('div'); collRow.className = 'l-row';
   collRow.append(
     button({ label: 'Build deck', primary: true, onClick: () => void buildDeckNow() }),
@@ -130,11 +134,21 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
     button({ label: 'New', onClick: () => { const c = { id: `c${Date.now().toString(36)}`, name: `Collection ${collections.length + 1}`, items: [] }; collections.push(c); active = c.id; saveColl(); renderColl(); renderGrid(); } }),
     button({ label: 'Clear', onClick: () => { coll().items = []; saveColl(); renderColl(); renderGrid(); } }),
   );
-  collSec.body.append(collPick.el, collName.el, collStats.el, aggHost, collRow);
+  collSec.body.append(collPick.el, collName.el, collStats.el, aggHost, deckOpts, collRow);
   const sumSec = section('Results');
   const sumStats = statList();
   sumSec.body.append(sumStats.el);
-  inspector.append(...[modeEl, collSec.el, srcSec.el, filtSec.el, colSec.el, sumSec.el].filter(Boolean) as HTMLElement[]);
+
+  const advSec = section('Advanced');
+  advSec.el.classList.add('l-section--advanced');
+  advSec.el.querySelector('.l-section__title')!.addEventListener('click', () => advSec.el.classList.toggle('is-open'));
+  advSec.body.append(
+    slider({ label: 'Swatches per image', min: 5, max: 8, value: d.paletteSize as number, onChange: v => { (d as Record<string, unknown>).paletteSize = v; } }).el,
+    slider({ label: 'Collection palette size', min: 3, max: 16, value: d.aggregateSize as number, onChange: v => { (d as Record<string, unknown>).aggregateSize = v; renderColl(); } }).el,
+    slider({ label: 'Color match distance', min: 1, max: 50, value: Math.round((d.colorThreshold as number) * 100), unit: ' (ΔE×100)', onChange: v => { filters.threshold = v / 100; settings.set('colorThreshold', filters.threshold); (d as Record<string, unknown>).colorThreshold = filters.threshold; if (filters.mode === 'filter') renderGrid(); } }).el,
+  );
+
+  inspector.append(...[modeEl, collSec.el, srcSec.el, filtSec.el, colSec.el, sumSec.el, advSec.el].filter(Boolean) as HTMLElement[]);
 
   /* ---------------- sources ---------------- */
   function renderSources() {

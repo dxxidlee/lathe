@@ -7,7 +7,7 @@ import { defaults } from './defaults';
 import { canvasBlob, imageInput, sendControl } from '../../lib/image-input';
 import { saveExport } from '../../lib/download';
 import { formatBytes } from '../../lib/format';
-import { button, field, note, section, slider, statList } from '../../ui/primitives';
+import { advancedSection, button, field, note, section, slider, statList } from '../../ui/primitives';
 import './icon-set.css';
 
 interface Rendered { name: string; size: number; blob: Blob; kind: 'png' | 'apple' | 'maskable' }
@@ -60,19 +60,28 @@ export const tool: LatheTool = {
     srcSec.body.append(stats.el, input.urlEl, note('An SVG gives the sharpest small sizes and is shipped as favicon.svg too.'));
 
     const lSec = section('Look');
-    const color = (label: string, k: 'background' | 'themeColor') => {
+    const mkColor = (lbl: string, k: 'background' | 'themeColor') => {
       const w = document.createElement('label'); w.className = 'ic-color';
-      const c = document.createElement('input'); c.type = 'color'; c.className = 'l-swatch-input'; c.value = s[k].toLowerCase(); c.setAttribute('aria-label', label);
+      const c = document.createElement('input'); c.type = 'color'; c.className = 'l-swatch-input'; c.value = s[k].toLowerCase(); c.setAttribute('aria-label', lbl);
       c.addEventListener('input', () => { s[k] = c.value.toUpperCase(); settings.set(k, s[k]); schedule(); });
-      w.append(c, document.createTextNode(label)); return w;
+      w.append(c, document.createTextNode(lbl)); return w;
     };
-    const colors = document.createElement('div'); colors.className = 'l-row ic-colors';
-    colors.append(color('Background', 'background'), color('Theme color', 'themeColor'));
-    const name = field({ label: 'App name', value: s.appName, onChange: v => { s.appName = v.trim() || s.appName; settings.set('appName', s.appName); } });
+    const bgRow = document.createElement('div'); bgRow.className = 'l-row ic-colors';
+    bgRow.append(mkColor('Background', 'background'));
     lSec.body.append(
       slider({ label: 'Padding', min: 0, max: 40, value: Math.round(s.padding * 100), unit: '%', onChange: v => { s.padding = v / 100; settings.set('padding', s.padding); schedule(); } }).el,
+      bgRow,
+    );
+
+    const advSec = advancedSection();
+    const themeRow = document.createElement('div'); themeRow.className = 'l-row ic-colors';
+    themeRow.append(mkColor('Theme color', 'themeColor'));
+    const nameField = field({ label: 'App name', value: s.appName, onChange: v => { s.appName = v.trim() || s.appName; settings.set('appName', s.appName); } });
+    advSec.body.append(
+      nameField.el,
+      themeRow,
       slider({ label: 'Apple touch padding', min: 0, max: 40, value: Math.round(s.applePadding * 100), unit: '%', onChange: v => { s.applePadding = v / 100; settings.set('applePadding', s.applePadding); schedule(); } }).el,
-      colors, name.el,
+      slider({ label: 'Maskable safe padding', min: 10, max: 40, value: Math.round((d.maskableSafe as number) * 100), unit: '%', onChange: v => { (d as Record<string, unknown>).maskableSafe = v / 100; schedule(); } }).el,
       note(`Maskable icons keep the mark within ${Math.round((1 - 2 * (d.maskableSafe as number)) * 100)}% of the icon, inside the safe circle.`),
     );
 
@@ -80,7 +89,7 @@ export const tool: LatheTool = {
     const zipBtn = button({ label: 'Export icon set (.zip)', primary: true, onClick: () => void exportZip() });
     const send = sendControl({ from: 'icons', type: () => (rendered.length ? 'image/png' : null), get: async () => { const r = rendered.find(x => x.size === 512 && x.kind === 'png') ?? rendered[rendered.length - 1]; return r ? assets.add(r.blob, { name: r.name, source: 'export', origin: 'icons' }) : null; }, emit });
     oSec.body.append(zipBtn, note('PNG sizes, favicon.ico, favicon.svg, apple-touch-icon.png, a maskable icon, manifest.webmanifest and an HTML snippet.'), send.el);
-    inspector.append(srcSec.el, lSec.el, oSec.el);
+    inspector.append(srcSec.el, lSec.el, advSec.el, oSec.el);
 
     /* ---------------- rendering ---------------- */
     let img: HTMLImageElement | ImageBitmap | null = null;

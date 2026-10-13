@@ -3,7 +3,7 @@
 import type { Asset, LatheTool } from '../types';
 import { defaults } from './defaults';
 import { generate, loadSource, type Fmt, type Source, type Space, type Treat } from './engine';
-import { button, chips, field, note, section, statList } from '../../ui/primitives';
+import { advancedSection, button, chips, field, note, section, slider, statList } from '../../ui/primitives';
 import { formatBytes, formatDims } from '../../lib/format';
 import { saveExport } from '../../lib/download';
 import './multi-export.css';
@@ -88,7 +88,15 @@ export const tool: LatheTool = {
     status.setAttribute('role', 'status');
     status.setAttribute('aria-live', 'polite');
     out.body.append(zipBtn, status);
-    inspector.append(srcSec.el, opts.el, view.el, out.el);
+    const advSec = advancedSection();
+    advSec.body.append(
+      slider({ label: 'JPEG quality', min: 1, max: 100, value: d.jpegQuality as number, unit: '%', onChange: v => { (d as Record<string, unknown>).jpegQuality = v; } }).el,
+      field({ label: 'JPEG matte', value: d.jpgMatte as string, onChange: v => { (d as Record<string, unknown>).jpgMatte = v; } }).el,
+      slider({ label: 'Smallest raster', min: 16, max: 16000, value: d.rasterMin as number, unit: ' px', onChange: v => { (d as Record<string, unknown>).rasterMin = v; } }).el,
+      slider({ label: 'Largest raster', min: 16, max: 16000, value: d.rasterMax as number, unit: ' px', onChange: v => { (d as Record<string, unknown>).rasterMax = v; } }).el,
+      slider({ label: 'Raster EPS size', min: 16, max: 4000, value: d.epsRasterMax as number, unit: ' px', onChange: v => { (d as Record<string, unknown>).epsRasterMax = v; } }).el,
+    );
+    inspector.append(srcSec.el, opts.el, view.el, advSec.el, out.el);
 
     function summarize() {
       zipBtn.disabled = !src || busy;

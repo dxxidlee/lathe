@@ -2,13 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import type { ToolEntry } from '../tools/registry';
 import { findTool } from '../tools/registry';
-import type { Asset, DefaultsManifest, EmitFn, MountContext, MountResult } from '../tools/types';
+import type { Asset, EmitFn, MountContext, MountResult } from '../tools/types';
 import { assets, loadAssets, loadInto, markMounted } from '../lib/assets';
 import { loadSettings } from '../lib/settings';
-import { changedKeys, effective, loadApplied, loadEdits, same, saveApplied, saveEdits, type Edits } from '../lib/defaults';
+import { changedKeys, effective, loadApplied, loadEdits, saveApplied, saveEdits, type Edits } from '../lib/defaults';
 import { useShell } from './state';
 import { resetTool } from '../lib/reset';
-import { DefaultsPanel } from './DefaultsPanel';
 import { ASSET_MIME } from './Tray';
 
 type Phase = 'loading' | 'ready' | 'error';
@@ -22,7 +21,6 @@ export function ToolHost({ entry, active = true }: { entry: ToolEntry; active?: 
   const inspectorRef = useRef<HTMLDivElement>(null);
   const [phase, setPhase] = useState<Phase>('loading');
   const [error, setError] = useState('');
-  const [manifest, setManifest] = useState<DefaultsManifest>([]);
   const [edits, setEdits] = useState<Edits>({});
   const [version, setVersion] = useState(0);
   const editsRef = useRef<Edits>({});
@@ -66,7 +64,7 @@ export function ToolHost({ entry, active = true }: { entry: ToolEntry; active?: 
         // A changed default replaces the working value saved under the same key.
         for (const k of changed) settings.remove(k);
         void saveApplied(entry.id, values);
-        setManifest(tool.defaults); setEdits(live);
+        setEdits(live);
         const onActivate = (cb: (active: boolean) => void) => {
           activeCbsRef.current.add(cb);
           return () => activeCbsRef.current.delete(cb);
@@ -107,14 +105,6 @@ export function ToolHost({ entry, active = true }: { entry: ToolEntry; active?: 
     await saveEdits(entry.id, next);
     if (remount) setVersion(v => v + 1);
   };
-  const onEdit = (key: string, value: unknown) => {
-    const d = manifest.find(x => x.key === key)!;
-    const next = { ...edits };
-    if (same(value, d.value)) delete next[key];
-    else next[key] = { value, at: Date.now() };
-    void persist(next, true);
-  };
-  const onResetRow = (key: string) => { const next = { ...edits }; delete next[key]; void persist(next, true); };
   const onResetAll = () => void persist({}, true);
   /** Forget this tool's working settings and Defaults edits, then reopen it as shipped. */
   // The stored data is cleared during the remount, after the old instance has unmounted (and
@@ -141,8 +131,6 @@ export function ToolHost({ entry, active = true }: { entry: ToolEntry; active?: 
       </section>
       <aside className="inspector" aria-label="Inspector">
         <div className="inspector__tool" ref={inspectorRef} />
-        <DefaultsPanel manifest={manifest} edits={edits} onEdit={onEdit}
-          onResetRow={onResetRow} onResetAll={onResetAll} onResetTool={onResetTool} />
       </aside>
     </>
   );

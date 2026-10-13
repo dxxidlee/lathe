@@ -23,6 +23,14 @@ export function section(title: string): { el: HTMLElement; body: HTMLElement } {
   return { el, body };
 }
 
+/** A titled block that starts collapsed; clicking the title toggles it. */
+export function advancedSection(title = 'Advanced'): { el: HTMLElement; body: HTMLElement } {
+  const s = section(title);
+  s.el.classList.add('l-section--advanced');
+  s.el.querySelector('.l-section__title')!.addEventListener('click', () => s.el.classList.toggle('is-open'));
+  return s;
+}
+
 export function label(text: string): HTMLElement {
   return h('div', 'l-label', text);
 }

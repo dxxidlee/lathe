@@ -6,7 +6,7 @@ import {
   buildReport, buildSvg, fontFaceRule, hexToRgb, matrixHtml, minTierFor, parseColors, repair, score, wcagRatio,
   type Params, type Standard, type Threshold,
 } from './engine';
-import { button, chips, label, modal, note, section, statList, textarea } from '../../ui/primitives';
+import { advancedSection, button, chips, label, modal, note, section, slider, statList, textarea } from '../../ui/primitives';
 import { saveExport } from '../../lib/download';
 import './color-check.css';
 
@@ -106,7 +106,11 @@ export const tool: LatheTool = {
     const exportBtn = button({ label: 'Export', primary: true, onClick: () => void doExport() });
     out.body.append(fmt.el, exportBtn);
 
-    inspector.append(pal.el, std.el, res.el, fontSec.el, out.el);
+    const advSec = advancedSection();
+    advSec.body.append(
+      slider({ label: 'Below-threshold opacity', min: 0, max: 100, value: Math.round((d.dimOpacity as number) * 100), format: v => (v / 100).toFixed(2), onChange: v => { (d as Record<string, unknown>).dimOpacity = v / 100; render(); } }).el,
+    );
+    inspector.append(pal.el, std.el, res.el, advSec.el, fontSec.el, out.el);
 
     /* ---- render ---- */
     function render() {

@@ -10,7 +10,7 @@ import { cycle, drawFrame, layout, slots, type Easing, type Letter, type Loop, t
 import { sendControl } from '../../lib/image-input';
 import { saveExport } from '../../lib/download';
 import { formatBytes } from '../../lib/format';
-import { button, chips, note, section, select, slider, statList, textarea } from '../../ui/primitives';
+import { advancedSection, button, chips, note, section, select, slider, statList, textarea } from '../../ui/primitives';
 import './kinetic-type.css';
 
 const FONT_EXT = /\.(ttf|otf|woff2?)$/i;
@@ -54,29 +54,37 @@ export const tool: LatheTool = {
     fileIn.addEventListener('change', async () => { const f = fileIn.files?.[0]; if (f) void useFont(await assets.add(f, { name: f.name, source: 'drop' })); fileIn.value = ''; });
     tSec.body.append(fontStats.el, fileIn,
       button({ label: 'Use a font file', onClick: () => fileIn.click() }),
-      select<string>({ label: 'Weight', value: String(s.weight), options: [300, 400, 500, 700].map(w => ({ value: String(w), label: String(w) })), onChange: v => set('weight', Number(v), true) }).el,
       slider({ label: 'Size', min: 24, max: 400, value: s.size, unit: ' px', onChange: v => set('size', v, true) }).el);
 
     const mSec = section('Motion');
     mSec.body.append(
       chips<Preset>({ value: s.preset, options: [{ value: 'stagger', label: 'Stagger' }, { value: 'fall', label: 'Fall' }, { value: 'drift', label: 'Drift' }, { value: 'scramble', label: 'Scramble' }, { value: 'dissolve', label: 'Dissolve' }], onChange: v => set('preset', v as Preset) }).el,
-      slider({ label: 'Duration', min: 4, max: 100, value: Math.round(s.duration * 10), format: v => `${(v / 10).toFixed(1)} s`, onChange: v => set('duration', v / 10) }).el,
-      slider({ label: 'Stagger', min: 0, max: 300, value: Math.round(s.stagger * 1000), format: v => `${v} ms`, onChange: v => set('stagger', v / 1000) }).el,
-      select<Easing>({ label: 'Easing', value: s.easing, options: (['linear', 'easeOutCubic', 'easeInOutCubic', 'easeOutBack', 'easeOutBounce'] as Easing[]).map(e => ({ value: e, label: e })), onChange: v => set('easing', v) }).el,
-      chips<Loop>({ label: 'Loop', value: s.loop, options: [{ value: 'loop', label: 'Loop' }, { value: 'pingpong', label: 'Ping-pong' }, { value: 'once', label: 'Once' }], onChange: v => set('loop', v as Loop) }).el,
     );
 
     const lSec = section('Look');
     const colors = document.createElement('div'); colors.className = 'l-row kt-colors';
-    const color = (label: string, k: 'ink' | 'paper') => {
+    const color = (lbl: string, k: 'ink' | 'paper') => {
       const w = document.createElement('label'); w.className = 'kt-color';
-      const c = document.createElement('input'); c.type = 'color'; c.className = 'l-swatch-input'; c.value = s[k].toLowerCase(); c.setAttribute('aria-label', label);
+      const c = document.createElement('input'); c.type = 'color'; c.className = 'l-swatch-input'; c.value = s[k].toLowerCase(); c.setAttribute('aria-label', lbl);
       c.addEventListener('input', () => set(k, c.value.toUpperCase()));
-      w.append(c, document.createTextNode(label)); return w;
+      w.append(c, document.createTextNode(lbl)); return w;
     };
     colors.append(color('Ink', 'ink'), color('Paper', 'paper'));
-    lSec.body.append(colors, select<string>({ label: 'Canvas', value: `${s.w}x${s.h}`, options: ['1080x1080', '1080x1350', '1920x1080', '1080x1920'].map(v => ({ value: v, label: v.replace('x', ' × ') })),
-      onChange: v => { const [w, h] = v.split('x').map(Number); s.w = w; s.h = h; settings.set('w', w); settings.set('h', h); relay(); restart(); } }).el);
+    lSec.body.append(colors);
+
+    const advSec = advancedSection();
+    advSec.body.append(
+      slider({ label: 'Duration', min: 4, max: 100, value: Math.round(s.duration * 10), format: v => `${(v / 10).toFixed(1)} s`, onChange: v => set('duration', v / 10) }).el,
+      slider({ label: 'Stagger', min: 0, max: 300, value: Math.round(s.stagger * 1000), format: v => `${v} ms`, onChange: v => set('stagger', v / 1000) }).el,
+      select<Easing>({ label: 'Easing', value: s.easing, options: (['linear', 'easeOutCubic', 'easeInOutCubic', 'easeOutBack', 'easeOutBounce'] as Easing[]).map(e => ({ value: e, label: e })), onChange: v => set('easing', v) }).el,
+      chips<Loop>({ label: 'Loop', value: s.loop, options: [{ value: 'loop', label: 'Loop' }, { value: 'pingpong', label: 'Ping-pong' }, { value: 'once', label: 'Once' }], onChange: v => set('loop', v as Loop) }).el,
+      select<string>({ label: 'Weight', value: String(s.weight), options: [300, 400, 500, 700].map(w => ({ value: String(w), label: String(w) })), onChange: v => set('weight', Number(v), true) }).el,
+      select<string>({ label: 'Canvas', value: `${s.w}x${s.h}`, options: ['1080x1080', '1080x1350', '1920x1080', '1080x1920'].map(v => ({ value: v, label: v.replace('x', ' \u00d7 ') })),
+        onChange: v => { const [w, h] = v.split('x').map(Number); s.w = w; s.h = h; settings.set('w', w); settings.set('h', h); relay(); restart(); } }).el,
+      slider({ label: 'Hold', min: 0, max: 50, value: Math.round(s.hold * 10), format: v => `${(v / 10).toFixed(1)} s`, onChange: v => { s.hold = v / 10; restart(); } }).el,
+      slider({ label: 'Tracking', min: -100, max: 300, value: Math.round(s.tracking * 1000), format: v => `${(v / 1000).toFixed(3)} em`, onChange: v => { s.tracking = v / 1000; relay(); restart(); } }).el,
+      slider({ label: 'Leading', min: 80, max: 200, value: Math.round(s.leading * 100), format: v => `${(v / 100).toFixed(2)}\u00d7`, onChange: v => { s.leading = v / 100; relay(); restart(); } }).el,
+    );
 
     const pSec = section('Playback');
     const playBtn = button({ label: 'Pause', onClick: () => { playing = !playing; if (playing) t0 = performance.now() - paused * 1000; playBtn.textContent = playing ? 'Pause' : 'Play'; } });
@@ -92,7 +100,7 @@ export const tool: LatheTool = {
     let lastBlob: Blob | null = null, lastName = '';
     const send = sendControl({ from: 'kinetic-type', type: () => (lastBlob ? lastBlob.type : null), get: async () => (lastBlob ? assets.add(lastBlob, { name: lastName, source: 'export', origin: 'kinetic-type' }) : null), emit });
     oSec.body.append(oRow, oStats.el, note(`One full cycle at ${fps} fps. GIF ${d.gifWidth} px wide; WebM at the canvas size, recorded in real time.`), send.el);
-    inspector.append(tSec.el, mSec.el, lSec.el, pSec.el, oSec.el);
+    inspector.append(tSec.el, mSec.el, lSec.el, advSec.el, pSec.el, oSec.el);
 
     /* ---------------- fonts ---------------- */
     const off = assets.onChange(e => {
