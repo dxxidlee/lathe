@@ -1,74 +1,74 @@
 /* Mood-strip. Classes are ms- prefixed: the strip moves into PiP/popup windows with every
    stylesheet copied, so names must not collide with the shell's. */
-.ms { position: absolute; inset: 0; overflow-y: auto; padding: var(--s-6); }
+.ms { position: absolute; inset: 0; overflow-y: auto; padding: var(--space-6); }
 .ms-strip, .ms-window--strip .ms-strip {
-  display: flex; flex-direction: column; gap: var(--s-5);
+  display: flex; flex-direction: column; gap: var(--space-5);
   max-width: var(--strip-w); margin: 0 auto; min-height: 100%;
 }
 .ms-empty {
-  flex: 1; display: flex; flex-direction: column; justify-content: center; gap: var(--s-4);
-  padding: var(--s-7) var(--s-6);
-  border: var(--hairline) solid var(--hairline-color); border-radius: var(--radius);
-  color: var(--ink-3); text-align: center; font-size: var(--fs-body); line-height: var(--lh-body);
+  flex: 1; display: flex; flex-direction: column; justify-content: center; gap: var(--space-4);
+  padding: var(--space-7) var(--space-6);
+  border: 1px solid var(--border); border-radius: var(--radius-control);
+  color: var(--text-3); text-align: center; font-size: var(--text-body); line-height: var(--lh-body);
 }
 .ms-empty p { margin: 0; }
-.ms-empty b { color: var(--ink); font-weight: var(--w-regular); }
-.ms-home { display: grid; place-items: center; min-height: 100%; color: var(--ink-3); font-size: var(--fs-body); }
+.ms-empty b { color: var(--text-1); font-weight: var(--weight); }
+.ms-home { display: grid; place-items: center; min-height: 100%; color: var(--text-3); font-size: var(--text-body); }
 
 .ms-drop {
   position: absolute; inset: 0; z-index: var(--z-drop);
   display: none; place-items: center; pointer-events: none;
   background: var(--lathe-16);
-  outline: calc(var(--hairline) * 2) solid var(--accent); outline-offset: calc(var(--hairline) * -2);
+  outline: calc(1px * 2) solid var(--accent); outline-offset: calc(1px * -2);
 }
 .ms-drop.on { display: grid; }
-.ms-drop span { padding: var(--s-3) var(--s-5); background: var(--accent); color: var(--on-accent); font-size: var(--fs-display-s); font-weight: var(--w-medium); border-radius: var(--radius); }
+.ms-drop span { padding: var(--space-3) var(--space-5); background: var(--accent); color: var(--accent-text); font-size: var(--fs-display-s); font-weight: var(--weight-medium); border-radius: var(--radius-control); }
 
 /* ---- Card ---- */
-.ms-card { position: relative; flex: 0 0 auto; overflow: hidden; border: var(--hairline) solid var(--hairline-color); border-radius: var(--radius); background: var(--panel); }
+.ms-card { position: relative; flex: 0 0 auto; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg); }
 .ms-card.dragging { opacity: var(--o-40); }
 .ms-card.drop-above { border-top-color: var(--accent); }
 .ms-card.drop-below { border-bottom-color: var(--accent); }
 .ms-card-img { display: block; width: 100%; height: auto; cursor: grab; user-select: none; -webkit-user-drag: none; }
 .ms-card-img:active { cursor: grabbing; }
 .ms-bar {
-  display: flex; align-items: center; gap: var(--s-1);
-  height: calc(var(--chip-h) + var(--s-2)); padding: 0 var(--s-1) 0 var(--s-3);
-  border-top: var(--hairline) solid var(--hairline-color);
+  display: flex; align-items: center; gap: var(--space-1);
+  height: calc(var(--control-h) + var(--space-2)); padding: 0 var(--space-1) 0 var(--space-3);
+  border-top: 1px solid var(--border);
 }
-.ms-label { flex: 1; min-width: 0; color: var(--ink-2); white-space: pre; overflow: hidden; text-overflow: ellipsis; }
-.ms-dim { flex: 0 0 auto; padding-right: var(--s-2); color: var(--ink-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ms-label { flex: 1; min-width: 0; color: var(--text-2); white-space: pre; overflow: hidden; text-overflow: ellipsis; }
+.ms-dim { flex: 0 0 auto; padding-right: var(--space-2); color: var(--text-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
 .ms-dim.low { color: var(--accent); }
-.ms-lowres { display: none; padding: var(--s-3); border-top: var(--hairline) solid var(--hairline-color); background: var(--fill); color: var(--ink-2); line-height: var(--lh-body); }
+.ms-lowres { display: none; padding: var(--space-3); border-top: 1px solid var(--border); background: rgba(255,255,255,0.06); color: var(--text-2); line-height: var(--lh-body); }
 .ms-lowres.show { display: block; }
-.ms-lowres b { color: var(--ink); font-weight: var(--w-regular); }
+.ms-lowres b { color: var(--text-1); font-weight: var(--weight); }
 .ms-fix, .ms-mini, .ms-tool {
   display: inline-flex; align-items: center; justify-content: center;
-  height: var(--chip-h); padding: 0 var(--chip-pad-x);
-  border: 0; border-radius: var(--radius); background: var(--fill); color: var(--ink-2);
-  font-size: var(--fs-ui); line-height: 1;
+  height: var(--control-h); padding: 0 var(--space-2);
+  border: 0; border-radius: var(--radius-control); background: rgba(255,255,255,0.06); color: var(--text-2);
+  font-size: var(--text-body); line-height: 1;
 }
-.ms-fix { margin-top: var(--s-3); }
-.ms-fix:hover, .ms-mini:hover, .ms-tool:hover { background: var(--fill-strong); color: var(--ink); }
+.ms-fix { margin-top: var(--space-3); }
+.ms-fix:hover, .ms-mini:hover, .ms-tool:hover { background: rgba(255,255,255,0.12); color: var(--text-1); }
 .ms-icon {
   display: grid; place-items: center; flex: 0 0 auto;
-  width: var(--chip-h); height: var(--chip-h);
-  border: 0; border-radius: var(--radius); background: none; color: var(--ink-3);
+  width: var(--control-h); height: var(--control-h);
+  border: 0; border-radius: var(--radius-control); background: none; color: var(--text-3);
 }
-.ms-icon:hover { color: var(--ink); background: var(--fill); }
+.ms-icon:hover { color: var(--text-1); background: rgba(255,255,255,0.06); }
 .ms-icon.on { color: var(--accent); }
-.ms-icon svg { width: var(--icon); height: var(--icon); display: block; }
-.ms-icon--text { width: auto; padding: 0 var(--s-2); font-size: var(--fs-micro); }
+.ms-icon svg { width: var(--icon-size); height: var(--icon-size); display: block; }
+.ms-icon--text { width: auto; padding: 0 var(--space-2); font-size: var(--text-meta); }
 
 /* ---- Palette ---- */
-.ms-palette { display: none; padding: var(--s-3); border-top: var(--hairline) solid var(--hairline-color); }
+.ms-palette { display: none; padding: var(--space-3); border-top: 1px solid var(--border); }
 .ms-palette.open { display: block; }
-.ms-note { color: var(--ink-3); font-size: var(--fs-small); line-height: var(--lh-body); }
-.ms-sw-row, .ms-sw-hexes, .ms-pal-actions { display: flex; gap: var(--s-2); }
-.ms-sw { flex: 1; height: var(--swatch-h); border: var(--hairline) solid var(--hairline-color); border-radius: var(--radius); cursor: pointer; }
-.ms-sw-hexes { margin-top: var(--s-2); }
-.ms-sw-hex { flex: 1; color: var(--ink-3); text-align: center; white-space: nowrap; overflow: hidden; font-variant-numeric: tabular-nums; }
-.ms-pal-actions { margin-top: var(--s-3); }
+.ms-note { color: var(--text-3); font-size: var(--text-meta); line-height: var(--lh-body); }
+.ms-sw-row, .ms-sw-hexes, .ms-pal-actions { display: flex; gap: var(--space-2); }
+.ms-sw { flex: 1; height: var(--swatch-h); border: 1px solid var(--border); border-radius: var(--radius-control); cursor: pointer; }
+.ms-sw-hexes { margin-top: var(--space-2); }
+.ms-sw-hex { flex: 1; color: var(--text-3); text-align: center; white-space: nowrap; overflow: hidden; font-variant-numeric: tabular-nums; }
+.ms-pal-actions { margin-top: var(--space-3); }
 .ms-mini { flex: 1; }
 
 /* ---- In-page float (pop-ups blocked) ---- */
@@ -76,27 +76,27 @@
   position: fixed; z-index: var(--z-menu);
   width: var(--float-w); height: var(--float-h);
   display: flex; flex-direction: column; overflow: hidden;
-  border: var(--hairline) solid var(--hairline-color); border-radius: var(--radius); background: var(--panel);
+  border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg);
 }
 .ms-float-head {
-  flex: 0 0 auto; display: flex; align-items: center; gap: var(--s-1);
-  height: var(--chip-h); padding: 0 var(--s-1) 0 var(--s-3);
-  border-bottom: var(--hairline) solid var(--hairline-color); cursor: move; user-select: none;
+  flex: 0 0 auto; display: flex; align-items: center; gap: var(--space-1);
+  height: var(--control-h); padding: 0 var(--space-1) 0 var(--space-3);
+  border-bottom: 1px solid var(--border); cursor: move; user-select: none;
 }
-.ms-float-title { flex: 1; min-width: 0; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ms-float-title { flex: 1; min-width: 0; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ms-float-body { flex: 1; min-height: 0; display: grid; place-items: center; overflow: hidden; }
 .ms-float-body img { max-width: 100%; max-height: 100%; display: block; }
 .ms-float-foot {
-  flex: 0 0 auto; display: flex; align-items: center; gap: var(--s-3);
-  padding: var(--s-2) var(--s-3); border-top: var(--hairline) solid var(--hairline-color);
-  color: var(--ink-3); font-size: var(--fs-small);
+  flex: 0 0 auto; display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-2) var(--space-3); border-top: 1px solid var(--border);
+  color: var(--text-3); font-size: var(--text-meta);
 }
 .ms-float-foot input[type="range"] { flex: 1; min-width: 0; accent-color: var(--accent); }
 .ms-float-dims, .ms-float-pct { font-variant-numeric: tabular-nums; flex: 0 0 auto; }
-.ms-float-grip { position: absolute; right: 0; bottom: 0; width: var(--s-4); height: var(--s-4); cursor: nwse-resize; }
+.ms-float-grip { position: absolute; right: 0; bottom: 0; width: var(--space-4); height: var(--space-4); cursor: nwse-resize; }
 
 /* ---- Child windows (pop-out, PiP, popup float) ---- */
-.ms-window { margin: 0; height: 100vh; display: flex; flex-direction: column; background: var(--panel); color: var(--ink); font-family: var(--font); font-size: var(--fs-ui); }
-.ms-window--strip { overflow-y: auto; padding: var(--s-4); display: block; }
+.ms-window { margin: 0; height: 100vh; display: flex; flex-direction: column; background: var(--bg); color: var(--text-1); font-family: var(--font); font-size: var(--text-body); }
+.ms-window--strip { overflow-y: auto; padding: var(--space-4); display: block; }
 .ms-window--pip { display: grid; place-items: center; }
 .ms-window--pip img { max-width: 100%; max-height: 100%; display: block; }
