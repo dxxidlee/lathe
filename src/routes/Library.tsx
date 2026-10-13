@@ -102,7 +102,7 @@ export function Library() {
   };
 
   async function handleCreate() {
-    const board = await createBoard('Untitled board');
+    await createBoard('Untitled board');
     setBoards(await loadBoards());
     shell.openTab('subject-audit');
     navigate('/t/subject-audit');
@@ -126,7 +126,7 @@ export function Library() {
     }
   }
 
-  function handleOpen(board: Board) {
+  function handleOpen() {
     shell.openTab('subject-audit');
     navigate('/t/subject-audit');
   }
@@ -177,7 +177,7 @@ export function Library() {
             <div className="lib__boards">
               {boards.map(b => (
                 <BoardCard key={b.id} board={b}
-                  onOpen={() => handleOpen(b)}
+                  onOpen={() => handleOpen()}
                   onShare={() => void handleShare(b)}
                   onDelete={() => void handleDelete(b.id)} />
               ))}
