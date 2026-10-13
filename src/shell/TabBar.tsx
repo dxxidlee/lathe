@@ -26,7 +26,7 @@ export function TabBar({ tabs, activeTabId, onActivate, onClose, onReorder }: Pr
     <div className="tab-bar" role="tablist">
       {tabs.map((tab, i) => {
         const tool = findTool(tab.id);
-        const label = tab.id === 'make' ? 'Make a tool' : tab.id === 'library' ? 'Library' : tool?.name ?? tab.id;
+        const label = tab.id === 'make' ? 'Make a tool' : tab.id === 'library' ? 'Library' : tab.id.startsWith('board-') ? 'Board' : tool?.name ?? tab.id;
         const active = tab.id === activeTabId;
         const Icon = toolIcon(tab.id);
         return (

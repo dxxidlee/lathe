@@ -16,6 +16,7 @@ import { Home } from './routes/Home';
 import { Make } from './routes/Make';
 import { Library } from './routes/Library';
 import { SharedBoard } from './routes/SharedBoard';
+import { BoardView } from './routes/BoardView';
 import { useEffect, useState } from 'react';
 
 function ToolView() {
@@ -31,17 +32,18 @@ function ToolView() {
 
   useEffect(() => {
     if (shell.activeTabId && shell.activeTabId !== toolId) {
-      const path = shell.activeTabId === 'make' ? '/t/make' : shell.activeTabId === 'library' ? '/t/library' : `/t/${shell.activeTabId}`;
+      const path = `/t/${shell.activeTabId}`;
       navigate(path, { replace: true });
     }
   }, [shell.activeTabId]);
 
-  const activeEntry = shell.activeTabId === 'make' || shell.activeTabId === 'library' ? undefined : findTool(shell.activeTabId);
+  const isBoard = shell.activeTabId.startsWith('board-');
+  const activeEntry = shell.activeTabId === 'make' || shell.activeTabId === 'library' || isBoard ? undefined : findTool(shell.activeTabId);
   const drop = useStageDrop(activeEntry);
   const mobileMode = shell.isMobile ? (activeEntry?.mobile ?? 'full') : null;
 
   useEffect(() => {
-    document.title = activeEntry ? `${activeEntry.name} \u00b7 Lathe` : shell.activeTabId === 'library' ? 'Library \u00b7 Lathe' : 'Make a tool \u00b7 Lathe';
+    document.title = activeEntry ? `${activeEntry.name} \u00b7 Lathe` : isBoard ? 'Board \u00b7 Lathe' : shell.activeTabId === 'library' ? 'Library \u00b7 Lathe' : 'Make a tool \u00b7 Lathe';
   }, [activeEntry, shell.activeTabId]);
 
   return (
@@ -53,13 +55,15 @@ function ToolView() {
       <div className="shell__panes">
         {shell.tabs.map(tab => {
           const isActive = tab.id === shell.activeTabId;
-          const entry = tab.id === 'make' || tab.id === 'library' ? undefined : findTool(tab.id);
+          const entry = tab.id === 'make' || tab.id === 'library' || tab.id.startsWith('board-') ? undefined : findTool(tab.id);
           const isDesktopOnly = shell.isMobile && entry && (entry.mobile === 'desktop');
           const Icon = entry ? toolIcon(entry.id) : null;
           return (
             <div key={tab.id} className="shell__pane" data-active-tab={isActive || undefined}
               style={{ display: isActive ? 'contents' : 'none' }}>
-              {tab.id === 'library' ? (
+              {tab.id.startsWith('board-') ? (
+                <BoardView boardId={tab.id.slice(6)} />
+              ) : tab.id === 'library' ? (
                 <Library />
               ) : tab.id === 'make' ? (
                 <Make />

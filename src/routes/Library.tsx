@@ -126,9 +126,9 @@ export function Library() {
     }
   }
 
-  function handleOpen() {
-    shell.openTab('subject-audit');
-    navigate('/t/subject-audit');
+  function handleOpen(boardId: string) {
+    shell.openTab(`board-${boardId}`);
+    navigate(`/t/board-${boardId}`);
   }
 
   // Profile info
@@ -175,7 +175,7 @@ export function Library() {
             <div className="lib__boards">
               {boards.map(b => (
                 <BoardCard key={b.id} board={b}
-                  onOpen={() => handleOpen()}
+                  onOpen={() => handleOpen(b.id)}
                   onShare={() => void handleShare(b)}
                   onDelete={() => void handleDelete(b.id)} />
               ))}
