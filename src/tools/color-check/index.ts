@@ -16,7 +16,7 @@ const FONT_FORMATS: Record<string, string> = { ttf: 'truetype', otf: 'opentype',
 
 export const tool: LatheTool = {
   id: 'contrast',
-  name: 'Color-check',
+  name: 'Contrast',
   group: 'Workbench',
   defaults,
   accepts: ['text/plain', 'font/*'],
@@ -208,7 +208,7 @@ export const tool: LatheTool = {
       if (a.type.startsWith('text/')) {
         state.input = await a.blob.text(); hex.input.value = state.input; settings.set('input', state.input); render(); return;
       }
-      emit('toast', `Color-check takes hex lists or fonts, not ${a.type || 'this file'}`);
+      emit('toast', `Contrast takes hex lists or fonts, not ${a.type || 'this file'}`);
     });
 
     const savedFont = assets.get(settings.get<string>('fontAsset', ''));

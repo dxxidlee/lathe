@@ -17,7 +17,7 @@ const FONT_EXT = /\.(ttf|otf|woff2?)$/i;
 
 export const tool: LatheTool = {
   id: 'kinetic-type',
-  name: 'Kinetic-type',
+  name: 'Kinetic Type',
   group: 'Offcuts',
   defaults,
   accepts: ['font/*', 'text/plain', 'application/font-woff', 'application/x-font-ttf', 'application/x-font-otf', 'application/vnd.ms-opentype'],
@@ -99,7 +99,7 @@ export const tool: LatheTool = {
       if (e.type !== 'load' || e.target !== 'kinetic-type') return;
       if (e.asset.type.startsWith('font/') || FONT_EXT.test(e.asset.name)) void useFont(e.asset);
       else if (e.asset.type.startsWith('text/')) void e.asset.blob.text().then(t => set('text', t.trim().slice(0, 200) || s.text, true));
-      else emit('toast', `Kinetic-type takes a font or text, not ${e.asset.type || e.asset.name}`);
+      else emit('toast', `Kinetic Type takes a font or text, not ${e.asset.type || e.asset.name}`);
     });
     async function useFont(a: Asset) {
       try {

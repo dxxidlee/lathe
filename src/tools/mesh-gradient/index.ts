@@ -18,7 +18,7 @@ const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCa
 
 export const tool: LatheTool = {
   id: 'gradient',
-  name: 'Mesh-gradient',
+  name: 'Gradient',
   group: 'Offcuts',
   defaults,
 

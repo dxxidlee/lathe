@@ -1,5 +1,5 @@
-/* Audit, subject mode: query open archives in parallel, stream results in, extract an OKLab palette
-   from every thumbnail, filter and sort by color, collect, and send a deck to Bento. */
+/* Subject Audit: query open archives in parallel, stream results in, extract an OKLab palette
+   from every thumbnail, filter and sort by color, collect, and build a deck. */
 import type { MountContext, MountResult } from '../types';
 import { PaletteQueue, listSources, proxied, searchSource, type AuditResult, type SourceInfo } from './api';
 import { buildDeck } from './deck';
@@ -116,7 +116,7 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
   const aggHost = document.createElement('div'); aggHost.className = 'au-agg';
   const collRow = document.createElement('div'); collRow.className = 'l-row';
   collRow.append(
-    button({ label: 'Build deck in Bento', primary: true, onClick: () => void buildDeckNow() }),
+    button({ label: 'Build deck', primary: true, onClick: () => void buildDeckNow() }),
     button({ label: 'Save to Library', onClick: async () => {
       const { supabase } = await import('../../lib/supabase');
       if (!supabase) { emit('toast', 'Sign in to save'); return; }
@@ -294,14 +294,14 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
     tResults.classList.toggle('is-active', tab === 'results'); tColl.classList.toggle('is-active', tab === 'collection');
     tResults.setAttribute('aria-selected', String(tab === 'results')); tColl.setAttribute('aria-selected', String(tab === 'collection'));
     const loading = [...state.values()].some(s => s.status === 'loading');
-    empty.textContent = list.length ? '' : tab === 'collection' ? 'Add results to this collection, then build a deck in Bento.'
+    empty.textContent = list.length ? '' : tab === 'collection' ? 'Add results to this collection, then build a deck.'
       : !query ? 'Search a subject across open archives, like “Swiss transit signage” or “Bauhaus posters”.'
         : loading ? 'Searching…' : items.length ? 'Nothing matches these filters.' : 'No results.';
     empty.hidden = !!list.length;
     more.hidden = tab !== 'results' || ![...state.values()].some(s => s.status === 'done' && s.count < s.total);
     renderTypes();
     sumStats.set([['Results', String(items.length)], ['Shown', String(list.length)], ['Sources', String([...state.values()].filter(s => s.status === 'done').length)]]);
-    statusbar.set({ name: query ? `“${query}”` : 'Audit', state: `${items.length} results · ${list.length} shown${loading ? ' · searching' : ''}` });
+    statusbar.set({ name: query ? `”${query}”` : 'Subject Audit', state: `${items.length} results · ${list.length} shown${loading ? ' · searching' : ''}` });
   }
   function renderTypes() {
     const counts = new Map<string, number>();

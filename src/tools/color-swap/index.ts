@@ -8,7 +8,7 @@ import './color-swap.css';
 
 export const tool: LatheTool = {
   id: 'recolor',
-  name: 'Color-swap',
+  name: 'Recolor',
   group: 'Offcuts',
   defaults,
   accepts: ['image/*', 'video/*'],

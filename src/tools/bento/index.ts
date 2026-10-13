@@ -18,7 +18,7 @@ const typing = (t: EventTarget | null) => { const el = t as HTMLElement | null; 
 
 export const tool: LatheTool = {
   id: 'deck',
-  name: 'Bento',
+  name: 'Deck',
   group: 'Workbench',
   defaults,
   accepts: ['image/*', DECK_MIME, 'application/json'],
@@ -351,11 +351,11 @@ export const tool: LatheTool = {
           titleField.input.value = deck.title; themeChips.set(deck.theme);
           commit();
           emit('toast', `Loaded “${deck.title}”: ${deck.slides.length} slides`);
-        } catch { emit('toast', 'That file is not a Bento deck'); }
+        } catch { emit('toast', 'That file is not a deck'); }
         return;
       }
       if (a.type.startsWith('image/')) { addImageAsset(a); return; }
-      emit('toast', `Bento takes images or decks, not ${a.type || 'this file'}`);
+      emit('toast', `Deck takes images or decks, not ${a.type || 'this file'}`);
     }
     const off = assets.onChange(e => {
       if (e.type === 'load' && e.target === 'deck') void load(e.asset);

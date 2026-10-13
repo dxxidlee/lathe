@@ -77,7 +77,7 @@ export async function deckToPdf(ds: SlideDrawing[], ctx: ExportCtx, title: strin
   const { jsPDF } = await import('jspdf');
   const { slideW: W, slideH: H } = ctx.cfg;
   const doc = new jsPDF({ orientation: 'landscape', unit: 'in', format: [W, H], compress: true });
-  doc.setProperties({ title, creator: 'Lathe Bento' });
+  doc.setProperties({ title, creator: 'Lathe Deck' });
   const imgs = await resolveAll(ds, ctx);
   for (let i = 0; i < ds.length; i++) {
     if (i) doc.addPage([W, H], 'landscape');

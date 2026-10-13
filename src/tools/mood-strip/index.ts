@@ -141,7 +141,7 @@ declare global { interface Window { documentPictureInPicture?: { requestWindow(o
 
 export const tool: LatheTool = {
   id: 'reference',
-  name: 'Mood-strip',
+  name: 'Reference',
   group: 'Drawer',
   defaults,
   accepts: ['image/*'],
@@ -188,7 +188,7 @@ export const tool: LatheTool = {
       addAsset(a);
     }
     function addAsset(a: Asset) {
-      if (!a.type.startsWith('image/')) { emit('toast', `Mood-strip takes images, not ${a.type || 'this file'}`); return; }
+      if (!a.type.startsWith('image/')) { emit('toast', `Reference takes images, not ${a.type || 'this file'}`); return; }
       addRef(a.name, assetUrl(a), { assetId: a.id });
     }
     function addUrl(url: string) {
@@ -369,7 +369,7 @@ export const tool: LatheTool = {
     }
     function buildPopout(w: Window, ref: Ref) {
       const doc = w.document;
-      doc.title = ref.name || 'Mood-strip';
+      doc.title = ref.name || 'Reference';
       copyStylesInto(doc);
       doc.body.className = 'ms-window';
       const body = doc.createElement('div'); body.className = 'ms-float-body';
@@ -398,7 +398,7 @@ export const tool: LatheTool = {
           try {
             const p = await pip.requestWindow({ width: 320, height: 400 });
             copyStylesInto(p.document, doc);
-            p.document.title = ref.name || 'Mood-strip';
+            p.document.title = ref.name || 'Reference';
             p.document.body.className = 'ms-window ms-window--pip';
             const pi = p.document.createElement('img'); pi.src = ref.src;
             p.document.body.appendChild(pi);
@@ -574,7 +574,7 @@ export const tool: LatheTool = {
       }
       floatWin = w;
       copyStylesInto(w.document);
-      w.document.title = 'Mood-strip';
+      w.document.title = 'Reference';
       w.document.body.className = 'ms-window ms-window--strip';
       stripHome = document.createElement('div'); stripHome.className = 'ms-home'; stripHome.textContent = 'Strip is floating.';
       strip.replaceWith(stripHome);

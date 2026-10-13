@@ -78,8 +78,7 @@ export function NavRail() {
             </div>
           )}
         </div>
-        <button type="button" className={`nav__item${shell.activeTabId === 'library' ? ' is-active' : ''}`}
-          style={{ margin: 'var(--s-2)', borderTop: 'var(--hairline) solid var(--hairline-color)' }}
+        <button type="button" className={`nav__item nav__item--lib${shell.activeTabId === 'library' ? ' is-active' : ''}`}
           onClick={() => openTool('library')}>
           <span className="nav__name">Library</span>
         </button>

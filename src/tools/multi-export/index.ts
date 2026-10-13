@@ -12,7 +12,7 @@ const ACCEPT = ['image/png', 'image/jpeg', 'image/svg+xml'];
 
 export const tool: LatheTool = {
   id: 'logo-export',
-  name: 'Multi-export',
+  name: 'Logo Export',
   group: 'Workbench',
   defaults,
   accepts: ACCEPT,
@@ -101,7 +101,7 @@ export const tool: LatheTool = {
 
     /* ---- load ---- */
     async function load(a: Asset) {
-      if (!ACCEPT.includes(a.type) && !/\.(png|jpe?g|svg)$/i.test(a.name)) { emit('toast', `Multi-export takes PNG, JPG or SVG, not ${a.type || 'this file'}`); return; }
+      if (!ACCEPT.includes(a.type) && !/\.(png|jpe?g|svg)$/i.test(a.name)) { emit('toast', `Logo Export takes PNG, JPG or SVG, not ${a.type || 'this file'}`); return; }
       try {
         src = await loadSource(a.blob, a.name);
       } catch (e) {

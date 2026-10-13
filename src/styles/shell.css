@@ -96,6 +96,7 @@
 }
 .nav__make-mark { width: var(--icon); height: var(--icon); color: var(--accent); }
 .nav__make.is-active .nav__make-mark { color: var(--on-accent); }
+.nav__item--lib { margin: var(--s-2); border-top: var(--hairline) solid var(--hairline-color); }
 
 .nav.is-collapsed .nav__toggle { align-self: center; margin: var(--s-2) 0 0; }
 .nav.is-collapsed .nav__scroll { padding: 0 var(--s-1) var(--s-4); }
@@ -304,7 +305,7 @@
 .auth-menu__divider { text-align: center; color: var(--ink-3); font-size: var(--fs-small); }
 .auth-menu__email { width: 100%; }
 .auth-menu__email-display { color: var(--ink-2); font-size: var(--fs-small); }
-.auth-menu__error { color: #ff6b6b; font-size: var(--fs-small); margin: 0; }
+.auth-menu__error { color: var(--danger); font-size: var(--fs-small); margin: 0; }
 
 /* ---- Library ---- */
 .lib { position: absolute; inset: 0; overflow-y: auto; padding: var(--s-7) var(--s-6); }
@@ -316,4 +317,4 @@
 .lib__item-name { flex: 1; color: var(--ink); }
 .lib__item-date { font-size: var(--fs-small); color: var(--ink-3); }
 .lib__item-del { background: none; border: none; color: var(--ink-3); cursor: pointer; font-size: var(--fs-body); padding: var(--s-1); }
-.lib__item-del:hover { color: #ff6b6b; }
+.lib__item-del:hover { color: var(--danger); }

@@ -30,7 +30,7 @@ export async function icoFrom(pngs: { size: number; blob: Blob }[]): Promise<Blo
 
 export const tool: LatheTool = {
   id: 'icons',
-  name: 'Icon-set',
+  name: 'Icons',
   group: 'Drawer',
   defaults,
   accepts: ['image/svg+xml', 'image/png', 'image/jpeg', 'image/webp'],

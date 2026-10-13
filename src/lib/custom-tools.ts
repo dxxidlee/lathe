@@ -158,7 +158,7 @@ export function mountCustomTool(tool: CustomTool, ctx: MountContext): () => void
     console.error(`[lathe] custom tool "${tool.id}" crashed on mount`, e);
     ctx.stage.textContent = '';
     const pre = document.createElement('pre');
-    pre.style.cssText = 'color:#ff6b6b;padding:1rem;white-space:pre-wrap;font-size:13px';
+    pre.style.cssText = 'color:var(--danger);padding:1rem;white-space:pre-wrap;font-size:13px';
     pre.textContent = `Custom tool error:\n${e instanceof Error ? e.message : String(e)}`;
     ctx.stage.appendChild(pre);
   }
