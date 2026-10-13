@@ -48,6 +48,38 @@ export async function searchSource(id: string, q: string, page: number, cacheHou
   return body as SourcePage;
 }
 
+/** Score a result's relevance to the query. Higher is better. 0 = irrelevant. */
+export function scoreRelevance(result: AuditResult, query: string, exclude: string[] = []): number {
+  const q = query.toLowerCase();
+  const terms = q.split(/\s+/).filter(t => t.length > 2);
+  if (!terms.length) return 1;
+
+  const title = (result.title || '').toLowerCase();
+  const desc = (result.creator || '').toLowerCase() + ' ' + (result.date || '').toLowerCase();
+
+  // Excluded-only matches score zero
+  for (const ex of exclude) {
+    if (title.includes(ex.toLowerCase()) && !terms.some(t => t !== ex.toLowerCase() && title.includes(t))) return 0;
+  }
+
+  let score = 0;
+  const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+  // Full phrase match in title (highest)
+  if (title.includes(q)) score += 100;
+
+  // Whole-word term matches in title
+  const titleTerms = terms.filter(t => new RegExp(`\\b${esc(t)}\\b`, 'i').test(title));
+  if (titleTerms.length === terms.length) score += 50;
+  else score += titleTerms.length * 15;
+
+  // Whole-word term matches in description/creator
+  const descTerms = terms.filter(t => new RegExp(`\\b${esc(t)}\\b`, 'i').test(desc));
+  score += descTerms.length * 5;
+
+  return score;
+}
+
 /* ---- palettes: a worker pool, cached per thumbnail ---- */
 export interface PaletteOpts { k: number; sample: number; iterations: number; minShare: number; minSwatches: number; cacheHours: number }
 interface PaletteResult { swatches: Swatch[]; width?: number; height?: number }

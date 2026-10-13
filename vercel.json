@@ -30,6 +30,9 @@
     },
     "api/make.js": {
       "maxDuration": 60
+    },
+    "api/expand.js": {
+      "maxDuration": 15
     }
   }
 }

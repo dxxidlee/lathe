@@ -1,7 +1,7 @@
 /* Subject Audit: query open archives in parallel, stream results in, extract an OKLab palette
    from every thumbnail, filter and sort by color, collect, and build a deck. */
 import type { MountContext, MountResult } from '../types';
-import { PaletteQueue, listSources, proxied, searchSource, type AuditResult, type SourceInfo } from './api';
+import { PaletteQueue, listSources, proxied, scoreRelevance, searchSource, type AuditResult, type SourceInfo } from './api';
 import { buildDeck } from './deck';
 import { DECK_MIME } from '../bento/model';
 import { aggregatePalette, hexToOklab, paletteDistance, type Swatch } from '../../lib/color';
@@ -48,6 +48,16 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
   const coll = () => collections.find(c => c.id === active)!;
   const saveColl = () => { settings.set('collections', collections); settings.set('activeCollection', active); };
 
+  let expanded: { main: string; alternates: string[]; exclude: string[]; interpreted: string } | null = null;
+  let useExact = false;
+  async function expandQuery(text: string): Promise<typeof expanded> {
+    try {
+      const r = await fetch('/api/expand', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ query: text }) });
+      if (!r.ok) return null;
+      return await r.json();
+    } catch { return null; }
+  }
+
   /* ---------------- stage ---------------- */
   const root = document.createElement('div'); root.className = 'au';
   const bar = document.createElement('form'); bar.className = 'au__bar'; bar.setAttribute('role', 'search');
@@ -60,13 +70,14 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
   const tabBtn = (id: typeof tab) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'au__tab'; b.setAttribute('role', 'tab'); b.dataset.tab = id; b.addEventListener('click', () => { tab = id; renderGrid(); }); return b; };
   const tResults = tabBtn('results'), tColl = tabBtn('collection');
   tabs.append(tResults, tColl);
+  const expandNote = document.createElement('div'); expandNote.className = 'au__expand';
   const grid = document.createElement('div'); grid.className = 'au__grid';
   const empty = document.createElement('div'); empty.className = 'au__empty';
   const more = document.createElement('button'); more.type = 'button'; more.className = 'l-btn au__more'; more.textContent = 'Load more';
   more.addEventListener('click', () => void loadMore());
   const scroller = document.createElement('div'); scroller.className = 'au__scroll';
   scroller.append(grid, empty, more);
-  root.append(bar, tabs, scroller);
+  root.append(bar, expandNote, tabs, scroller);
   stage.appendChild(root);
   bar.addEventListener('submit', e => { e.preventDefault(); void search(q.value); });
 
@@ -180,16 +191,37 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
     controller?.abort(); controller = new AbortController();
     palettes.cancelPending();
     items = []; state.clear(); tab = 'results';
+
+    // Query expansion
+    if (!useExact) {
+      expanded = await expandQuery(query);
+      if (expanded) {
+        expandNote.innerHTML = '';
+        const span = document.createElement('span');
+        span.style.color = 'var(--text-2)';
+        span.textContent = `Searching: ${expanded.interpreted}`;
+        const exact = document.createElement('button');
+        exact.type = 'button'; exact.className = 'l-btn'; exact.style.marginLeft = 'var(--space-3)';
+        exact.textContent = `Search exactly "${query}"`;
+        exact.addEventListener('click', () => { useExact = true; void search(query); });
+        expandNote.append(span, exact);
+      }
+    } else {
+      expandNote.innerHTML = '';
+    }
+
+    const searchQuery = (expanded && !useExact) ? expanded.main : query;
     const live = sources.filter(s => s.available && !disabled.has(s.id));
     for (const s of live) state.set(s.id, { status: 'loading', count: 0, total: 0, ms: 0, page: 1 });
     renderSources(); renderGrid();
-    await Promise.all(live.map(s => fetchPage(s.id, 1, controller!.signal)));
+    await Promise.all(live.map(s => fetchPage(s.id, 1, controller!.signal, searchQuery)));
   }
-  async function fetchPage(id: string, page: number, signal: AbortSignal) {
+  async function fetchPage(id: string, page: number, signal: AbortSignal, overrideQuery?: string) {
     const st = state.get(id)!;
     st.status = 'loading'; renderSources();
     try {
-      const r = await searchSource(id, query, page, d.cacheHours as number, signal);
+      const q = overrideQuery ?? ((expanded && !useExact) ? expanded.main : query);
+      const r = await searchSource(id, q, page, d.cacheHours as number, signal);
       if (signal.aborted) return;
       if (r.error) { st.status = 'error'; st.error = r.error; }
       else {
@@ -229,6 +261,7 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
   function visible(): Item[] {
     const target = filters.hex ? hexToOklab(filters.hex) : null;
     let list = (tab === 'collection' ? coll().items : items).filter(it => {
+      if (!it.thumbUrl) return false;
       if (tab === 'results' && disabled.has(it.source)) return false;
       if (filters.types.size && !filters.types.has(shortType(it.type) ?? '')) return false;
       if (filters.yearFrom != null && (it.year == null || it.year < filters.yearFrom)) return false;
@@ -240,7 +273,15 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
     });
     if (target && filters.mode === 'sort') {
       list = [...list].sort((a, b) => (a.swatches ? paletteDistance(target, a.swatches) : 9) - (b.swatches ? paletteDistance(target, b.swatches) : 9));
-    } else if (tab === 'results') list = [...list].sort((a, b) => a.order - b.order);
+    } else if (tab === 'results') {
+      // Global relevance sort
+      const searchQ = (expanded && !useExact) ? expanded.main : query;
+      const excludeTerms = expanded?.exclude ?? [];
+      list = list
+        .map(it => ({ ...it, _rel: scoreRelevance(it, searchQ, excludeTerms) }))
+        .filter(it => it._rel > 0)
+        .sort((a, b) => b._rel - a._rel);
+    }
     return list;
   }
 
@@ -251,7 +292,18 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
       const pick = document.createElement('button'); pick.type = 'button'; pick.className = 'au-card__pick';
       pick.addEventListener('click', () => toggle(it.id));
       const img = document.createElement('img'); img.className = 'au-card__img'; img.loading = 'lazy'; img.alt = it.title; img.src = it.thumbUrl;
-      img.addEventListener('error', () => { if (!img.src.includes('/api/img')) img.src = proxied(it.thumbUrl); }, { once: true });
+      let retried = false;
+      img.addEventListener('error', () => {
+        if (!retried) { retried = true; img.src = proxied(it.thumbUrl); }
+        else { cards.delete(it.id); el?.remove(); }
+      });
+      const imgTimeout = setTimeout(() => {
+        if (!img.complete || !img.naturalWidth) {
+          if (!retried) { retried = true; img.src = proxied(it.thumbUrl); }
+          else { cards.delete(it.id); el?.remove(); }
+        }
+      }, 8000);
+      img.addEventListener('load', () => clearTimeout(imgTimeout), { once: true });
       img.addEventListener('click', () => toggle(it.id));
       const meta = document.createElement('div'); meta.className = 'au-card__meta';
       const t = document.createElement('div'); t.className = 'au-card__title'; t.textContent = it.title;
@@ -303,7 +355,7 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
   function renderGrid() {
     const list = visible();
     grid.replaceChildren(...list.map(card));
-    tResults.textContent = `Results ${items.length ? items.length : ''}`.trim();
+    tResults.textContent = `Results ${list.length || ''}`.trim();
     tColl.textContent = `Collection ${coll().items.length || ''}`.trim();
     tResults.classList.toggle('is-active', tab === 'results'); tColl.classList.toggle('is-active', tab === 'collection');
     tResults.setAttribute('aria-selected', String(tab === 'results')); tColl.setAttribute('aria-selected', String(tab === 'collection'));
