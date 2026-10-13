@@ -577,23 +577,30 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, setting
     if (it.width && it.height) pair('Dimensions', `${it.width} \u00d7 ${it.height}`);
     pair('Origin', it.sourceUrl, true);
 
-    if (it.swatches?.length) {
+    {
       const palRow = document.createElement('div');
       palRow.className = 'au-detail__palette';
-      for (const s of it.swatches) {
-        const item = document.createElement('button');
-        item.type = 'button';
-        item.className = 'au-detail__swatch-item';
-        item.title = `Click to copy ${s.hex}`;
-        item.addEventListener('click', () => { void navigator.clipboard.writeText(s.hex); emit('toast', `Copied ${s.hex}`); });
-        const sw = document.createElement('span');
-        sw.className = 'au-detail__swatch';
-        sw.style.background = s.hex;
-        const hexLabel = document.createElement('span');
-        hexLabel.className = 'au-detail__hex';
-        hexLabel.textContent = s.hex;
-        item.append(sw, hexLabel);
-        palRow.appendChild(item);
+      if (it.swatches?.length) {
+        for (const s of it.swatches) {
+          const item = document.createElement('button');
+          item.type = 'button';
+          item.className = 'au-detail__swatch-item';
+          item.title = `Click to copy ${s.hex}`;
+          item.addEventListener('click', () => { void navigator.clipboard.writeText(s.hex); emit('toast', `Copied ${s.hex}`); });
+          const sw = document.createElement('span');
+          sw.className = 'au-detail__swatch';
+          sw.style.background = s.hex;
+          const hexLabel = document.createElement('span');
+          hexLabel.className = 'au-detail__hex';
+          hexLabel.textContent = s.hex;
+          item.append(sw, hexLabel);
+          palRow.appendChild(item);
+        }
+      } else {
+        const loading = document.createElement('span');
+        loading.className = 'au-detail__hex';
+        loading.textContent = 'Extracting\u2026';
+        palRow.appendChild(loading);
       }
       const palLabel = document.createElement('div');
       palLabel.className = 'l-stat';

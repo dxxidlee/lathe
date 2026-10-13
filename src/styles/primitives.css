@@ -160,7 +160,7 @@ input[type="number"] { -moz-appearance: textfield; }
   padding: var(--space-2) var(--space-4);
   background: var(--accent); color: var(--accent-text);
   border-radius: var(--radius-control);
-  font-weight: var(--weight-medium);
+  font-size: 12px; font-weight: var(--weight-medium);
 }
 
 .l-textarea {
