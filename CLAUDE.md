@@ -85,7 +85,7 @@ Write `VERIFY.md` (tool, flow, pass/fail, bug, fix). Fix bugs in the port, not i
 
 ```ts
 export const tool: LatheTool = {
-  id, name, group,   // Research | Color | Image | Type | Layout | Motion | Export | Reference
+  id, name, group,   // Workbench | Drawer | Offcuts
   defaults,          // DefaultsManifest
   mount({ stage, inspector, statusbar, assets, settings, emit }) { return unmount },
 }
@@ -96,118 +96,82 @@ export const tool: LatheTool = {
 
 ## Shell (Figma-like)
 
-- Top bar: wordmark, current tool, command palette (Cmd+K), Export, Fork.
-- Left rail: tools grouped by `group`, "Make a tool" pinned at bottom. Collapsible.
+- Top bar: wordmark, current tool, command palette (Cmd+K), Export.
+- Left rail: tools grouped by `group` (Workbench, Drawer, Offcuts collapsed). "Your Tools" section for custom tools, "Make a tool" pinned at bottom. Collapsible.
 - Center stage: drop a file anywhere to load it into the active tool. Pan/zoom where supported.
 - Right inspector: tool controls, Defaults panel below.
 - Bottom status bar, e.g. `hardaun-logo.png  3750×450  31 KB`.
 - Asset tray: every dropped, fetched, or exported file lands here and is usable by every tool. "Send to" on any output.
-- Keyboard: 1–9 switch tools, Cmd+K palette, Cmd+E export, Cmd+Shift+F fork, ? shortcut sheet.
-- Routes: `/` home (campaign hero + tool index), `/t/:toolId`, `/make`.
+- Keyboard: 1–9 switch tools (Workbench 6 + Drawer 3), Cmd+K palette, Cmd+E export, ? shortcut sheet.
+- Routes: `/` home, `/t/:toolId`, `/make`. Old routes redirect (e.g. `/t/bento` → `/t/deck`).
 
 ## Defaults panel
 
 Each tool ships `defaults.ts`:
 
 ```ts
-{ key: 'rasterSize', label: 'Raster size', value: 2000, unit: 'px longest edge',
-  chosenBy: 'David Lee', reason: 'TODO(David)', inheritedFrom: null }
+{ key: 'rasterSize', label: 'Raster size', value: 2000, unit: 'px longest edge' }
 ```
 
 - Lists every starting default. Rows are editable; edited rows show the original struck through.
-- `inheritedFrom` only for verifiable industry conventions (sRGB, 72 dpi, WCAG thresholds, 8pt grid). Otherwise `TODO(David)`.
-- Never invent David's reasons. `reason: 'TODO(David)'` everywhere.
-- "Reset to maker's defaults".
-
-## Fork
-
-Downloads a zip: the tool's source (Vite `?raw` imports), `defaults.json` with current edits, and `FORK.md` listing changes from the maker's defaults.
+- "Reset to defaults".
 
 ---
 
-## Flagship: Audit (group: Research)
+## Tool IDs, names, and groups
 
-A professional research tool. Two modes, one output: a bento deck you can take into Slides, Keynote, PowerPoint, or Figma.
+### Workbench (keys 1–6)
+| ID | Name | Source folder |
+|---|---|---|
+| `subject-audit` | Subject Audit | `src/tools/subject-audit/` (shared code in `src/tools/audit/`) |
+| `brand-audit` | Brand Audit | `src/tools/brand-audit/` (shared code in `src/tools/audit/`) |
+| `deck` | Deck | `src/tools/bento/` |
+| `palette` | Palette | `src/tools/palette/` |
+| `contrast` | Contrast | `src/tools/color-check/` |
+| `logo-export` | Logo Export | `src/tools/multi-export/` |
 
-### Mode A: Subject audit
-Query a subject ("1970s Japanese product photography", "Swiss transit signage", "Bauhaus posters") across many open archives at once.
+### Drawer (keys 7–9)
+| ID | Name | Source folder |
+|---|---|---|
+| `icons` | Icons | `src/tools/icon-set/` |
+| `specimen` | Specimen | `src/tools/specimen/` |
+| `reference` | Reference | `src/tools/mood-strip/` |
 
-Sources. Each is a server adapter in `/api/sources/*` returning one normalized schema. Sources whose key is missing are hidden in the UI, never broken.
+### Offcuts (collapsed in rail)
+| ID | Name | Source folder |
+|---|---|---|
+| `dither` | Dither | `src/tools/dither/` |
+| `gradient` | Gradient | `src/tools/mesh-gradient/` |
+| `kinetic-type` | Kinetic Type | `src/tools/kinetic-type/` |
+| `recolor` | Recolor | `src/tools/color-swap/` |
 
-| Source | Key |
-|---|---|
-| The Met Collection | none |
-| Art Institute of Chicago | none |
-| Internet Archive | none |
-| Wikimedia Commons | none |
-| Library of Congress | none |
-| Openverse | none |
-| Are.na | none for public search (optional token) |
-| Cooper Hewitt | `COOPER_HEWITT_KEY` |
-| Smithsonian Open Access | `SMITHSONIAN_KEY` (api.data.gov) |
-| Harvard Art Museums | `HARVARD_KEY` |
-| Europeana | `EUROPEANA_KEY` |
-| Rijksmuseum | `RIJKS_KEY` |
-| Unsplash | `UNSPLASH_KEY` |
+### Hidden (reachable via Cmd+K, not in rail)
+| ID | Name | Notes |
+|---|---|---|
+| `cutout` | Cutout | Will become an action inside other tools |
+| `vectorize` | Vectorize | Will become an action inside other tools |
+| `grid` | Grid | Will become a setting inside Deck |
+| `resize` | Resize | Phase 1 only |
+| `sandbox` | Sandbox | Dev tool |
 
-Normalized result: `{ id, source, title, creator, date, year, imageUrl, thumbUrl, width, height, license, isPublicDomain, sourceUrl, palette? }`
+### Alias map (old ID → current ID)
+`audit` → `subject-audit`, `bento` → `deck`, `color-check` → `contrast`, `multi-export` → `logo-export`, `icon-set` → `icons`, `mood-strip` → `reference`, `mesh-gradient` → `gradient`, `color-swap` → `recolor`. Old routes redirect. Settings migrate on first load.
 
-Features:
-- Parallel fan-out, results stream in as each source returns. Per-source counts and errors in the inspector.
-- Filters: source, type, year range, public domain only, orientation.
-- **Color:** extract a 5–8 swatch palette from every thumbnail (client-side, k-means in OKLab, in a worker). Show hex codes under each result. Filter or sort results by distance to any hex you type. Aggregate palette for the whole selection.
-- Select results into a collection. Collections persist in IndexedDB.
-- Every image carries license and credit through to export. Auto-generated credits slide.
-- Cache responses (IndexedDB, 24h) and respect each API's rate limits.
+### Send-to flows
+- Subject Audit → Deck (deck JSON)
+- Brand Audit → Deck (deck JSON)
+- Palette → Contrast (hex list)
 
-### Mode B: Brand audit
-Input a domain or company name. Produces a visual audit of that company.
-- **Site capture:** server fetches the homepage and extracts title, meta, OG images, favicon/logo candidates (link icons, header SVGs), declared typefaces (@font-face, Google Fonts, Adobe Fonts kit links), and CSS color frequency (parse linked stylesheets, cluster, rank).
-- **Screenshots:** desktop and mobile via Microlink (`MICROLINK_KEY` optional, free tier works without). Palette from pixels compared against the declared CSS palette.
-- **Brand evolution:** Wayback Machine CDX API, one snapshot per year. Screenshot each to build a timeline of logo, color, and layout change.
-- **Official assets:** Brandfetch (`BRANDFETCH_KEY`) for logos, colors, fonts when the key is present.
-- **Observations (optional):** with `ANTHROPIC_API_KEY`, send captured screenshots plus extracted data to Claude (vision) for a short audit: consistency, hierarchy, type, color, tone. Every observation must reference something visible in the captures. Label as generated.
+## Make a tool
 
-### Audit output: Bento
-Audit results flow into Bento (below) as a prebuilt deck: cover, palette, typography, imagery, timeline (brand mode), observations, credits.
-
----
-
-## Bento (group: Layout)
-
-Compose assets into bento-box slides. Standalone tool, and the output stage for Audit.
-- Tiles: image, palette swatches with hex, hex list, type specimen, logo, caption/text, stat.
-- Layout engine: 16:9 slides on a 12×8 grid. Auto-layout picks a template by tile count and image aspect ratios. "Reshuffle" for alternates. Drag to swap, resize spans, lock tiles.
-- Multi-slide decks.
-- **Export:**
-  - `.pptx` via pptxgenjs, with native editable text, shapes, and images. Opens in PowerPoint, Keynote, and Google Slides (import).
-  - `.pdf` and `.png` per slide.
-  - `.svg` per slide with embedded images, plus "Copy for Figma" (SVG to clipboard, pastes as editable layers).
-- Fonts in exports: Helvetica Neue with Arial fallback declared in the pptx.
-
----
-
-## New tools
-
-Same contract, same defaults panel, same asset tray.
-
-1. **Palette** (Color): image or URL in, palette out. OKLCH tint/shade scales per swatch, contrast pairs (hand off to Color-check), export CSS vars, JSON tokens, Figma variables JSON, Tailwind config, `.ase`.
-2. **Dither** (Image): Bayer 2/4/8, Floyd-Steinberg, Atkinson, halftone dots/lines. Threshold, scale, two-color or palette. Export PNG, SVG for halftone.
-3. **Vectorize** (Image): raster to SVG (potrace WASM for one-color, imagetracerjs for multi-color). Color count, smoothing, corner threshold, live overlay comparison. Export SVG.
-4. **Cutout** (Image): in-browser background removal (`@imgly/background-removal`, AGPL: note it in `LICENSES.md`, and keep the repo open source). Edge refine, export transparent PNG/WebP, send to any tool.
-5. **Grid** (Layout): columns, gutters, margins, baseline, rows. Presets for common formats. Export SVG overlay, PNG, CSS grid snippet.
-6. **Specimen** (Type): drop any font file. Glyph grid, metrics, OpenType features toggle, waterfall, modular type-scale tab. Export specimen PDF, CSS scale tokens.
-7. **Kinetic-type** (Motion): text + font in, presets (stagger, fall, drift, scramble, dissolve). Duration, easing, loop. Export GIF and WebM (MediaRecorder).
-8. **Icon-set** (Export): one SVG/PNG in, full favicon + app icon set out (16 to 1024, apple-touch, maskable, `.ico`, `manifest.webmanifest`, HTML snippet). Zip.
-
-Backlog (do not build): Line-work, Glyph-render, Batch resize, QR.
-
-## Make a tool (dummy for v1)
-
-Visual prototype only, no API calls.
-- `/make`: one prompt field, "Describe a tool you wish existed".
-- Scripted generation: parsing intent → inputs → outputs → defaults (chosenBy: "You") → inspector assembling control by control → stage preview.
-- Three scripted examples with convincing results: "turn my photo into a halftone poster", "make a grid for a 12-column editorial spread", "animate my logo letters falling into place". Any other prompt plays a generic sequence ending on "Tool generation arrives in v2."
+`/make`: describe a tool, Lathe generates it via the Claude API and runs it in a sandboxed iframe.
+- Split view: chat thread (left), live sandbox preview (right).
+- Iterative: each chat message refines the current version. Version history with restore.
+- "Start from an existing tool" sends built-in source as context.
+- "Test with a file" sends tray assets into the sandbox.
+- Error catch + "Fix it" sends errors back for correction.
+- Custom tools persist in IndexedDB, appear in "Your Tools" in the rail and Cmd+K.
+- Export/Import library as JSON.
 
 ## Env
 

@@ -63,6 +63,8 @@ const route = (r: { line: string; end: P; from: P }, label: P, anchor: Route['an
 const PLACED: Record<string, Route> = {
   // along the NW diagonal, out of the square's corner
   'subject-audit': route(ray(pol(-135, 150), pol(-135, 330)), { x: 352, y: 196 }, 'end'),
+  // along the NE diagonal
+  'brand-audit': route(ray(pol(-45, 150), pol(-45, 310)), { x: 828, y: 216 }, 'start'),
   // out of the mark's top lobe, bending right
   'reference': route(cubic({ x: 600, y: 266 }, { x: 612, y: 190 }, { x: 650, y: 150 }, { x: 702, y: 140 }), { x: 714, y: 140 }, 'start'),
   // a long arc over the top of the outer circle
