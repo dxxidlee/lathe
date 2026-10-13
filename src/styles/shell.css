@@ -113,6 +113,7 @@
 
 /* ---- Stage ---- */
 .stage { grid-area: stage; position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--bg); }
+.stage--full { grid-column: 1 / -1; overflow-y: auto; }
 .stage__tool { position: absolute; inset: 0; }
 .stage__note { position: absolute; inset: 0; display: grid; place-items: center; color: var(--text-3); pointer-events: none; }
 

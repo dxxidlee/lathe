@@ -46,6 +46,13 @@ export function Home() {
           <button type="button" className="home__search" onClick={() => shell.setPaletteOpen(true)}>
             Search <span className="l-kbd">{modKey()}K</span>
           </button>
+          {shell.user ? (
+            <Link to="/t/library" onClick={() => shell.openTab('library')} className="home__link">
+              {shell.user.email?.split('@')[0] || 'Profile'}
+            </Link>
+          ) : (
+            <Link to="/t/library" onClick={() => shell.openTab('library')} className="home__link">Sign in</Link>
+          )}
         </nav>
       </header>
       <h1 className="sr-only">Lathe. Never a beginner again.</h1>

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useShell } from '../shell/state';
-import { BottomSheet } from '../shell/BottomSheet';
+
 import { cloudLoadLibrary, cloudDeleteItem, type LibraryItem } from '../lib/cloud-library';
 import { loadCustomTools, type CustomTool } from '../lib/custom-tools';
 import { loadBoards, createBoard, deleteBoard, toggleSharing, type Board } from '../lib/boards';
@@ -153,11 +153,9 @@ export function Library() {
     </div>
   );
 
-  const inspector = <aside className="inspector" aria-label="Inspector" />;
-
   return (
     <>
-      <section className="stage" aria-label="Library">
+      <section className="stage stage--full" aria-label="Library">
         <div className="lib">
           {profileHeader}
           <div className="lib__create">
@@ -202,7 +200,6 @@ export function Library() {
           )}
         </div>
       </section>
-      {shell.isMobile ? <BottomSheet>{inspector}</BottomSheet> : inspector}
     </>
   );
 }
