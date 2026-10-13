@@ -48,6 +48,17 @@ export async function searchSource(id: string, q: string, page: number, cacheHou
   return body as SourcePage;
 }
 
+// Source priority: higher = shown first when relevance scores are equal
+const SOURCE_BOOST: Record<string, number> = {
+  arena: 12,        // curated, visually strong
+  unsplash: 8,      // photography, high quality
+  openverse: 5,     // mixed, often good
+  wikimedia: 3,     // variable quality
+  aic: 2,           // Art Institute of Chicago
+  met: 1,           // Met — great collection but heavy on historical
+  // everything else: 0
+};
+
 const STOPWORDS = new Set([
   'a','an','the','and','or','of','in','on','at','to','for','is','it','by','as','be','no','not','with','from','this','that','which',
   'la','le','les','de','des','du','un','une','et','en','au','aux','ce','se','ne','pas','sur','par','pour','dans','est','son','sa',
@@ -97,6 +108,9 @@ export function scoreRelevance(result: AuditResult, query: string, exclude: stri
 
   // At least one query term must appear somewhere in the result's text
   if (score === 0) return 0;
+
+  // Source priority boost
+  score += SOURCE_BOOST[result.source] ?? 0;
 
   return score;
 }
