@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { NavLink } from 'react-router-dom';
 import { TOOLS, isReady, toolsByGroup, allTools } from '../tools/registry';
 import { Mark } from '../brand/Wordmark';
 import { useShell } from './state';

@@ -24,10 +24,11 @@ export const tool: LatheTool = {
       settings.set('state', snap);
     }
     const ui = new UIController({
-      stage, inspector, defaults: d, settings, statusbar, assets, emit, onActivate,
+      stage, inspector, defaults: d, settings, statusbar, assets, emit,
+      onActivate,
       palette: d.palette as unknown[],
       presets: d.presets as Record<string, Record<string, number>>,
-    });
+    } as any);
     // Export dialog starts from the manifest's choices.
     const set = (id: string, v: unknown) => { const el = (stage.querySelector('#' + id) ?? inspector.querySelector('#' + id)) as HTMLInputElement | HTMLSelectElement | null; if (!el) return; if (el instanceof HTMLInputElement && el.type === 'checkbox') el.checked = !!v; else el.value = String(v); };
     set('expRes', d.exportResolution); set('expFps', d.exportFps); set('expQual', d.exportQuality); set('expAudio', d.exportAudio);

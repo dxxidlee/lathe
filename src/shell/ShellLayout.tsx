@@ -7,13 +7,13 @@ import { Tray } from './Tray';
 import { useShell } from './state';
 import { useStageDrop } from './ToolHost';
 
-/** Figma-like frame: top bar, tool rail, stage + inspector (children), tray, status bar. */
+/** Standalone shell frame for pages outside the tab system (e.g. Home). */
 export function ShellLayout({ tool, title, children }: { tool?: ToolEntry; title?: string; children: ReactNode }) {
   const shell = useShell();
   const drop = useStageDrop(tool);
   return (
-    <div className={`shell${shell.navCollapsed ? ' nav-collapsed' : ''}${shell.trayOpen ? ' tray-open' : ''}`} {...drop.handlers}>
-      <TopBar tool={tool} title={title} />
+    <div className={`shell${shell.trayOpen ? ' tray-open' : ''}`} {...drop.handlers}>
+      <TopBar />
       <NavRail />
       {children}
       <Tray />

@@ -262,7 +262,7 @@ export function Make() {
   }
 
   return (
-    <ShellLayout title="Make a tool">
+    <>
       <section className="stage" aria-label="Make a tool">
         <div className="mk mk--split">
           <div className="mk__chat">
@@ -325,7 +325,7 @@ export function Make() {
         )}
         <LibraryPanel library={library} onOpen={t => navigate(`/t/${t.id}`)} onEdit={editTool} onRemove={removeTool} onExport={doExport} onImport={doImport} fileRef={fileRef} />
       </aside>
-    </ShellLayout>
+    </>
   );
 }
 
