@@ -75,7 +75,7 @@ export function scoreRelevance(result: AuditResult, query: string, exclude: stri
     if (title.includes(exl) && !terms.some(t => t !== exl && all.includes(t))) return 0;
   }
 
-  let score = 1; // baseline: the source returned it, so it has some relevance
+  let score = 0;
   const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   const wordMatch = (text: string, term: string) => new RegExp(`(?:^|[\\s,;:.!?"\\'\\-])${esc(term)}(?:[\\s,;:.!?"\\'\\-]|$)`, 'i').test(text);
 
@@ -87,13 +87,16 @@ export function scoreRelevance(result: AuditResult, query: string, exclude: stri
   if (titleWordHits.length === terms.length) score += 50;
   else score += titleWordHits.length * 15;
 
-  // Substring matches in title (lower weight, catches partial/compound words)
+  // Substring matches in title (catches partial/compound words)
   const titleSubHits = terms.filter(t => title.includes(t) && !titleWordHits.includes(t));
   score += titleSubHits.length * 5;
 
   // Matches in description/creator
   const descHits = terms.filter(t => all.includes(t));
   score += descHits.length * 3;
+
+  // At least one query term must appear somewhere in the result's text
+  if (score === 0) return 0;
 
   return score;
 }
