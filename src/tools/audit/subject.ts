@@ -58,6 +58,7 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, setting
   let savedScrollTop = 0;
 
   let expanded: { main: string; alternates: string[]; exclude: string[]; interpreted: string } | null = null;
+  let colorSearchActive = false;
   async function expandQuery(text: string): Promise<typeof expanded> {
     try {
       const r = await fetch(`/api/expand?q=${encodeURIComponent(text)}`);
@@ -213,45 +214,49 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, setting
 
     // Detect hex color query: #AABBCC or AABBCC (3 or 6 hex digits)
     const hexMatch = /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.exec(query);
-    if (hexMatch) {
-      const hex = '#' + (hexMatch[1].length === 3
-        ? hexMatch[1].split('').map(c => c + c).join('')
-        : hexMatch[1]).toUpperCase();
-      filters.hex = hex; hexIn.value = hex; picker.value = hex;
+    const isColorSearch = !!hexMatch;
+    let colorHex = '';
+    if (isColorSearch) {
+      colorHex = '#' + (hexMatch![1].length === 3
+        ? hexMatch![1].split('').map(c => c + c).join('')
+        : hexMatch![1]).toUpperCase();
+      filters.hex = colorHex; hexIn.value = colorHex; picker.value = colorHex;
       filters.mode = 'sort';
-      settings.set('colorHex', hex); settings.set('colorMode', 'sort');
-      if (items.length) {
-        const sig = controller?.signal ?? new AbortController().signal;
-        for (const it of items) { if (!it.swatches) void paletteFor(it, sig); }
-        renderGrid();
-      }
-      emit('toast', `Color search: ${hex}`);
-      return;
+      settings.set('colorHex', colorHex); settings.set('colorMode', 'sort');
     }
 
     settings.set('query', query);
     controller?.abort(); controller = new AbortController();
     palettes.cancelPending();
     items = []; state.clear(); tab = 'results';
+    colorSearchActive = isColorSearch;
 
-    // Query expansion (runs silently — no UI)
-    expanded = await expandQuery(query);
+    // For color searches, use broad terms to get lots of images from sources
+    // then sort by palette distance. No query expansion needed.
+    expanded = isColorSearch ? null : await expandQuery(query);
 
-    const searchQuery = expanded ? expanded.main : query;
+    // Color search: use broad terms to pull lots of images, then palette-sort
+    const searchQuery = isColorSearch ? 'art design' : (expanded ? expanded.main : query);
     const live = sources.filter(s => s.available && !disabled.has(s.id));
     for (const s of live) state.set(s.id, { status: 'loading', count: 0, total: 0, ms: 0, page: 1 });
     renderSources(); renderGrid();
-    // Search main query + alternates in parallel
-    const queries = [searchQuery];
-    if (expanded?.alternates?.length) queries.push(...expanded.alternates);
+    const queries = isColorSearch ? ['art', 'design', 'photograph', 'poster'] : [searchQuery];
+    if (!isColorSearch && expanded?.alternates?.length) queries.push(...expanded.alternates);
     await Promise.all(queries.flatMap(sq => live.map(s => fetchPage(s.id, 1, controller!.signal, sq))));
+    // For color search, compute palettes for everything immediately
+    if (isColorSearch) {
+      const sig = controller!.signal;
+      for (const it of items) { if (!it.swatches) void paletteFor(it, sig); }
+    }
     // Auto-load until 50 results pass relevance + image checks
     let autoLoadAttempts = 0;
-    while (visible().filter(it => verified.has(it.id)).length < 50 && autoLoadAttempts < 3) {
+    const target = isColorSearch ? 100 : 50;
+    while (visible().filter(it => verified.has(it.id)).length < target && autoLoadAttempts < 5) {
       const moreSrcs = [...state.entries()].filter(([, s]) => s.status === 'done' && s.count < s.total && s.page < 20);
       if (!moreSrcs.length) break;
       autoLoadAttempts++;
-      await Promise.all(moreSrcs.map(([id, s]) => fetchPage(id, s.page + 1, controller!.signal, searchQuery)));
+      await Promise.all(moreSrcs.map(([id, s]) => fetchPage(id, s.page + 1, controller!.signal, isColorSearch ? queries[autoLoadAttempts % queries.length] : searchQuery)));
+      if (isColorSearch) { const sig = controller!.signal; for (const it of items) { if (!it.swatches) void paletteFor(it, sig); } }
     }
   }
   async function fetchPage(id: string, page: number, signal: AbortSignal, overrideQuery?: string) {
@@ -314,7 +319,7 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, setting
     });
     if (target && filters.mode === 'sort') {
       list = [...list].sort((a, b) => (a.swatches ? paletteDistance(target, a.swatches) : 9) - (b.swatches ? paletteDistance(target, b.swatches) : 9));
-    } else if (tab === 'results') {
+    } else if (tab === 'results' && !colorSearchActive) {
       // Score against the ORIGINAL query so alternate-query results
       // are ranked by relevance to what the user actually typed
       const scoreQ = query;
