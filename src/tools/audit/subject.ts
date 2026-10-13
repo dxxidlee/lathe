@@ -267,25 +267,22 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, setting
     const queries = isColorSearch ? colorTerms : [searchQuery];
     if (!isColorSearch && expanded?.alternates?.length) queries.push(...expanded.alternates);
     await Promise.all(queries.flatMap(sq => live.map(s => fetchPage(s.id, 1, controller!.signal, sq))));
-    // For color search, eagerly compute palettes for all results
+    // For color search, start computing palettes in the background.
+    // paletteFor calls scheduleGrid when each palette completes, so the
+    // grid progressively re-sorts as palettes arrive.
     if (isColorSearch) {
       const sig = controller!.signal;
-      await Promise.all(items.filter(it => !it.swatches).map(it => paletteFor(it, sig)));
-      renderGrid();
+      for (const it of items) { if (!it.swatches) void paletteFor(it, sig); }
     }
     // Auto-load until target results pass checks
     let autoLoadAttempts = 0;
     const target = isColorSearch ? 100 : 50;
-    while (visible().filter(it => verified.has(it.id) && (!colorSearchActive || it.swatches)).length < target && autoLoadAttempts < 5) {
+    while (visible().filter(it => verified.has(it.id)).length < target && autoLoadAttempts < 5) {
       const moreSrcs = [...state.entries()].filter(([, s]) => s.status === 'done' && s.count < s.total && s.page < 20);
       if (!moreSrcs.length) break;
       autoLoadAttempts++;
       await Promise.all(moreSrcs.map(([id, s]) => fetchPage(id, s.page + 1, controller!.signal, queries[autoLoadAttempts % queries.length])));
-      if (isColorSearch) {
-        const sig = controller!.signal;
-        await Promise.all(items.filter(it => !it.swatches).map(it => paletteFor(it, sig)));
-        renderGrid();
-      }
+      if (isColorSearch) { const sig = controller!.signal; for (const it of items) { if (!it.swatches) void paletteFor(it, sig); } }
     }
   }
   async function fetchPage(id: string, page: number, signal: AbortSignal, overrideQuery?: string) {
@@ -337,8 +334,6 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, setting
     const target = filters.hex ? hexToOklab(filters.hex) : null;
     let list = (tab === 'board' ? board().items.map((bi): Item => ({ ...bi as any, id: bi.sourceId, swatches: bi.palette, order: bi.position })) : items).filter(it => {
       if (!it.thumbUrl) return false;
-      // Color search: hide results until their palette is computed
-      if (colorSearchActive && !it.swatches) return false;
       if (tab === 'results' && disabled.has(it.source)) return false;
       if (filters.types.size && !filters.types.has(shortType(it.type) ?? '')) return false;
       if (filters.yearFrom != null && (it.year == null || it.year < filters.yearFrom)) return false;
