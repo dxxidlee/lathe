@@ -135,7 +135,7 @@
 /* ---- Inspector ---- */
 .inspector {
   grid-area: inspector;
-  min-height: 0; overflow-y: auto;
+  min-height: 0; overflow-y: auto; overflow-x: hidden;
   border-left: 1px solid var(--border);
 }
 .inspector__tool:empty { display: none; }
