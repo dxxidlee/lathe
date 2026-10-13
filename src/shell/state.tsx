@@ -58,6 +58,9 @@ export function ShellProvider({ children }: { children: ReactNode }) {
   const [trayOpen, setTrayOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [tabs, setTabs] = useState<Tab[]>([{ id: 'make', pinned: true }]);
+  const [activeTabId, setActiveTabId] = useState('make');
   const statusMap = useRef(new Map<string, StatusInfo>());
   const [status, setStatusRaw] = useState<StatusInfo>({});
   const activeTabRef = useRef(activeTabId);
@@ -67,9 +70,6 @@ export function ShellProvider({ children }: { children: ReactNode }) {
     statusMap.current.set(id, info);
     if (id === activeTabRef.current) setStatusRaw(info);
   }, []);
-  const [toasts, setToasts] = useState<Toast[]>([]);
-  const [tabs, setTabs] = useState<Tab[]>([{ id: 'make', pinned: true }]);
-  const [activeTabId, setActiveTabId] = useState('make');
   const [user, setUser] = useState<AuthUser>(null);
   const [isMobile, setIsMobile] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
