@@ -70,7 +70,7 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, setting
   const root = document.createElement('div'); root.className = 'au';
   const bar = document.createElement('form'); bar.className = 'au__bar'; bar.setAttribute('role', 'search');
   const q = document.createElement('input');
-  Object.assign(q, { className: 'au__q', type: 'search', placeholder: '1970s Japanese product photography', value: query });
+  Object.assign(q, { className: 'au__q', type: 'search', placeholder: 'Search \u201Cbotanical prints\u201D, \u201Csubway signage\u201D, \u201Cfilm stills\u201D, \u201C#0A0A0A\u201D\u2026', value: query });
   q.setAttribute('aria-label', 'Subject');
   const go = document.createElement('button'); go.type = 'submit'; go.className = 'l-btn l-btn--primary au__go'; go.textContent = 'Audit';
   bar.append(q, go);
@@ -209,7 +209,26 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, setting
   /* ---------------- search ---------------- */
   async function search(text: string) {
     query = text.trim();
-    if (!query) { emit('toast', 'Type a subject to audit'); return; }
+    if (!query) return;
+
+    // Detect hex color query: #AABBCC or AABBCC (3 or 6 hex digits)
+    const hexMatch = /^#?([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.exec(query);
+    if (hexMatch) {
+      const hex = '#' + (hexMatch[1].length === 3
+        ? hexMatch[1].split('').map(c => c + c).join('')
+        : hexMatch[1]).toUpperCase();
+      filters.hex = hex; hexIn.value = hex; picker.value = hex;
+      filters.mode = 'sort';
+      settings.set('colorHex', hex); settings.set('colorMode', 'sort');
+      if (items.length) {
+        const sig = controller?.signal ?? new AbortController().signal;
+        for (const it of items) { if (!it.swatches) void paletteFor(it, sig); }
+        renderGrid();
+      }
+      emit('toast', `Color search: ${hex}`);
+      return;
+    }
+
     settings.set('query', query);
     controller?.abort(); controller = new AbortController();
     palettes.cancelPending();
@@ -454,7 +473,7 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, setting
     tResults.classList.toggle('is-active', tab === 'results'); tBoard.classList.toggle('is-active', tab === 'board');
     tResults.setAttribute('aria-selected', String(tab === 'results')); tBoard.setAttribute('aria-selected', String(tab === 'board'));
     empty.textContent = list.length ? '' : tab === 'board' ? 'Add results to this board.'
-      : !query ? 'Search a subject across open archives, like “Swiss transit signage” or “Bauhaus posters”.'
+      : !query ? ''
         : loading ? 'Searching…' : items.length ? 'Nothing matches these filters.' : 'No results.';
     empty.hidden = !!list.length;
     more.hidden = tab !== 'results' || ![...state.values()].some(s => s.status === 'done' && s.count < s.total);
