@@ -1,14 +1,24 @@
 // @ts-check
-/* GET /api/sources/:source?q=&page= → { source, query, page, total, results, ms } in the normalized schema. */
-import { findSource, isAvailable } from '../_lib/sources/index.js';
+/* GET /api/sources/:source?q=&page= → { source, query, page, total, results, ms } in the normalized schema.
+   GET /api/sources (no :source) → the source catalog with brand features. */
+import { SOURCES, findSource, isAvailable } from '../_lib/sources/index.js';
 import { json } from '../_lib/http.js';
+import { brandFeatures } from '../_lib/brand.js';
 
 const LIMIT = 24;
 
 /** @param {Request} request */
 export async function GET(request) {
   const url = new URL(request.url);
-  const id = decodeURIComponent(url.pathname.split('/').filter(Boolean).pop() || '');
+  const segments = url.pathname.split('/').filter(Boolean);
+  const id = segments.length > 1 ? decodeURIComponent(segments.pop() || '') : '';
+  // /api/sources with no :source → catalog
+  if (!id || id === 'sources') {
+    return json({
+      sources: SOURCES.map(s => ({ id: s.id, name: s.name, homepage: s.homepage, needsKey: !!s.key, available: isAvailable(s, process.env) })),
+      brand: brandFeatures(process.env),
+    }, { cache: 'no-store' });
+  }
   const src = findSource(id);
   if (!src) return json({ error: `Unknown source "${id}"` }, { status: 404 });
   if (!isAvailable(src, process.env) || !src.search) return json({ error: `${src.name} is not available` }, { status: 404 });
