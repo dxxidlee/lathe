@@ -196,12 +196,17 @@
 .l-section--advanced .l-section__body { display: none; }
 .l-section--advanced.is-open .l-section__body { display: flex; flex-direction: column; gap: var(--space-3); }
 
+/* Press states for touch */
+.l-chip:active, .l-btn:active { background: rgba(255,255,255,0.12); transition: none; }
+.l-btn--primary:active { filter: brightness(0.85); }
+
 @media (max-width: 767px) {
   /* Touch targets */
   .l-chip, .l-btn { min-height: 44px; padding-left: var(--space-3); padding-right: var(--space-3); }
-  .l-input, .l-select, .l-textarea { min-height: 44px; font-size: 16px; } /* 16px prevents iOS zoom */
+  .l-input, .l-select, .l-textarea { min-height: 44px; font-size: max(var(--text-body), 16px); } /* >=16px prevents iOS zoom */
   .l-slider__input { min-height: 44px; }
   .l-stat { min-height: 44px; }
+  input, textarea, select { font-size: max(1em, 16px); } /* catch inputs without .l-input */
 
   /* Tabs always show close on mobile */
   .tab__close { display: flex; }

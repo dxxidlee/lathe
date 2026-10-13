@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import { useShell } from '../shell/state';
+import { BottomSheet } from '../shell/BottomSheet';
 import {
   saveCustomTool, loadCustomTools, deleteCustomTool,
   addVersion, restoreVersion, currentVersion, exportLibrary, importLibrary,
@@ -239,6 +240,11 @@ export function Make() {
   const hasSession = tool || chat.length > 0;
 
   if (!shell.user) {
+    const inspector = (
+      <aside className="inspector" aria-label="Inspector">
+        <LibraryPanel library={library} onOpen={t => navigate(`/t/${t.id}`)} onEdit={editTool} onRemove={removeTool} onExport={doExport} onImport={doImport} fileRef={fileRef} />
+      </aside>
+    );
     return (
       <>
         <section className="stage" aria-label="Make a tool">
@@ -249,14 +255,17 @@ export function Make() {
             </div>
           </div>
         </section>
-        <aside className="inspector" aria-label="Inspector">
-          <LibraryPanel library={library} onOpen={t => navigate(`/t/${t.id}`)} onEdit={editTool} onRemove={removeTool} onExport={doExport} onImport={doImport} fileRef={fileRef} />
-        </aside>
+        {shell.isMobile ? <BottomSheet>{inspector}</BottomSheet> : inspector}
       </>
     );
   }
 
   if (!hasSession) {
+    const inspector = (
+      <aside className="inspector" aria-label="Inspector">
+        <LibraryPanel library={library} onOpen={t => navigate(`/t/${t.id}`)} onEdit={editTool} onRemove={removeTool} onExport={doExport} onImport={doImport} fileRef={fileRef} />
+      </aside>
+    );
     return (
       <>
         <section className="stage" aria-label="Make a tool">
@@ -280,9 +289,7 @@ export function Make() {
             </form>
           </div>
         </section>
-        <aside className="inspector" aria-label="Inspector">
-          <LibraryPanel library={library} onOpen={t => navigate(`/t/${t.id}`)} onEdit={editTool} onRemove={removeTool} onExport={doExport} onImport={doImport} fileRef={fileRef} />
-        </aside>
+        {shell.isMobile ? <BottomSheet>{inspector}</BottomSheet> : inspector}
       </>
     );
   }
@@ -341,22 +348,27 @@ export function Make() {
           </div>
         </div>
       </section>
-      <aside className="inspector" aria-label="Inspector">
-        {tool && tool.versions.length > 1 && (
-          <section className="l-section">
-            <h3 className="l-section__title">Versions</h3>
-            <div className="l-section__body">
-              {tool.versions.map((v, i) => (
-                <div key={v.id} className={`mk__ver${i === tool.currentVersionIndex ? ' is-active' : ''}`}>
-                  <button type="button" className="mk__ver-btn" onClick={() => doRestore(i)}>v{i + 1}</button>
-                  <span className="mk__ver-desc">{v.description}</span>
+      {(() => {
+        const inspector = (
+          <aside className="inspector" aria-label="Inspector">
+            {tool && tool.versions.length > 1 && (
+              <section className="l-section">
+                <h3 className="l-section__title">Versions</h3>
+                <div className="l-section__body">
+                  {tool.versions.map((v, i) => (
+                    <div key={v.id} className={`mk__ver${i === tool.currentVersionIndex ? ' is-active' : ''}`}>
+                      <button type="button" className="mk__ver-btn" onClick={() => doRestore(i)}>v{i + 1}</button>
+                      <span className="mk__ver-desc">{v.description}</span>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-          </section>
-        )}
-        <LibraryPanel library={library} onOpen={t => navigate(`/t/${t.id}`)} onEdit={editTool} onRemove={removeTool} onExport={doExport} onImport={doImport} fileRef={fileRef} />
-      </aside>
+              </section>
+            )}
+            <LibraryPanel library={library} onOpen={t => navigate(`/t/${t.id}`)} onEdit={editTool} onRemove={removeTool} onExport={doExport} onImport={doImport} fileRef={fileRef} />
+          </aside>
+        );
+        return shell.isMobile ? <BottomSheet>{inspector}</BottomSheet> : inspector;
+      })()}
     </>
   );
 }

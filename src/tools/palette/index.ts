@@ -40,7 +40,7 @@ export const tool: LatheTool = {
     const srcSec = section('Source');
     const srcStats = statList();
     const input = imageInput({ toolId: 'palette', name: 'Palette', assets, settings, emit, onLoad: a => void load(a, !swatches.length || settings.get('sourceId', '') !== a.id) });
-    srcSec.body.append(srcStats.el, input.urlEl, note('Drop an image, send one from the tray, or fetch a URL. A web page gives its share image.'));
+    srcSec.body.append(srcStats.el, input.fileEl, input.urlEl, note('Drop an image, send one from the tray, or fetch a URL. A web page gives its share image.'));
 
     const exSec = section('Extract');
     exSec.body.append(slider({ label: 'Swatches', min: 2, max: 12, value: count, onChange: v => { count = v; settings.set('count', v); scheduleExtract(); } }).el);

@@ -2,7 +2,6 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Wordmark } from '../brand/Wordmark';
 import { TOOLS, isReady, toolsByGroup } from '../tools/registry';
-import { toolIcon } from '../shell/icons';
 import { useShell } from '../shell/state';
 import { modKey } from '../lib/format';
 import { MAKE, MARK_TRANSFORM, STRUCTURE, VIEW, routesFor } from './home-graph';
@@ -15,7 +14,7 @@ export function Home() {
   const navigate = useNavigate();
   const [active, setActive] = useState<string | null>(null);
   const [list, setList] = useState(false);
-  useEffect(() => { document.title = 'Lathe · Tools for people who make tools.'; }, []);
+  useEffect(() => { document.title = 'Lathe · Never a beginner again.'; }, []);
 
   const tools = useMemo(() => TOOLS.filter(t => !t.dev), []);
   const rs = useMemo(() => routesFor(tools.map(t => t.id)), [tools]);
@@ -49,26 +48,10 @@ export function Home() {
           </button>
         </nav>
       </header>
-      <h1 className="sr-only">Lathe. Tools for people who make tools.</h1>
+      <h1 className="sr-only">Lathe. Never a beginner again.</h1>
 
-      <main className="graph-wrap" aria-label="Tools">
-        {shell.isMobile ? (
-          <div className="home__mobile-list">
-            {TOOLS.filter(t => isReady(t) && !t.dev).map(t => {
-              const Icon = toolIcon(t.id);
-              return (
-                <Link key={t.id} to={`/t/${t.id}`} className="home__mobile-item" onClick={() => shell.openTab(t.id)}>
-                  {Icon && <Icon size={20} strokeWidth={1.5} />}
-                  <div>
-                    <div className="home__mobile-name">{t.name}</div>
-                    <div className="home__mobile-blurb">{t.blurb}</div>
-                  </div>
-                </Link>
-              );
-            })}
-          </div>
-        ) : null}
-        <svg className={`graph${active ? ' is-hovering' : ''}`} viewBox={box} preserveAspectRatio="xMidYMid meet" role="navigation" aria-label="Tools">
+      <main className="graph-wrap" aria-label="Tools" style={{ touchAction: 'pinch-zoom pan-x pan-y' }}>
+        <svg className={`graph${active ? ' is-hovering' : ''}`} width="100%" viewBox={box} preserveAspectRatio="xMidYMid meet" role="navigation" aria-label="Tools">
           <defs>
             {STRUCTURE.map((s, i) => s.dashed && (
               <mask id={`m${i}`} key={i} maskUnits="userSpaceOnUse"><path d={s.d} className="graph__reveal" style={{ animationDelay: `${i * 90}ms` }} pathLength={1} /></mask>
@@ -129,7 +112,7 @@ export function Home() {
         <span className="home__foot-main">
           {active === 'make' ? 'Make a tool — describe a tool you wish existed.'
             : current ? <>{current.name} <span className="home__foot-dim">{current.group} · {current.blurb} · {isReady(current) ? 'Open' : `Milestone ${current.milestone}`}</span></>
-              : <>Lathe <span className="home__foot-dim">Tools for people who make tools.</span></>}
+              : <>Lathe <span className="home__foot-dim">Never a beginner again.</span></>}
         </span>
         <span className="home__foot-dim tabular">{ready} of {tools.length} tools built</span>
       </footer>

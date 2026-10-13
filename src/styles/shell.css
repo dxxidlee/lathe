@@ -17,6 +17,7 @@
   font-family: var(--font);
   font-size: var(--text-body);
   color: var(--text-1);
+  touch-action: manipulation;
 }
 .shell__panes { display: contents; }
 
@@ -353,29 +354,39 @@
     background: none; border: none; color: var(--text-2); cursor: pointer;
   }
 
-  /* Inspector: becomes bottom sheet */
+  /* Inspector: inside bottom sheet on mobile */
   .inspector {
     grid-area: sheet;
+    border-left: none; overflow-y: auto;
+  }
+
+  /* Bottom sheet (mobile inspector) */
+  .bottom-sheet {
     position: fixed; left: 0; right: 0; bottom: 0;
-    max-height: 70dvh; min-height: 48px;
     background: var(--surface); border-top: 1px solid var(--border);
     border-radius: var(--radius-panel) var(--radius-panel) 0 0;
-    overflow-y: auto; z-index: 50;
-    transform: translateY(calc(100% - 48px));
-    transition: transform 200ms var(--ease);
+    z-index: 50; display: flex; flex-direction: column;
+    transition: height 200ms var(--ease);
     padding-bottom: env(safe-area-inset-bottom, 0);
   }
-  .inspector.is-expanded { transform: translateY(0); }
-  .inspector.is-full { max-height: 85dvh; transform: translateY(0); }
-
-  /* Sheet drag handle */
-  .inspector::before {
-    content: ""; display: block; width: 32px; height: 4px; margin: var(--space-2) auto;
-    background: var(--text-3); border-radius: 2px; flex-shrink: 0;
+  .bottom-sheet__handle {
+    display: flex; flex-direction: column; align-items: center; gap: var(--space-2);
+    padding: var(--space-2) var(--space-4); cursor: grab; flex-shrink: 0;
+    min-height: 48px; justify-content: center;
+  }
+  .bottom-sheet__bar {
+    width: 32px; height: 4px; background: var(--text-3); border-radius: 2px;
+  }
+  .bottom-sheet__collapsed {
+    display: flex; align-items: center; gap: var(--space-3); width: 100%;
+  }
+  .bottom-sheet__content {
+    flex: 1; min-height: 0;
   }
 
   /* Hide inspector for 'view' mode tools */
   .shell--view .inspector { display: none; }
+  .shell--view .bottom-sheet { display: none; }
 
   /* Desktop-only tool screen */
   .shell--desktop .stage { display: flex; align-items: center; justify-content: center; }
@@ -397,7 +408,9 @@
     display: flex; flex-direction: column; overflow-y: auto;
     padding: env(safe-area-inset-top, 0) 0 env(safe-area-inset-bottom, 0);
     font-family: var(--font); font-size: var(--text-body); color: var(--text-1);
+    animation: menu-slide-in 200ms var(--ease);
   }
+  @keyframes menu-slide-in { from { transform: translateX(-100%); } to { transform: none; } }
   .mobile-menu__header {
     display: flex; align-items: center; justify-content: space-between;
     padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border);
@@ -415,11 +428,11 @@
   .mobile-menu__group { padding: var(--space-3) var(--space-4) var(--space-1); color: var(--text-3); font-size: var(--text-meta); }
   .mobile-menu__item {
     display: flex; align-items: center; gap: var(--space-3);
-    padding: var(--space-3) var(--space-4); min-height: 44px;
+    padding: var(--space-3) var(--space-4); min-height: 48px;
     background: none; border: none; color: var(--text-1); font: inherit; width: 100%;
     text-align: left; cursor: pointer;
   }
-  .mobile-menu__item:hover, .mobile-menu__item:active { background: var(--surface); }
+  .mobile-menu__item:active { background: var(--surface); }
   .mobile-menu__item--active { color: var(--accent); }
   .mobile-menu__icon { width: var(--icon-size); height: var(--icon-size); flex-shrink: 0; color: var(--text-2); }
   .mobile-menu__divider { height: 1px; background: var(--border); margin: var(--space-2) var(--space-4); }
@@ -435,13 +448,16 @@
     border-radius: var(--radius-panel) var(--radius-panel) 0 0;
     max-height: 60dvh; overflow-y: auto;
     padding-bottom: env(safe-area-inset-bottom, 0);
+    animation: sheet-slide-up 200ms var(--ease);
   }
+  @keyframes sheet-slide-up { from { transform: translateY(100%); } to { transform: none; } }
   .tab-switcher__scrim { position: fixed; inset: 0; z-index: 94; background: rgba(0,0,0,0.4); }
   .tab-switcher__item {
     display: flex; align-items: center; gap: var(--space-3);
-    padding: var(--space-3) var(--space-4); min-height: 44px;
+    padding: var(--space-3) var(--space-4); min-height: 48px;
     border-bottom: 1px solid var(--border);
   }
+  .tab-switcher__item:active { background: rgba(255,255,255,0.06); }
   .tab-switcher__item.is-active { background: rgba(255,255,255,0.06); }
   .tab-switcher__name { flex: 1; color: var(--text-1); }
   .tab-switcher__close {

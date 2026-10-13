@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useShell } from '../shell/state';
+import { BottomSheet } from '../shell/BottomSheet';
 import { cloudLoadLibrary, cloudDeleteItem, type LibraryItem } from '../lib/cloud-library';
 import { loadCustomTools, type CustomTool } from '../lib/custom-tools';
 
@@ -49,6 +50,7 @@ export function Library() {
   };
 
   if (!shell.user) {
+    const inspector = <aside className="inspector" aria-label="Inspector" />;
     return (
       <>
         <section className="stage" aria-label="Library">
@@ -57,7 +59,7 @@ export function Library() {
             <p>Sign in to save and access your work across devices.</p>
           </div>
         </section>
-        <aside className="inspector" aria-label="Inspector" />
+        {shell.isMobile ? <BottomSheet>{inspector}</BottomSheet> : inspector}
       </>
     );
   }
@@ -91,7 +93,7 @@ export function Library() {
           </div>
         </div>
       </section>
-      <aside className="inspector" aria-label="Inspector" />
+      {shell.isMobile ? <BottomSheet><aside className="inspector" aria-label="Inspector" /></BottomSheet> : <aside className="inspector" aria-label="Inspector" />}
     </>
   );
 }
