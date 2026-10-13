@@ -14,6 +14,9 @@
     "status status";
   background: var(--bg);
   overflow: hidden;
+  font-family: var(--font);
+  font-size: var(--text-body);
+  color: var(--text-1);
 }
 .shell__panes { display: contents; }
 
@@ -64,6 +67,7 @@
   position: fixed; top: 0; left: 0; bottom: 0; z-index: 91;
   width: var(--nav-w); display: flex; flex-direction: column;
   background: var(--surface); border-right: 1px solid var(--border);
+  font-family: var(--font); font-size: var(--text-body); color: var(--text-1);
   animation: nav-slide 150ms ease;
 }
 @keyframes nav-slide { from { transform: translateX(-100%); } to { transform: none; } }
