@@ -81,7 +81,7 @@ window.addEventListener('message', (e) => {
     }
   }
   if (d.type === 'asset') {
-    ctx.assets._items.set(d.id, { id: d.id, name: d.name, type: d.type, dataUrl: d.dataUrl });
+    ctx.assets._items.set(d.id, { id: d.id, name: d.name, type: d.mime, dataUrl: d.dataUrl });
   }
 });
 
@@ -123,7 +123,7 @@ export function createSandbox(container: HTMLElement, css = ''): Sandbox {
       iframe.contentWindow?.postMessage({ type: 'mount', code, defaults }, '*');
     },
     sendAsset(asset) {
-      iframe.contentWindow?.postMessage({ type: 'asset', ...asset }, '*');
+      iframe.contentWindow?.postMessage({ type: 'asset', id: asset.id, name: asset.name, mime: asset.type, dataUrl: asset.dataUrl }, '*');
     },
     onMessage(cb) {
       listeners.add(cb);
