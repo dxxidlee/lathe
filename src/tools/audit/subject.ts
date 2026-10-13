@@ -52,7 +52,7 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
   let useExact = false;
   async function expandQuery(text: string): Promise<typeof expanded> {
     try {
-      const r = await fetch(`/api/make?expand=${encodeURIComponent(text)}`);
+      const r = await fetch(`/api/expand?q=${encodeURIComponent(text)}`);
       if (!r.ok) return null;
       return await r.json();
     } catch { return null; }
