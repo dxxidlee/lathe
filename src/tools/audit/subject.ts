@@ -29,7 +29,7 @@ const shortType = (t: string | null) => {
   return normalizeType(raw);
 };
 
-export function mountSubject({ defaults: d, stage, inspector, statusbar, assets, settings, emit }: MountContext, modeEl?: HTMLElement): MountResult {
+export function mountSubject({ defaults: d, stage, inspector, statusbar, settings, emit }: MountContext, modeEl?: HTMLElement): MountResult {
   let sources: SourceInfo[] = [];
   const disabled = new Set(settings.get<string[]>('disabledSources', []));
   const state = new Map<string, SourceState>();
