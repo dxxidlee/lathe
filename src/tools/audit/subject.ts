@@ -562,7 +562,7 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, setting
         a.href = value;
         a.target = '_blank';
         a.rel = 'noopener';
-        a.textContent = 'Open \u2197';
+        a.textContent = 'Open';
         v.appendChild(a);
       } else {
         v.textContent = value;
