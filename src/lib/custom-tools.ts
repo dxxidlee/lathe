@@ -2,7 +2,11 @@
    Tools live in IDB 'settings' store under a single key. */
 
 import { idbGet, idbSet } from './idb';
+import { cloudLoadTools, cloudSaveTool, cloudDeleteTool } from './cloud-library';
 import type { MountContext } from '../tools/types';
+
+let _userId: string | null = null;
+export function setAuthUser(userId: string | null) { _userId = userId; }
 
 export interface ToolVersion {
   id: string;
@@ -59,21 +63,34 @@ function migrate(raw: any): CustomTool {
   };
 }
 
-export async function loadCustomTools(): Promise<CustomTool[]> {
+async function loadLocalTools(): Promise<CustomTool[]> {
   const raw = (await idbGet<any[]>('settings', STORE_KEY)) ?? [];
   return raw.map(migrate);
 }
 
+export async function loadCustomTools(): Promise<CustomTool[]> {
+  if (_userId) {
+    const cloud = await cloudLoadTools(_userId);
+    if (cloud.length) return cloud.map(migrate);
+  }
+  // Fall back to IDB (guest mode or no cloud data yet)
+  return loadLocalTools();
+}
+
 export async function saveCustomTool(tool: CustomTool): Promise<void> {
-  const all = await loadCustomTools();
+  // Always save to IDB as cache
+  const all = await loadLocalTools();
   const idx = all.findIndex(t => t.id === tool.id);
   if (idx >= 0) all[idx] = tool; else all.push(tool);
   await idbSet('settings', STORE_KEY, all);
+  // Also save to cloud if signed in
+  if (_userId) await cloudSaveTool(_userId, tool);
 }
 
 export async function deleteCustomTool(id: string): Promise<void> {
-  const all = await loadCustomTools();
+  const all = await loadLocalTools();
   await idbSet('settings', STORE_KEY, all.filter(t => t.id !== id));
+  if (_userId) await cloudDeleteTool(_userId, id);
 }
 
 export function currentVersion(tool: CustomTool): ToolVersion {

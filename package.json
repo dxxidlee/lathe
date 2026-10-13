@@ -24,6 +24,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.131.0",
     "@imgly/background-removal": "^1.7.0",
+    "@supabase/supabase-js": "^2.117.3",
     "esm-potrace-wasm": "^0.5.1",
     "fix-webm-duration": "^1.0.6",
     "gif.js": "^0.2.0",

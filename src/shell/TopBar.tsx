@@ -3,6 +3,7 @@ import { Wordmark } from '../brand/Wordmark';
 import { useShell } from './state';
 import { modKey } from '../lib/format';
 import { TabBar } from './TabBar';
+import { AuthMenu } from './AuthMenu';
 
 export function TopBar() {
   const shell = useShell();
@@ -20,6 +21,7 @@ export function TopBar() {
         <span>Search</span>
         <span className="l-kbd">{mod}K</span>
       </button>
+      <AuthMenu />
       <div className="topbar__actions">
         <button type="button" className="l-btn l-btn--primary" onClick={shell.runExport} title={`Export (${mod}E)`}>Export</button>
       </div>

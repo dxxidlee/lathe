@@ -75,6 +75,11 @@ export function NavRail() {
             </div>
           )}
         </div>
+        <button type="button" className={`nav__item${shell.activeTabId === 'library' ? ' is-active' : ''}`}
+          style={{ margin: 'var(--s-2)', borderTop: 'var(--hairline) solid var(--hairline-color)' }}
+          onClick={() => openTool('library')}>
+          <span className="nav__name">Library</span>
+        </button>
         <button type="button" className="nav__make" onClick={() => openTool('make')}>
           <Mark className="nav__make-mark" />
           <span className="nav__name">Make a tool</span>

@@ -275,3 +275,36 @@
 .palette__item[aria-selected="true"] .l-kbd { color: var(--on-accent); border-color: var(--black-16); }
 .palette__hint { color: var(--ink-3); font-size: var(--fs-small); }
 .palette__empty { padding: var(--s-4); color: var(--ink-3); }
+
+/* ---- Auth menu ---- */
+.auth-menu { position: relative; flex-shrink: 0; }
+.auth-menu__trigger { white-space: nowrap; }
+.auth-menu__dropdown {
+  position: absolute; top: 100%; right: 0; z-index: 80;
+  min-width: 220px; padding: var(--s-4);
+  background: var(--panel); border: var(--hairline) solid var(--hairline-color);
+  border-radius: var(--radius); display: flex; flex-direction: column; gap: var(--s-3);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+.auth-menu__provider {
+  width: 100%; padding: var(--s-2) var(--s-3); border: var(--hairline) solid var(--hairline-color);
+  border-radius: var(--radius); background: transparent; color: var(--ink); cursor: pointer;
+  font: inherit; text-align: left;
+}
+.auth-menu__provider:hover { background: var(--fill); }
+.auth-menu__divider { text-align: center; color: var(--ink-3); font-size: var(--fs-small); }
+.auth-menu__email { width: 100%; }
+.auth-menu__email-display { color: var(--ink-2); font-size: var(--fs-small); }
+.auth-menu__error { color: #ff6b6b; font-size: var(--fs-small); margin: 0; }
+
+/* ---- Library ---- */
+.lib { position: absolute; inset: 0; overflow-y: auto; padding: var(--s-7) var(--s-6); }
+.lib__head { display: flex; flex-direction: column; gap: var(--s-3); margin-bottom: var(--s-6); }
+.lib__title { font-size: var(--fs-display-s); font-weight: var(--w-medium); letter-spacing: var(--track-title); margin: 0; }
+.lib__grid { display: flex; flex-direction: column; gap: var(--hairline); }
+.lib__item { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3) 0; border-bottom: var(--hairline) solid var(--hairline-color); }
+.lib__item-type { font-size: var(--fs-small); color: var(--ink-3); min-width: 100px; }
+.lib__item-name { flex: 1; color: var(--ink); }
+.lib__item-date { font-size: var(--fs-small); color: var(--ink-3); }
+.lib__item-del { background: none; border: none; color: var(--ink-3); cursor: pointer; font-size: var(--fs-body); padding: var(--s-1); }
+.lib__item-del:hover { color: #ff6b6b; }

@@ -1,6 +1,7 @@
 // @ts-check
 /* POST /api/make -> generate a Lathe tool from a natural-language prompt. */
 import Anthropic from '@anthropic-ai/sdk';
+import { createClient } from '@supabase/supabase-js';
 import { json } from './_lib/http.js';
 
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
@@ -73,6 +74,24 @@ const TOOL_DEF = {
 export async function POST(request) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return json({ error: 'Tool generation needs ANTHROPIC_API_KEY in .env.local' }, { status: 501 });
+
+  // Verify user
+  const authHeader = request.headers.get('authorization');
+  const token = authHeader?.replace('Bearer ', '');
+  if (!token) return json({ error: 'Sign in to use Make a Tool' }, { status: 401 });
+
+  const sbUrl = process.env.VITE_SUPABASE_URL;
+  const sbKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!sbUrl || !sbKey) return json({ error: 'Auth is not configured' }, { status: 501 });
+
+  const sb = createClient(sbUrl, sbKey);
+  const { data: { user }, error: authErr } = await sb.auth.getUser(token);
+  if (authErr || !user) return json({ error: 'Invalid session. Please sign in again.' }, { status: 401 });
+
+  // Rate limit: 20 tools per hour per user
+  const hour = new Date(Date.now() - 3600000).toISOString();
+  const { count } = await sb.from('custom_tools').select('id', { count: 'exact', head: true }).eq('user_id', user.id).gte('created_at', hour);
+  if ((count ?? 0) >= 20) return json({ error: 'Rate limit: 20 tools per hour. Try again later.' }, { status: 429 });
 
   /** @type {any} */ let body;
   try { body = await request.json(); } catch { return json({ error: 'Send JSON' }, { status: 400 }); }

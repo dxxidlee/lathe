@@ -49,6 +49,7 @@ export function CommandPalette() {
       })),
       { id: 'home', label: 'Go home', run: open('/') },
       { id: 'make', label: 'Make a tool', run: openTool('make') },
+      { id: 'library', label: 'Library', hint: 'Saved decks, audits, palettes', run: openTool('library') },
       { id: 'export', label: 'Export', keys: `${mod}E`, run: () => { close(); shell.runExport(); } },
       { id: 'nav', label: 'Toggle tool rail', run: () => { close(); shell.toggleNav(); } },
       { id: 'tray', label: 'Toggle asset tray', run: () => { close(); shell.toggleTray(); } },

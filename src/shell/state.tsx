@@ -1,6 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { StatusInfo } from '../tools/types';
 import { loadShellPrefs, saveShellPrefs } from '../lib/settings';
+import { getUser, onAuthChange, type AuthUser } from '../lib/auth';
+import { setAuthUser } from '../lib/custom-tools';
 
 interface Toast { id: number; message: string }
 
@@ -38,6 +40,7 @@ interface ShellState {
   reorderTabs: (fromIndex: number, toIndex: number) => void;
   nextTab: () => void;
   prevTab: () => void;
+  user: AuthUser;
 }
 
 const Ctx = createContext<ShellState | null>(null);
@@ -51,9 +54,11 @@ export function ShellProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [tabs, setTabs] = useState<Tab[]>([{ id: 'make', pinned: true }]);
   const [activeTabId, setActiveTabId] = useState('make');
+  const [user, setUser] = useState<AuthUser>(null);
   const exportRef = useRef<(() => void) | null>(null);
   const resetToolRef = useRef<(() => void) | null>(null);
   const prefsLoaded = useRef(false);
+  const migrationChecked = useRef(false);
 
   useEffect(() => {
     loadShellPrefs().then(p => {
@@ -65,7 +70,28 @@ export function ShellProvider({ children }: { children: ReactNode }) {
       if (typeof p.activeTabId === 'string') setActiveTabId(p.activeTabId as string);
       prefsLoaded.current = true;
     });
+    getUser().then(u => { setUser(u); setAuthUser(u?.id ?? null); });
+    return onAuthChange(u => { setUser(u); setAuthUser(u?.id ?? null); });
   }, []);
+
+  // Offer to migrate local IDB tools to the cloud on first sign-in
+  useEffect(() => {
+    if (!user || migrationChecked.current) return;
+    migrationChecked.current = true;
+    (async () => {
+      const { idbGet, idbSet } = await import('../lib/idb');
+      const migrated = await idbGet<boolean>('settings', `__migrated:${user.id}`);
+      if (migrated) return;
+      const { loadCustomTools: loadLocal } = await import('../lib/custom-tools');
+      const local = await loadLocal();
+      if (local.length && window.confirm(`Import ${local.length} local tool${local.length > 1 ? 's' : ''} into your account?`)) {
+        const { migrateIdbToCloud } = await import('../lib/cloud-library');
+        const r = await migrateIdbToCloud(user.id);
+        toast(`Imported ${r.tools} tool${r.tools !== 1 ? 's' : ''}`);
+      }
+      await idbSet('settings', `__migrated:${user.id}`, true);
+    })().catch(e => console.warn('[lathe] migration check failed', e));
+  }, [user, toast]);
   useEffect(() => {
     if (prefsLoaded.current) saveShellPrefs({ railOpen, trayOpen, tabs, activeTabId });
   }, [railOpen, trayOpen, tabs, activeTabId]);
@@ -148,8 +174,9 @@ export function ShellProvider({ children }: { children: ReactNode }) {
     paletteOpen, setPaletteOpen, sheetOpen, setSheetOpen,
     status, setStatus, toasts, toast, exportRef, resetToolRef, runExport,
     tabs, activeTabId, openTab, closeTab, reorderTabs, nextTab, prevTab,
+    user,
   }), [railOpen, toggleRail, trayOpen, paletteOpen, sheetOpen, status, toasts, toast, runExport,
-       tabs, activeTabId, openTab, closeTab, reorderTabs, nextTab, prevTab]);
+       tabs, activeTabId, openTab, closeTab, reorderTabs, nextTab, prevTab, user]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

@@ -66,6 +66,16 @@ export const tool: LatheTool = {
     fmts.forEach(([l, f], i) => outRow.append(button({ label: l, primary: i === 0, onClick: f })));
     const send = sendControl({ from: 'palette', type: () => (swatches.length ? 'text/plain' : null), get: () => hexListAsset(), emit });
     outSec.body.append(outRow, button({ label: 'Copy CSS', onClick: () => void navigator.clipboard.writeText(text('css')).then(() => emit('toast', 'CSS copied')) }),
+      button({ label: 'Save to Library', onClick: async () => {
+        if (!swatches.length) { emit('toast', 'Extract or add colors first'); return; }
+        const { supabase } = await import('../../lib/supabase');
+        if (!supabase) { emit('toast', 'Sign in to save'); return; }
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { emit('toast', 'Sign in to save'); return; }
+        const { cloudSaveItem } = await import('../../lib/cloud-library');
+        await cloudSaveItem(user.id, { type: 'palette', name: source?.name ?? 'Palette', toolId: 'palette', data: { swatches } });
+        emit('toast', 'Saved to Library');
+      }}),
       note(`CSS uses ${d.cssFormat} values${d.exportScales ? ' and includes each scale' : ''}; change both in Defaults. Figma variables is the REST API's variables payload. Tailwind is a v3 config (v4: load it with @config).`), send.el);
     inspector.append(srcSec.el, exSec.el, swSec.el, conSec.el, outSec.el);
 

@@ -117,6 +117,16 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
   const collRow = document.createElement('div'); collRow.className = 'l-row';
   collRow.append(
     button({ label: 'Build deck in Bento', primary: true, onClick: () => void buildDeckNow() }),
+    button({ label: 'Save to Library', onClick: async () => {
+      const { supabase } = await import('../../lib/supabase');
+      if (!supabase) { emit('toast', 'Sign in to save'); return; }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { emit('toast', 'Sign in to save'); return; }
+      const { cloudSaveItem } = await import('../../lib/cloud-library');
+      const c = coll();
+      await cloudSaveItem(user.id, { type: 'subject-audit', name: query || c.name || 'Subject audit', toolId: 'subject-audit', data: { query, collection: c } });
+      emit('toast', 'Saved to Library');
+    }}),
     button({ label: 'New', onClick: () => { const c = { id: `c${Date.now().toString(36)}`, name: `Collection ${collections.length + 1}`, items: [] }; collections.push(c); active = c.id; saveColl(); renderColl(); renderGrid(); } }),
     button({ label: 'Clear', onClick: () => { coll().items = []; saveColl(); renderColl(); renderGrid(); } }),
   );

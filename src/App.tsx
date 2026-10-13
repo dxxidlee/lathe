@@ -11,6 +11,7 @@ import { Keyboard } from './shell/Keyboard';
 import { findTool, loadCustomEntries } from './tools/registry';
 import { Home } from './routes/Home';
 import { Make } from './routes/Make';
+import { Library } from './routes/Library';
 import { useEffect, useState } from 'react';
 
 function ToolView() {
@@ -26,17 +27,17 @@ function ToolView() {
 
   useEffect(() => {
     if (shell.activeTabId && shell.activeTabId !== toolId) {
-      const path = shell.activeTabId === 'make' ? '/t/make' : `/t/${shell.activeTabId}`;
+      const path = shell.activeTabId === 'make' ? '/t/make' : shell.activeTabId === 'library' ? '/t/library' : `/t/${shell.activeTabId}`;
       navigate(path, { replace: true });
     }
   }, [shell.activeTabId]);
 
-  const activeEntry = shell.activeTabId === 'make' ? undefined : findTool(shell.activeTabId);
+  const activeEntry = shell.activeTabId === 'make' || shell.activeTabId === 'library' ? undefined : findTool(shell.activeTabId);
   const drop = useStageDrop(activeEntry);
 
   useEffect(() => {
-    document.title = activeEntry ? `${activeEntry.name} \u00b7 Lathe` : 'Make a tool \u00b7 Lathe';
-  }, [activeEntry]);
+    document.title = activeEntry ? `${activeEntry.name} \u00b7 Lathe` : shell.activeTabId === 'library' ? 'Library \u00b7 Lathe' : 'Make a tool \u00b7 Lathe';
+  }, [activeEntry, shell.activeTabId]);
 
   return (
     <div className={`shell${shell.trayOpen ? ' tray-open' : ''}`} {...drop.handlers}>
@@ -45,11 +46,13 @@ function ToolView() {
       <div className="shell__panes">
         {shell.tabs.map(tab => {
           const isActive = tab.id === shell.activeTabId;
-          const entry = tab.id === 'make' ? undefined : findTool(tab.id);
+          const entry = tab.id === 'make' || tab.id === 'library' ? undefined : findTool(tab.id);
           return (
             <div key={tab.id} className="shell__pane" data-active-tab={isActive || undefined}
               style={{ display: isActive ? 'contents' : 'none' }}>
-              {tab.id === 'make' ? (
+              {tab.id === 'library' ? (
+                <Library />
+              ) : tab.id === 'make' ? (
                 <Make />
               ) : entry?.load ? (
                 <ToolHost entry={entry} active={isActive} />

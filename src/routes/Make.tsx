@@ -10,6 +10,7 @@ import {
 import { addCustomEntry, removeCustomEntry, TOOLS, isReady } from '../tools/registry';
 import { createSandbox, type Sandbox } from '../lib/tool-sandbox';
 import { assets } from '../lib/assets';
+import { getSession } from '../lib/auth';
 import tokensCss from '../styles/tokens.css?raw';
 import primitiveCss from '../styles/primitives.css?raw';
 
@@ -97,7 +98,11 @@ export function Make() {
     const body: Record<string, string> = { prompt: userPrompt };
     if (currentCode) body.currentCode = currentCode;
     if (baseSource) body.baseSource = baseSource;
-    const res = await fetch('/api/make', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body), signal: ctrl.signal });
+    const session = await getSession();
+    const token = session?.access_token;
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch('/api/make', { method: 'POST', headers, body: JSON.stringify(body), signal: ctrl.signal });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || `Server error ${res.status}`);
     if (!data.code) throw new Error('No code in response');
@@ -229,6 +234,24 @@ export function Make() {
   }
 
   const hasSession = tool || chat.length > 0;
+
+  if (!shell.user) {
+    return (
+      <>
+        <section className="stage" aria-label="Make a tool">
+          <div className="mk">
+            <div className="mk__ask">
+              <h2 className="mk__label">Make a tool</h2>
+              <p className="l-note">Sign in to create custom tools. Your tools are saved to your library and persist across devices.</p>
+            </div>
+          </div>
+        </section>
+        <aside className="inspector" aria-label="Inspector">
+          <LibraryPanel library={library} onOpen={t => navigate(`/t/${t.id}`)} onEdit={editTool} onRemove={removeTool} onExport={doExport} onImport={doImport} fileRef={fileRef} />
+        </aside>
+      </>
+    );
+  }
 
   if (!hasSession) {
     return (

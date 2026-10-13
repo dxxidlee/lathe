@@ -127,7 +127,15 @@ export const tool: LatheTool = {
       button({ label: '.svg', onClick: () => void run('svg') }),
       button({ label: 'Copy for Figma', onClick: () => void run('figma') }),
     );
-    outSec.body.append(outRow, status, note('Decks export with an auto-generated credits slide. Fonts: Helvetica Neue, with Arial declared as the fallback.'));
+    outSec.body.append(outRow, status, button({ label: 'Save to Library', onClick: async () => {
+      const { supabase } = await import('../../lib/supabase');
+      if (!supabase) { emit('toast', 'Sign in to save'); return; }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { emit('toast', 'Sign in to save'); return; }
+      const { cloudSaveItem } = await import('../../lib/cloud-library');
+      await cloudSaveItem(user.id, { type: 'deck', name: deck.title || 'Untitled deck', toolId: 'deck', data: deck });
+      emit('toast', 'Saved to Library');
+    }}), note('Decks export with an auto-generated credits slide. Fonts: Helvetica Neue, with Arial declared as the fallback.'));
     inspector.append(deckSec.el, slideSec.el, addSec.el, tileSec.el, outSec.el);
 
     /* ---------------- render ---------------- */

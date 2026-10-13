@@ -108,8 +108,18 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   const capNote = note('');
   const actions = el('div', 'l-row');
   const deckBtn = button({ label: 'Build deck in Bento', primary: true, onClick: () => void buildDeckNow() });
+  const saveLibBtn = button({ label: 'Save to Library', onClick: async () => {
+    if (!cap) { emit('toast', 'Capture a brand first'); return; }
+    const { supabase } = await import('../../lib/supabase');
+    if (!supabase) { emit('toast', 'Sign in to save'); return; }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { emit('toast', 'Sign in to save'); return; }
+    const { cloudSaveItem } = await import('../../lib/cloud-library');
+    await cloudSaveItem(user.id, { type: 'brand-audit', name: brandName(cap) || query || 'Brand audit', toolId: 'brand-audit', data: { domain: cap.domain, query, capturedAt: cap.capturedAt } });
+    emit('toast', 'Saved to Library');
+  }});
   const obsBtn = button({ label: 'Write observations', onClick: () => void observe() });
-  actions.append(deckBtn, obsBtn);
+  actions.append(deckBtn, saveLibBtn, obsBtn);
   // Typed only when neither Brandfetch nor the site links an Instagram account (or the one found fails).
   const igField = field({ label: 'Instagram handle', value: '', placeholder: '@handle', onChange: v => void setHandle(v) });
   capSec.body.append(capStats.el, igField.el, actions, capNote);
