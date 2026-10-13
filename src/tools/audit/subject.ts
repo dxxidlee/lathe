@@ -1,5 +1,4 @@
-/* Subject Audit: query open archives in parallel, stream results in, extract an OKLab palette
-   from every thumbnail, filter and sort by color, collect, and build a deck. */
+/* Subject Audit: query open archives in parallel, stream results in, save images to boards. */
 import type { MountContext, MountResult } from '../types';
 import { PaletteQueue, listSources, proxied, scoreRelevance, searchSource, type AuditResult, type SourceInfo } from './api';
 import { aggregatePalette, hexToOklab, paletteDistance, type Swatch } from '../../lib/color';
@@ -59,7 +58,6 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, setting
   let savedScrollTop = 0;
 
   let expanded: { main: string; alternates: string[]; exclude: string[]; interpreted: string } | null = null;
-  let colorSearchActive = false;
   async function expandQuery(text: string): Promise<typeof expanded> {
     try {
       const r = await fetch(`/api/expand?q=${encodeURIComponent(text)}`);
@@ -217,8 +215,6 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, setting
     controller?.abort(); controller = new AbortController();
     palettes.cancelPending();
     items = []; state.clear(); tab = 'results';
-    colorSearchActive = false;
-
     expanded = await expandQuery(query);
 
     const searchQuery = expanded ? expanded.main : query;
@@ -297,7 +293,7 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, setting
     });
     if (target && filters.mode === 'sort') {
       list = [...list].sort((a, b) => (a.swatches ? paletteDistance(target, a.swatches) : 9) - (b.swatches ? paletteDistance(target, b.swatches) : 9));
-    } else if (tab === 'results' && !colorSearchActive) {
+    } else if (tab === 'results') {
       // Score against the ORIGINAL query so alternate-query results
       // are ranked by relevance to what the user actually typed
       const scoreQ = query;
