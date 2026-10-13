@@ -1,16 +1,16 @@
 /* Subject Audit: query open archives in parallel, stream results in, extract an OKLab palette
    from every thumbnail, filter and sort by color, collect, and build a deck. */
 import type { MountContext, MountResult } from '../types';
-import { PaletteQueue, listSources, proxied, searchSource, type AuditResult, type SourceInfo } from './api';
+import { PaletteQueue, listSources, proxied, scoreRelevance, searchSource, type AuditResult, type SourceInfo } from './api';
 import { buildDeck } from './deck';
 import { DECK_MIME } from '../bento/model';
 import { aggregatePalette, hexToOklab, paletteDistance, type Swatch } from '../../lib/color';
+import { loadBoards, createBoard, saveBoard, renameBoard, migrateCollections, type Board } from '../../lib/boards';
 import { button, chips, field, note, section, select, slider, statList } from '../../ui/primitives';
 import './audit.css';
 
 type Item = AuditResult & { swatches?: Swatch[]; order: number };
 type Orientation = 'any' | 'landscape' | 'portrait' | 'square';
-interface Collection { id: string; name: string; items: Item[] }
 interface SourceState { status: 'idle' | 'loading' | 'done' | 'error'; count: number; total: number; ms: number; page: number; error?: string; cached?: boolean }
 
 const orientationOf = (r: { width: number | null; height: number | null }): Orientation | null => {
@@ -36,17 +36,27 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
     mode: settings.get<'sort' | 'filter'>('colorMode', d.colorMode as 'sort' | 'filter'),
     threshold: settings.get<number>('colorThreshold', d.colorThreshold as number),
   };
-  let collections = settings.get<Collection[]>('collections', []);
-  if (!collections.length) collections = [{ id: 'c1', name: 'Collection 1', items: [] }];
-  let active = settings.get<string>('activeCollection', collections[0].id);
-  if (!collections.some(c => c.id === active)) active = collections[0].id;
-  let tab: 'results' | 'collection' = 'results';
+  let boards: Board[] = [];
+  let activeBoard = '';
+  let tab: 'results' | 'board' = 'results';
   const palettes = new PaletteQueue({
     k: d.paletteSize as number, sample: d.paletteSample as number, iterations: d.paletteIterations as number,
     minShare: d.minSwatchShare as number, minSwatches: d.minSwatches as number, cacheHours: d.cacheHours as number,
   });
-  const coll = () => collections.find(c => c.id === active)!;
-  const saveColl = () => { settings.set('collections', collections); settings.set('activeCollection', active); };
+  const board = (): Board => boards.find(b => b.id === activeBoard) ?? boards[0] ?? { id: '', name: '', query: '', visibility: 'private' as const, shareSlug: null, items: [], createdAt: 0, updatedAt: 0 };
+  const inBoard = (id: string) => board().items.some(i => i.sourceId === id);
+  let detailItem: Item | null = null;
+  let savedScrollTop = 0;
+
+  let expanded: { main: string; alternates: string[]; exclude: string[]; interpreted: string } | null = null;
+  let useExact = false;
+  async function expandQuery(text: string): Promise<typeof expanded> {
+    try {
+      const r = await fetch(`/api/expand?q=${encodeURIComponent(text)}`);
+      if (!r.ok) return null;
+      return await r.json();
+    } catch { return null; }
+  }
 
   /* ---------------- stage ---------------- */
   const root = document.createElement('div'); root.className = 'au';
@@ -57,16 +67,17 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
   const go = document.createElement('button'); go.type = 'submit'; go.className = 'l-btn l-btn--primary au__go'; go.textContent = 'Audit';
   bar.append(q, go);
   const tabs = document.createElement('div'); tabs.className = 'au__tabs'; tabs.setAttribute('role', 'tablist');
-  const tabBtn = (id: typeof tab) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'au__tab'; b.setAttribute('role', 'tab'); b.dataset.tab = id; b.addEventListener('click', () => { tab = id; renderGrid(); }); return b; };
-  const tResults = tabBtn('results'), tColl = tabBtn('collection');
-  tabs.append(tResults, tColl);
+  const tabBtn = (id: typeof tab) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'au__tab'; b.setAttribute('role', 'tab'); b.dataset.tab = id; b.addEventListener('click', () => { tab = id; closeDetail(); renderGrid(); }); return b; };
+  const tResults = tabBtn('results'), tBoard = tabBtn('board');
+  tabs.append(tResults, tBoard);
+  const expandNote = document.createElement('div'); expandNote.className = 'au__expand';
   const grid = document.createElement('div'); grid.className = 'au__grid';
   const empty = document.createElement('div'); empty.className = 'au__empty';
   const more = document.createElement('button'); more.type = 'button'; more.className = 'l-btn au__more'; more.textContent = 'Load more';
   more.addEventListener('click', () => void loadMore());
   const scroller = document.createElement('div'); scroller.className = 'au__scroll';
   scroller.append(grid, empty, more);
-  root.append(bar, tabs, scroller);
+  root.append(bar, expandNote, tabs, scroller);
   stage.appendChild(root);
   bar.addEventListener('submit', e => { e.preventDefault(); void search(q.value); });
 
@@ -96,7 +107,13 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
     const h = v.trim() ? ('#' + v.trim().replace(/^#/, '')).toUpperCase() : '';
     if (h && !hexToOklab(h)) { emit('toast', 'Type a six-digit hex color'); return; }
     filters.hex = h; hexIn.value = h; if (h) picker.value = h.length === 7 ? h : picker.value;
-    settings.set('colorHex', h); renderGrid();
+    settings.set('colorHex', h);
+    // Compute palettes lazily when color search is activated
+    if (h) {
+      const sig = controller?.signal ?? new AbortController().signal;
+      for (const it of items) { if (!it.swatches) void paletteFor(it, sig); }
+    }
+    renderGrid();
   };
   hexIn.addEventListener('change', () => setHex(hexIn.value));
   picker.addEventListener('input', () => setHex(picker.value));
@@ -108,33 +125,24 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
     note('Distance threshold is in Advanced below. Measured in OKLab to the closest swatch of each image.'),
   );
 
-  const collSec = section('Collection');
-  const collPick = select<string>({ label: 'Collection', value: active, options: [], onChange: v => { active = v; saveColl(); renderColl(); renderGrid(); } });
-  const collName = field({ label: 'Name', value: coll().name, onChange: v => { coll().name = v.trim() || coll().name; saveColl(); renderColl(); } });
-  const collStats = statList();
+  const boardSec = section('Board');
+  const boardPick = select<string>({ label: 'Board', value: activeBoard, options: boards.map(b => ({ value: b.id, label: `${b.name} (${b.items.length})` })),
+    onChange: v => { activeBoard = v; if (tab === 'board') renderGrid(); renderBoardUI(); } });
+  const boardName = field({ label: 'Name', value: board().name, onChange: v => { void renameBoard(board(), v); renderBoardUI(); } });
+  const boardStats = statList();
   const aggHost = document.createElement('div'); aggHost.className = 'au-agg';
   const deckOpts = document.createElement('div'); deckOpts.className = 'l-row';
   deckOpts.append(
     chips<'dark' | 'light'>({ label: 'Deck theme', value: d.deckTheme as 'dark' | 'light', options: [{ value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }], onChange: v => { (d as Record<string, unknown>).deckTheme = v; } }).el,
     slider({ label: 'Images per slide', min: 1, max: 8, value: d.imagesPerSlide as number, onChange: v => { (d as Record<string, unknown>).imagesPerSlide = v; } }).el,
   );
-  const collRow = document.createElement('div'); collRow.className = 'l-row';
-  collRow.append(
-    button({ label: 'Build deck', primary: true, onClick: () => void buildDeckNow() }),
-    button({ label: 'Save to Library', onClick: async () => {
-      const { supabase } = await import('../../lib/supabase');
-      if (!supabase) { emit('toast', 'Sign in to save'); return; }
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { emit('toast', 'Sign in to save'); return; }
-      const { cloudSaveItem } = await import('../../lib/cloud-library');
-      const c = coll();
-      await cloudSaveItem(user.id, { type: 'subject-audit', name: query || c.name || 'Subject audit', toolId: 'subject-audit', data: { query, collection: c } });
-      emit('toast', 'Saved to Library');
-    }}),
-    button({ label: 'New', onClick: () => { const c = { id: `c${Date.now().toString(36)}`, name: `Collection ${collections.length + 1}`, items: [] }; collections.push(c); active = c.id; saveColl(); renderColl(); renderGrid(); } }),
-    button({ label: 'Clear', onClick: () => { coll().items = []; saveColl(); renderColl(); renderGrid(); } }),
+  const boardRow = document.createElement('div'); boardRow.className = 'l-row';
+  boardRow.append(
+    button({ label: 'Make a deck from this board', onClick: () => void buildDeckNow() }),
+    button({ label: 'New', onClick: async () => { const b = await createBoard(`Board ${boards.length + 1}`, query); boards.push(b); activeBoard = b.id; renderBoardUI(); renderGrid(); } }),
+    button({ label: 'Clear', onClick: () => { board().items = []; saveBoard(board()); renderBoardUI(); renderGrid(); } }),
   );
-  collSec.body.append(collPick.el, collName.el, collStats.el, aggHost, deckOpts, collRow);
+  boardSec.body.append(boardPick.el, boardName.el, boardStats.el, aggHost, deckOpts, boardRow);
   const sumSec = section('Results');
   const sumStats = statList();
   sumSec.body.append(sumStats.el);
@@ -144,11 +152,11 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
   advSec.el.querySelector('.l-section__title')!.addEventListener('click', () => advSec.el.classList.toggle('is-open'));
   advSec.body.append(
     slider({ label: 'Swatches per image', min: 5, max: 8, value: d.paletteSize as number, onChange: v => { (d as Record<string, unknown>).paletteSize = v; } }).el,
-    slider({ label: 'Collection palette size', min: 3, max: 16, value: d.aggregateSize as number, onChange: v => { (d as Record<string, unknown>).aggregateSize = v; renderColl(); } }).el,
+    slider({ label: 'Board palette size', min: 3, max: 16, value: d.aggregateSize as number, onChange: v => { (d as Record<string, unknown>).aggregateSize = v; renderBoardUI(); } }).el,
     slider({ label: 'Color match distance', min: 1, max: 50, value: Math.round((d.colorThreshold as number) * 100), unit: ' (ΔE×100)', onChange: v => { filters.threshold = v / 100; settings.set('colorThreshold', filters.threshold); (d as Record<string, unknown>).colorThreshold = filters.threshold; if (filters.mode === 'filter') renderGrid(); } }).el,
   );
 
-  inspector.append(...[modeEl, collSec.el, srcSec.el, filtSec.el, colSec.el, sumSec.el, advSec.el].filter(Boolean) as HTMLElement[]);
+  inspector.append(...[modeEl, boardSec.el, srcSec.el, filtSec.el, colSec.el, sumSec.el, advSec.el].filter(Boolean) as HTMLElement[]);
 
   /* ---------------- sources ---------------- */
   function renderSources() {
@@ -168,8 +176,8 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
     }));
     const hidden = sources.filter(s => !s.available).length;
     srcNote.textContent = sources.length
-      ? `${hidden ? `${hidden} more sources appear when their API keys are set in .env.local. ` : ''}Responses are cached for ${d.cacheHours} hours.`
-      : 'Sources are unavailable: the /api functions are not running.';
+      ? (hidden ? `${hidden} source${hidden > 1 ? 's' : ''} need API keys to appear.` : '')
+      : 'Sources are loading\u2026';
   }
 
   /* ---------------- search ---------------- */
@@ -180,25 +188,52 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
     controller?.abort(); controller = new AbortController();
     palettes.cancelPending();
     items = []; state.clear(); tab = 'results';
+
+    // Query expansion
+    if (!useExact) {
+      expanded = await expandQuery(query);
+      if (expanded) {
+        expandNote.innerHTML = '';
+        const span = document.createElement('span');
+        span.style.color = 'var(--text-2)';
+        span.textContent = `Searching: ${expanded.interpreted}`;
+        const exact = document.createElement('button');
+        exact.type = 'button'; exact.className = 'l-btn'; exact.style.marginLeft = 'var(--space-3)';
+        exact.textContent = `Search exactly "${query}"`;
+        exact.addEventListener('click', () => { useExact = true; void search(query); });
+        expandNote.append(span, exact);
+      }
+    } else {
+      expandNote.innerHTML = '';
+    }
+
+    const searchQuery = (expanded && !useExact) ? expanded.main : query;
     const live = sources.filter(s => s.available && !disabled.has(s.id));
     for (const s of live) state.set(s.id, { status: 'loading', count: 0, total: 0, ms: 0, page: 1 });
     renderSources(); renderGrid();
-    await Promise.all(live.map(s => fetchPage(s.id, 1, controller!.signal)));
+    // Search main query + alternates in parallel
+    const queries = [searchQuery];
+    if (expanded && !useExact && expanded.alternates?.length) queries.push(...expanded.alternates);
+    await Promise.all(queries.flatMap(sq => live.map(s => fetchPage(s.id, 1, controller!.signal, sq))));
   }
-  async function fetchPage(id: string, page: number, signal: AbortSignal) {
+  async function fetchPage(id: string, page: number, signal: AbortSignal, overrideQuery?: string) {
     const st = state.get(id)!;
     st.status = 'loading'; renderSources();
     try {
-      const r = await searchSource(id, query, page, d.cacheHours as number, signal);
+      const q = overrideQuery ?? ((expanded && !useExact) ? expanded.main : query);
+      const r = await searchSource(id, q, page, d.cacheHours as number, signal);
       if (signal.aborted) return;
       if (r.error) { st.status = 'error'; st.error = r.error; }
       else {
         st.status = 'done'; st.total = r.total; st.ms = r.ms; st.page = page; st.cached = r.cached;
-        const seen = new Set(items.map(i => i.id));
-        const fresh = r.results.filter(x => !seen.has(x.id)).map((x, i) => ({ ...x, order: (page - 1) * 1000 + i * 20 + sources.findIndex(s => s.id === id) }));
+        const seenIds = new Set(items.map(i => i.id));
+        const seenUrls = new Set(items.map(i => i.thumbUrl));
+        const seenTitles = new Set(items.map(i => i.title?.toLowerCase()));
+        const fresh = r.results
+          .filter(x => x.thumbUrl && !seenIds.has(x.id) && !seenUrls.has(x.thumbUrl) && !(x.title && seenTitles.has(x.title.toLowerCase())))
+          .map((x, i) => ({ ...x, order: (page - 1) * 1000 + i * 20 + sources.findIndex(s => s.id === id) }));
         st.count += fresh.length;
         items.push(...fresh);
-        for (const it of fresh) void paletteFor(it, signal);
       }
     } catch (e) {
       if (signal.aborted) return;
@@ -223,12 +258,12 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
 
   /* ---------------- grid ---------------- */
   const cards = new Map<string, HTMLElement>();
-  const inColl = (id: string) => coll().items.some(i => i.id === id);
   const sourceName = (id: string) => sources.find(s => s.id === id)?.name ?? id;
 
   function visible(): Item[] {
     const target = filters.hex ? hexToOklab(filters.hex) : null;
-    let list = (tab === 'collection' ? coll().items : items).filter(it => {
+    let list = (tab === 'board' ? board().items.map((bi): Item => ({ ...bi as any, id: bi.sourceId, swatches: bi.palette, order: bi.position })) : items).filter(it => {
+      if (!it.thumbUrl) return false;
       if (tab === 'results' && disabled.has(it.source)) return false;
       if (filters.types.size && !filters.types.has(shortType(it.type) ?? '')) return false;
       if (filters.yearFrom != null && (it.year == null || it.year < filters.yearFrom)) return false;
@@ -240,82 +275,163 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
     });
     if (target && filters.mode === 'sort') {
       list = [...list].sort((a, b) => (a.swatches ? paletteDistance(target, a.swatches) : 9) - (b.swatches ? paletteDistance(target, b.swatches) : 9));
-    } else if (tab === 'results') list = [...list].sort((a, b) => a.order - b.order);
+    } else if (tab === 'results') {
+      // Score against the ORIGINAL query so alternate-query results
+      // are ranked by relevance to what the user actually typed
+      const scoreQ = query;
+      const expandedQ = (expanded && !useExact) ? expanded.main : query;
+      const excludeTerms = expanded?.exclude ?? [];
+      const scored = list.map(it => {
+        const origScore = scoreRelevance(it, scoreQ, excludeTerms);
+        const expScore = expandedQ !== scoreQ ? scoreRelevance(it, expandedQ, excludeTerms) : origScore;
+        return { ...it, _rel: Math.max(origScore, expScore) };
+      });
+      const before = scored.length;
+      list = scored.filter(it => it._rel > 0).sort((a, b) => b._rel - a._rel);
+      const dropped = before - list.length;
+      if (dropped > 0) {
+        const bySource = new Map<string, number>();
+        for (const it of scored) if (it._rel === 0) bySource.set(it.source, (bySource.get(it.source) ?? 0) + 1);
+        const perSrc = [...bySource.entries()].map(([s, n]) => {
+          const total = scored.filter(x => x.source === s).length;
+          const pct = Math.round(n / total * 100);
+          const warn = pct > 80 ? ' (nearly all dropped — sparse metadata?)' : '';
+          return `${sourceName(s)}: ${n}/${total} (${pct}%)${warn}`;
+        }).join(', ');
+        console.log(`[audit] relevance: dropped ${dropped}/${before} (threshold >0). Per source: ${perSrc}`);
+      }
+    }
     return list;
   }
 
-  function card(it: Item): HTMLElement {
+  const verified = new Set<string>();
+  const failed = new Set<string>();
+
+  function preloadImage(it: Item) {
+    if (verified.has(it.id) || failed.has(it.id)) return;
+    const img = new Image();
+    let retried = false;
+    const fail = () => { failed.add(it.id); scheduleGrid(); };
+    const ok = () => { verified.add(it.id); scheduleGrid(); };
+    const timeout = setTimeout(() => { if (!retried) { retried = true; img.src = proxied(it.thumbUrl); } else fail(); }, 8000);
+    img.onload = () => { clearTimeout(timeout); ok(); };
+    img.onerror = () => { if (!retried) { retried = true; img.src = proxied(it.thumbUrl); } else { clearTimeout(timeout); fail(); } };
+    img.src = it.thumbUrl;
+  }
+
+  function card(it: Item): HTMLElement | null {
+    if (failed.has(it.id)) return null;
+    // Board items were already verified when added; skip preload check for them
+    if (!verified.has(it.id) && tab !== 'board') { preloadImage(it); return null; }
     let el = cards.get(it.id);
     if (!el) {
-      el = document.createElement('article'); el.className = 'au-card'; el.dataset.id = it.id;
-      const pick = document.createElement('button'); pick.type = 'button'; pick.className = 'au-card__pick';
-      pick.addEventListener('click', () => toggle(it.id));
-      const img = document.createElement('img'); img.className = 'au-card__img'; img.loading = 'lazy'; img.alt = it.title; img.src = it.thumbUrl;
-      img.addEventListener('error', () => { if (!img.src.includes('/api/img')) img.src = proxied(it.thumbUrl); }, { once: true });
-      img.addEventListener('click', () => toggle(it.id));
-      const meta = document.createElement('div'); meta.className = 'au-card__meta';
-      const t = document.createElement('div'); t.className = 'au-card__title'; t.textContent = it.title;
-      const by = document.createElement('div'); by.className = 'au-card__by'; by.textContent = [it.creator, it.date].filter(Boolean).join(', ') || '—';
-      const src = document.createElement('div'); src.className = 'au-card__src';
-      const a = document.createElement('a'); a.href = it.sourceUrl; a.target = '_blank'; a.rel = 'noopener'; a.textContent = sourceName(it.source);
-      src.append(a);
-      if (it.isPublicDomain) { const b = document.createElement('span'); b.className = 'au-card__pd'; b.textContent = 'PD'; b.title = it.license; src.append(b); }
-      else { const l = document.createElement('span'); l.className = 'au-card__lic'; l.textContent = it.license; src.append(l); }
-      const pal = document.createElement('div'); pal.className = 'au-card__pal';
-      meta.append(t, by, src);
-      el.append(pick, img, pal, meta);
+      el = document.createElement('article');
+      el.className = 'au-card au-card--minimal';
+      el.dataset.id = it.id;
+
+      const img = document.createElement('img');
+      img.className = 'au-card__img';
+      img.loading = 'lazy';
+      img.alt = it.title;
+      img.src = it.thumbUrl;
+      img.addEventListener('click', () => openDetail(it));
+
+      const addBtn = document.createElement('button');
+      addBtn.type = 'button';
+      addBtn.className = 'au-card__add';
+      addBtn.addEventListener('click', (e) => { e.stopPropagation(); toggle(it.id); });
+
+      el.append(img, addBtn);
       cards.set(it.id, el);
     }
-    updateCard(it, el);
+    // Update add button state
+    const selected = inBoard(it.id);
+    el.classList.toggle('is-selected', selected);
+    const addBtn = el.querySelector('.au-card__add') as HTMLButtonElement;
+    addBtn.textContent = selected ? 'Added' : 'Add';
     return el;
   }
   function updateCard(it: Item, el = cards.get(it.id)) {
     if (!el) return;
-    const selected = inColl(it.id);
+    const selected = inBoard(it.id);
     el.classList.toggle('is-selected', selected);
-    const pick = el.querySelector<HTMLButtonElement>('.au-card__pick')!;
-    pick.textContent = selected ? 'In collection' : 'Add';
-    pick.setAttribute('aria-pressed', String(selected));
-    const pal = el.querySelector<HTMLElement>('.au-card__pal')!;
-    if (it.swatches && pal.dataset.n !== String(it.swatches.length)) {
-      pal.dataset.n = String(it.swatches.length);
-      pal.replaceChildren(...it.swatches.map(s => {
-        const sw = document.createElement('div'); sw.className = 'au-sw';
-        const chip = document.createElement('span'); chip.className = 'au-sw__chip'; chip.style.background = s.hex; chip.style.flexGrow = String(Math.max(0.5, s.share * 10));
-        const hex = document.createElement('span'); hex.className = 'au-sw__hex'; hex.textContent = s.hex.slice(1);
-        sw.append(chip, hex); sw.style.flexGrow = String(Math.max(0.6, s.share * 10)); sw.title = `${s.hex} · ${Math.round(s.share * 100)}%`;
-        return sw;
-      }));
-    }
+    const btn = el.querySelector<HTMLButtonElement>('.au-card__add');
+    if (btn) btn.textContent = selected ? 'Added' : 'Add';
   }
   function toggle(id: string) {
-    const c = coll();
-    if (c.items.some(i => i.id === id)) c.items = c.items.filter(i => i.id !== id);
-    else { const it = items.find(i => i.id === id) ?? c.items.find(i => i.id === id); if (it) c.items.push({ ...it }); }
-    saveColl(); renderColl();
-    const it = items.find(i => i.id === id) ?? c.items.find(i => i.id === id);
-    if (it) updateCard(it as Item);
-    if (tab === 'collection') renderGrid();
+    const b = board();
+    const existing = b.items.findIndex(i => i.sourceId === id);
+    if (existing >= 0) {
+      b.items.splice(existing, 1);
+    } else {
+      const it = items.find(i => i.id === id);
+      if (it) {
+        // Compute palette lazily on add
+        if (!it.swatches) void paletteFor(it, controller?.signal ?? new AbortController().signal);
+        b.items.push({
+          id: crypto.randomUUID(),
+          sourceId: it.id,
+          source: it.source,
+          title: it.title,
+          creator: it.creator,
+          date: it.date,
+          year: it.year,
+          imageUrl: it.imageUrl,
+          thumbUrl: it.thumbUrl,
+          width: it.width,
+          height: it.height,
+          license: it.license,
+          isPublicDomain: it.isPublicDomain,
+          sourceUrl: it.sourceUrl,
+          type: it.type,
+          palette: it.swatches,
+          position: b.items.length,
+        });
+      }
+    }
+    saveBoard(b);
+    renderBoardUI();
+    // Update card if visible
+    const card = cards.get(id);
+    if (card) {
+      const sel = inBoard(id);
+      card.classList.toggle('is-selected', sel);
+      const btn = card.querySelector('.au-card__add') as HTMLButtonElement;
+      if (btn) btn.textContent = sel ? 'Added' : 'Add';
+    }
+    if (tab === 'board') renderGrid();
   }
 
   let gridRaf = 0;
   const scheduleGrid = () => { cancelAnimationFrame(gridRaf); gridRaf = requestAnimationFrame(renderGrid); };
   function renderGrid() {
+    if (detailItem) { renderDetail(); return; }
     const list = visible();
-    grid.replaceChildren(...list.map(card));
-    tResults.textContent = `Results ${items.length ? items.length : ''}`.trim();
-    tColl.textContent = `Collection ${coll().items.length || ''}`.trim();
-    tResults.classList.toggle('is-active', tab === 'results'); tColl.classList.toggle('is-active', tab === 'collection');
-    tResults.setAttribute('aria-selected', String(tab === 'results')); tColl.setAttribute('aria-selected', String(tab === 'collection'));
+    // Preload images for items not yet verified
+    for (const it of list) if (!verified.has(it.id) && !failed.has(it.id)) preloadImage(it);
+    const rendered = list.map(card).filter((el): el is HTMLElement => el !== null);
+    // Stable re-rank: only reorder if the set of ids changed or order differs
+    const currentIds = [...grid.children].map(c => (c as HTMLElement).dataset.id);
+    const newIds = rendered.map(c => c.dataset.id);
+    if (currentIds.join(',') !== newIds.join(',')) {
+      grid.replaceChildren(...rendered);
+    }
+    // Restore scroller structure if detail view replaced it
+    if (!scroller.contains(grid)) scroller.replaceChildren(grid, empty, more);
+    tResults.textContent = `Results ${rendered.length || ''}`.trim();
+    tBoard.textContent = `Board ${board().items.length || ''}`.trim();
+    tResults.classList.toggle('is-active', tab === 'results'); tBoard.classList.toggle('is-active', tab === 'board');
+    tResults.setAttribute('aria-selected', String(tab === 'results')); tBoard.setAttribute('aria-selected', String(tab === 'board'));
     const loading = [...state.values()].some(s => s.status === 'loading');
-    empty.textContent = list.length ? '' : tab === 'collection' ? 'Add results to this collection, then build a deck.'
+    empty.textContent = list.length ? '' : tab === 'board' ? 'Add results to this board, then make a deck.'
       : !query ? 'Search a subject across open archives, like “Swiss transit signage” or “Bauhaus posters”.'
         : loading ? 'Searching…' : items.length ? 'Nothing matches these filters.' : 'No results.';
     empty.hidden = !!list.length;
     more.hidden = tab !== 'results' || ![...state.values()].some(s => s.status === 'done' && s.count < s.total);
     renderTypes();
-    sumStats.set([['Results', String(items.length)], ['Shown', String(list.length)], ['Sources', String([...state.values()].filter(s => s.status === 'done').length)]]);
-    statusbar.set({ name: query ? `”${query}”` : 'Subject Audit', state: `${items.length} results · ${list.length} shown${loading ? ' · searching' : ''}` });
+    const shownCount = rendered.length;
+    sumStats.set([['Results', String(items.length)], ['Shown', String(shownCount)], ['Sources', String([...state.values()].filter(s => s.status === 'done').length)]]);
+    statusbar.set({ name: query ? `”${query}”` : 'Subject Audit', state: `${items.length} results \u00b7 ${shownCount} shown${loading ? ' \u00b7 searching' : ''}` });
   }
   function renderTypes() {
     const counts = new Map<string, number>();
@@ -329,38 +445,165 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
       onChange: v => { filters.types = new Set(v as string[]); settings.set('types', [...filters.types]); renderGrid(); } }).el : note('Types appear after a search.'));
   }
 
-  function renderColl() {
-    collPick.setOptions(collections.map(c => ({ value: c.id, label: `${c.name} (${c.items.length})` })), active);
-    collName.input.value = coll().name;
-    const c = coll();
-    const agg = aggregatePalette(c.items.filter(i => i.swatches?.length).map(i => i.swatches!), d.aggregateSize as number);
-    collStats.set([['Images', String(c.items.length)], ['Sources', String(new Set(c.items.map(i => i.source)).size)], ['Public domain', String(c.items.filter(i => i.isPublicDomain).length)]]);
+  function renderBoardUI() {
+    boardPick.setOptions(boards.map(b => ({ value: b.id, label: `${b.name} (${b.items.length})` })), activeBoard);
+    boardName.input.value = board().name;
+    const b = board();
+    const agg = aggregatePalette(b.items.filter(i => i.palette?.length).map(i => i.palette!), d.aggregateSize as number);
+    boardStats.set([['Images', String(b.items.length)], ['Sources', String(new Set(b.items.map(i => i.source)).size)], ['Public domain', String(b.items.filter(i => i.isPublicDomain).length)]]);
     aggHost.replaceChildren(...agg.map(s => {
       const sw = document.createElement('div'); sw.className = 'au-agg__sw';
       const chip = document.createElement('span'); chip.className = 'au-agg__chip'; chip.style.background = s.hex;
       const hex = document.createElement('span'); hex.className = 'au-agg__hex'; hex.textContent = s.hex;
       sw.append(chip, hex); return sw;
     }));
-    if (!agg.length) aggHost.append(note('The collection’s palette appears here.'));
-    tColl.textContent = `Collection ${c.items.length || ''}`.trim();
+    if (!agg.length) aggHost.append(note("The board's palette appears here."));
+    tBoard.textContent = `Board ${b.items.length || ''}`.trim();
+  }
+
+  /* ---------------- detail view ---------------- */
+  function openDetail(it: Item) {
+    detailItem = it;
+    savedScrollTop = scroller.scrollTop;
+    if (!it.swatches) void paletteFor(it, controller?.signal ?? new AbortController().signal);
+    renderDetail();
+  }
+
+  function closeDetail() {
+    detailItem = null;
+    renderGrid();
+    requestAnimationFrame(() => { scroller.scrollTop = savedScrollTop; });
+  }
+
+  function renderDetail() {
+    if (!detailItem) return;
+    const it = detailItem;
+    const list = visible();
+    const idx = list.findIndex(x => x.id === it.id);
+
+    const detail = document.createElement('div');
+    detail.className = 'au-detail';
+
+    const back = document.createElement('button');
+    back.type = 'button';
+    back.className = 'au-detail__back';
+    back.textContent = '\u2190 All results';
+    back.addEventListener('click', closeDetail);
+
+    const img = document.createElement('img');
+    img.className = 'au-detail__img';
+    img.src = it.imageUrl || it.thumbUrl;
+    img.alt = it.title;
+
+    const meta = document.createElement('div');
+    meta.className = 'au-detail__meta';
+    const pair = (label: string, value: string | null, isLink = false) => {
+      if (!value) return;
+      const row = document.createElement('div');
+      row.className = 'l-stat';
+      const l = document.createElement('span');
+      l.className = 'l-stat__label';
+      l.textContent = label;
+      const v = document.createElement('span');
+      v.className = 'l-stat__value';
+      if (isLink) {
+        const a = document.createElement('a');
+        a.href = value;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        a.textContent = 'Open \u2197';
+        v.appendChild(a);
+      } else {
+        v.textContent = value;
+      }
+      row.append(l, v);
+      meta.appendChild(row);
+    };
+
+    pair('Title', it.title);
+    pair('Artist', it.creator);
+    pair('Date', it.date);
+    pair('Source', sourceName(it.source));
+    pair('License', it.license);
+    if (it.width && it.height) pair('Dimensions', `${it.width} \u00d7 ${it.height}`);
+    pair('Origin', it.sourceUrl, true);
+
+    if (it.swatches?.length) {
+      const palRow = document.createElement('div');
+      palRow.className = 'au-detail__palette';
+      for (const s of it.swatches) {
+        const sw = document.createElement('button');
+        sw.type = 'button';
+        sw.className = 'au-detail__swatch';
+        sw.style.background = s.hex;
+        sw.title = s.hex;
+        sw.addEventListener('click', () => { void navigator.clipboard.writeText(s.hex); emit('toast', `Copied ${s.hex}`); });
+        palRow.appendChild(sw);
+      }
+      const palLabel = document.createElement('div');
+      palLabel.className = 'l-stat';
+      const pl = document.createElement('span'); pl.className = 'l-stat__label'; pl.textContent = 'Palette';
+      const pv = document.createElement('span'); pv.className = 'l-stat__value';
+      pv.appendChild(palRow);
+      palLabel.append(pl, pv);
+      meta.appendChild(palLabel);
+    }
+
+    const addBtn = document.createElement('button');
+    addBtn.type = 'button';
+    addBtn.className = inBoard(it.id) ? 'l-btn l-btn--primary' : 'l-btn';
+    addBtn.textContent = inBoard(it.id) ? 'Added' : 'Add to board';
+    addBtn.addEventListener('click', () => { toggle(it.id); addBtn.textContent = inBoard(it.id) ? 'Added' : 'Add to board'; addBtn.className = inBoard(it.id) ? 'l-btn l-btn--primary' : 'l-btn'; });
+
+    const actions = document.createElement('div');
+    actions.className = 'au-detail__actions';
+    actions.append(addBtn);
+    detail.append(back, img, meta, actions);
+    scroller.replaceChildren(detail);
+    scroller.scrollTop = 0;
+
+    // Keyboard navigation
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { closeDetail(); window.removeEventListener('keydown', onKey); return; }
+      if (e.key === 'ArrowRight' && idx < list.length - 1) { openDetail(list[idx + 1]); window.removeEventListener('keydown', onKey); return; }
+      if (e.key === 'ArrowLeft' && idx > 0) { openDetail(list[idx - 1]); window.removeEventListener('keydown', onKey); return; }
+    };
+    window.addEventListener('keydown', onKey);
   }
 
   /* ---------------- deck ---------------- */
   async function buildDeckNow() {
-    const c = coll();
-    if (!c.items.length) { emit('toast', 'Add results to the collection first'); return; }
+    const b = board();
+    if (!b.items.length) { emit('toast', 'Add results to the board first'); return; }
     const deck = buildDeck({
-      query: query || c.name, items: c.items, theme: d.deckTheme as 'dark' | 'light',
+      query: query || b.name, items: b.items.map(it => ({ id: it.sourceId, source: it.source, title: it.title ?? '', creator: it.creator, date: it.date, year: it.year, imageUrl: it.imageUrl, thumbUrl: it.thumbUrl, width: it.width, height: it.height, license: it.license ?? '', isPublicDomain: it.isPublicDomain, sourceUrl: it.sourceUrl ?? '', type: it.type, palette: it.palette?.map(s => s.hex) })), theme: d.deckTheme as 'dark' | 'light',
       sourceNames: Object.fromEntries(sources.map(s => [s.id, s.name])),
       imagesPerSlide: d.imagesPerSlide as number, paletteSize: d.aggregateSize as number,
     });
-    const name = `${(query || c.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'subject-audit'}.deck.json`;
+    const name = `${(query || b.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'subject-audit'}.deck.json`;
     const a = await assets.add(new Blob([JSON.stringify(deck)], { type: DECK_MIME }), { name, source: 'tool', origin: 'subject-audit' });
     emit('send', a, 'deck');
   }
 
   /* ---------------- boot ---------------- */
-  renderColl(); renderGrid();
+  // Migrate old collections to boards
+  const oldColls = settings.get<any[]>('collections', []);
+  if (oldColls.length) {
+    boards = migrateCollections(oldColls, query);
+    activeBoard = boards[0].id;
+    settings.remove('collections');
+    for (const b of boards) saveBoard(b);
+  }
+  // Load boards
+  void loadBoards().then(loaded => {
+    if (loaded.length) { boards = loaded; activeBoard = boards[0].id; }
+    if (!boards.length) {
+      void createBoard('Board 1', query).then(b => { boards = [b]; activeBoard = b.id; renderBoardUI(); renderGrid(); });
+    } else {
+      renderBoardUI(); renderGrid();
+    }
+  });
+  renderGrid();
   void listSources().then(list => { sources = list; renderSources(); if (query) void search(query); else renderGrid(); });
 
   return {
