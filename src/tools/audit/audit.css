@@ -65,6 +65,7 @@
 .au-detail__meta { grid-row: 2; overflow-y: auto; display: flex; flex-direction: column; }
 .au-detail__actions { grid-column: 1 / -1; display: flex; gap: var(--space-3); }
 .au-detail__palette { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+.au-detail__meta .l-stat:has(.au-detail__palette) { align-items: flex-start; }
 .au-detail__swatch-item { display: flex; align-items: center; gap: var(--space-1); cursor: pointer; background: none; border: none; padding: 0; font: inherit; }
 .au-detail__swatch { display: block; width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; }
 .au-detail__swatch-item:hover .au-detail__swatch { border-color: var(--text-1); }
