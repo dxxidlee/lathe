@@ -572,7 +572,7 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
     const b = board();
     if (!b.items.length) { emit('toast', 'Add results to the board first'); return; }
     const deck = buildDeck({
-      query: query || b.name, items: b.items, theme: d.deckTheme as 'dark' | 'light',
+      query: query || b.name, items: b.items.map(it => ({ id: it.sourceId, source: it.source, title: it.title ?? '', creator: it.creator, date: it.date, year: it.year, imageUrl: it.imageUrl, thumbUrl: it.thumbUrl, width: it.width, height: it.height, license: it.license ?? '', isPublicDomain: it.isPublicDomain, sourceUrl: it.sourceUrl ?? '', type: it.type, palette: it.palette?.map(s => s.hex) })), theme: d.deckTheme as 'dark' | 'light',
       sourceNames: Object.fromEntries(sources.map(s => [s.id, s.name])),
       imagesPerSlide: d.imagesPerSlide as number, paletteSize: d.aggregateSize as number,
     });
