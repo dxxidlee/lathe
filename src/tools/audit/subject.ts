@@ -2,8 +2,6 @@
    from every thumbnail, filter and sort by color, collect, and build a deck. */
 import type { MountContext, MountResult } from '../types';
 import { PaletteQueue, listSources, proxied, scoreRelevance, searchSource, type AuditResult, type SourceInfo } from './api';
-import { buildDeck } from './deck';
-import { DECK_MIME } from '../bento/model';
 import { aggregatePalette, hexToOklab, paletteDistance, type Swatch } from '../../lib/color';
 import { loadBoards, createBoard, saveBoard, renameBoard, deleteBoard, toggleSharing, migrateCollections, type Board } from '../../lib/boards';
 import { button, chips, field, note, section, select, slider, statList } from '../../ui/primitives';
@@ -18,9 +16,21 @@ const orientationOf = (r: { width: number | null; height: number | null }): Orie
   const a = r.width / r.height;
   return a > 1.1 ? 'landscape' : a < 0.9 ? 'portrait' : 'square';
 };
-const shortType = (t: string | null) => (t ? t.split(/[;,/]/)[0].trim().toLowerCase().replace(/^image\//, '') : null);
+const TYPE_SYNONYMS: Record<string, string> = {
+  photographs: 'photograph', photos: 'photograph', photo: 'photograph',
+  prints: 'print', paintings: 'painting', drawings: 'drawing', sculptures: 'sculpture',
+  images: 'image', videos: 'video', textiles: 'textile', posters: 'poster',
+};
+const normalizeType = (t: string): string => { const lower = t.toLowerCase().trim(); return TYPE_SYNONYMS[lower] ?? lower; };
+const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export function mountSubject({ defaults: d, stage, inspector, statusbar, assets, settings, emit }: MountContext, modeEl?: HTMLElement): MountResult {
+const shortType = (t: string | null) => {
+  if (!t) return null;
+  const raw = t.split(/[;,/]/)[0].trim().toLowerCase().replace(/^image\//, '');
+  return normalizeType(raw);
+};
+
+export function mountSubject({ defaults: d, stage, inspector, statusbar, settings, emit }: MountContext, modeEl?: HTMLElement): MountResult {
   let sources: SourceInfo[] = [];
   const disabled = new Set(settings.get<string[]>('disabledSources', []));
   const state = new Map<string, SourceState>();
@@ -49,7 +59,7 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
   let savedScrollTop = 0;
 
   let expanded: { main: string; alternates: string[]; exclude: string[]; interpreted: string } | null = null;
-  let useExact = false;
+  let colorSearchActive = false;
   async function expandQuery(text: string): Promise<typeof expanded> {
     try {
       const r = await fetch(`/api/expand?q=${encodeURIComponent(text)}`);
@@ -62,7 +72,7 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
   const root = document.createElement('div'); root.className = 'au';
   const bar = document.createElement('form'); bar.className = 'au__bar'; bar.setAttribute('role', 'search');
   const q = document.createElement('input');
-  Object.assign(q, { className: 'au__q', type: 'search', placeholder: '1970s Japanese product photography', value: query });
+  Object.assign(q, { className: 'au__q', type: 'search', placeholder: 'Search \u201Cbotanical prints\u201D, \u201Csubway signage\u201D, \u201Cfilm stills\u201D\u2026', value: query });
   q.setAttribute('aria-label', 'Subject');
   const go = document.createElement('button'); go.type = 'submit'; go.className = 'l-btn l-btn--primary au__go'; go.textContent = 'Audit';
   bar.append(q, go);
@@ -70,14 +80,17 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
   const tabBtn = (id: typeof tab) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'au__tab'; b.setAttribute('role', 'tab'); b.dataset.tab = id; b.addEventListener('click', () => { tab = id; closeDetail(); renderGrid(); }); return b; };
   const tResults = tabBtn('results'), tBoard = tabBtn('board');
   tabs.append(tResults, tBoard);
-  const expandNote = document.createElement('div'); expandNote.className = 'au__expand';
   const grid = document.createElement('div'); grid.className = 'au__grid';
   const empty = document.createElement('div'); empty.className = 'au__empty';
   const more = document.createElement('button'); more.type = 'button'; more.className = 'l-btn au__more'; more.textContent = 'Load more';
   more.addEventListener('click', () => void loadMore());
+  const loadObserver = new IntersectionObserver(entries => {
+    if (entries[0]?.isIntersecting && !more.hidden) void loadMore();
+  }, { rootMargin: '200px' });
+  loadObserver.observe(more);
   const scroller = document.createElement('div'); scroller.className = 'au__scroll';
   scroller.append(grid, empty, more);
-  root.append(bar, expandNote, tabs, scroller);
+  root.append(bar, tabs, scroller);
   stage.appendChild(root);
   bar.addEventListener('submit', e => { e.preventDefault(); void search(q.value); });
 
@@ -131,17 +144,6 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
   const boardName = field({ label: 'Name', value: board().name, onChange: v => { void renameBoard(board(), v); renderBoardUI(); } });
   const boardStats = statList();
   const aggHost = document.createElement('div'); aggHost.className = 'au-agg';
-  const deckOpts = document.createElement('div'); deckOpts.className = 'l-row';
-  deckOpts.append(
-    chips<'dark' | 'light'>({ label: 'Deck theme', value: d.deckTheme as 'dark' | 'light', options: [{ value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }], onChange: v => { (d as Record<string, unknown>).deckTheme = v; } }).el,
-    slider({ label: 'Images per slide', min: 1, max: 8, value: d.imagesPerSlide as number, onChange: v => { (d as Record<string, unknown>).imagesPerSlide = v; } }).el,
-  );
-  const boardRow = document.createElement('div'); boardRow.className = 'l-row';
-  boardRow.append(
-    button({ label: 'Make a deck from this board', onClick: () => void buildDeckNow() }),
-    button({ label: 'New', onClick: async () => { const b = await createBoard(`Board ${boards.length + 1}`, query); boards.push(b); activeBoard = b.id; renderBoardUI(); renderGrid(); } }),
-    button({ label: 'Clear', onClick: () => { board().items = []; saveBoard(board()); renderBoardUI(); renderGrid(); } }),
-  );
   const shareBtn = button({ label: board().visibility === 'unlisted' ? 'Copy link' : 'Share', onClick: async () => {
     const b = board();
     if (b.visibility === 'private') {
@@ -153,18 +155,22 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
       emit('toast', 'Link copied');
     }
   }});
-  const deleteBoardBtn = button({ label: 'Delete board', onClick: async () => {
-    if (!window.confirm(`Delete "${board().name}"?`)) return;
-    await deleteBoard(board().id);
-    boards = boards.filter(b => b.id !== activeBoard);
-    if (!boards.length) boards = [await createBoard('Board 1')];
-    activeBoard = boards[0].id;
-    renderBoardUI(); renderGrid();
-    emit('toast', 'Board deleted');
-  }});
-  const boardRow2 = document.createElement('div'); boardRow2.className = 'l-row';
-  boardRow2.append(shareBtn, deleteBoardBtn);
-  boardSec.body.append(boardPick.el, boardName.el, boardStats.el, aggHost, deckOpts, boardRow, boardRow2);
+  const boardActions = document.createElement('div'); boardActions.className = 'l-row';
+  boardActions.append(
+    button({ label: 'New', onClick: async () => { const b = await createBoard(`Board ${boards.length + 1}`, query); boards.push(b); activeBoard = b.id; renderBoardUI(); renderGrid(); } }),
+    button({ label: 'Clear', onClick: () => { board().items = []; saveBoard(board()); renderBoardUI(); renderGrid(); } }),
+    shareBtn,
+    button({ label: 'Delete', onClick: async () => {
+      if (!window.confirm(`Delete "${board().name}"?`)) return;
+      await deleteBoard(board().id);
+      boards = boards.filter(b => b.id !== activeBoard);
+      if (!boards.length) boards = [await createBoard('Board 1')];
+      activeBoard = boards[0].id;
+      renderBoardUI(); renderGrid();
+      emit('toast', 'Board deleted');
+    }}),
+  );
+  boardSec.body.append(boardPick.el, boardName.el, boardStats.el, aggHost, boardActions);
   const sumSec = section('Results');
   const sumStats = statList();
   sumSec.body.append(sumStats.el);
@@ -205,44 +211,37 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
   /* ---------------- search ---------------- */
   async function search(text: string) {
     query = text.trim();
-    if (!query) { emit('toast', 'Type a subject to audit'); return; }
+    if (!query) return;
+
     settings.set('query', query);
     controller?.abort(); controller = new AbortController();
     palettes.cancelPending();
     items = []; state.clear(); tab = 'results';
+    colorSearchActive = false;
 
-    // Query expansion
-    if (!useExact) {
-      expanded = await expandQuery(query);
-      if (expanded) {
-        expandNote.innerHTML = '';
-        const span = document.createElement('span');
-        span.style.color = 'var(--text-2)';
-        span.textContent = `Searching: ${expanded.interpreted}`;
-        const exact = document.createElement('button');
-        exact.type = 'button'; exact.className = 'l-btn'; exact.style.marginLeft = 'var(--space-3)';
-        exact.textContent = `Search exactly "${query}"`;
-        exact.addEventListener('click', () => { useExact = true; void search(query); });
-        expandNote.append(span, exact);
-      }
-    } else {
-      expandNote.innerHTML = '';
-    }
+    expanded = await expandQuery(query);
 
-    const searchQuery = (expanded && !useExact) ? expanded.main : query;
+    const searchQuery = expanded ? expanded.main : query;
     const live = sources.filter(s => s.available && !disabled.has(s.id));
     for (const s of live) state.set(s.id, { status: 'loading', count: 0, total: 0, ms: 0, page: 1 });
     renderSources(); renderGrid();
-    // Search main query + alternates in parallel
     const queries = [searchQuery];
-    if (expanded && !useExact && expanded.alternates?.length) queries.push(...expanded.alternates);
+    if (expanded?.alternates?.length) queries.push(...expanded.alternates);
     await Promise.all(queries.flatMap(sq => live.map(s => fetchPage(s.id, 1, controller!.signal, sq))));
+    // Auto-load until 50 results pass relevance + image checks
+    let autoLoadAttempts = 0;
+    while (visible().filter(it => verified.has(it.id)).length < 50 && autoLoadAttempts < 5) {
+      const moreSrcs = [...state.entries()].filter(([, s]) => s.status === 'done' && s.count < s.total && s.page < 20);
+      if (!moreSrcs.length) break;
+      autoLoadAttempts++;
+      await Promise.all(moreSrcs.map(([id, s]) => fetchPage(id, s.page + 1, controller!.signal, searchQuery)));
+    }
   }
   async function fetchPage(id: string, page: number, signal: AbortSignal, overrideQuery?: string) {
     const st = state.get(id)!;
     st.status = 'loading'; renderSources();
     try {
-      const q = overrideQuery ?? ((expanded && !useExact) ? expanded.main : query);
+      const q = overrideQuery ?? (expanded ? expanded.main : query);
       const r = await searchSource(id, q, page, d.cacheHours as number, signal);
       if (signal.aborted) return;
       if (r.error) { st.status = 'error'; st.error = r.error; }
@@ -270,6 +269,7 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
     it.palette = p.swatches.map(s => s.hex);
     if (!it.width && p.width) { it.width = p.width; it.height = p.height ?? null; }
     updateCard(it);
+    if (detailItem?.id === it.id) renderDetail();
     if (filters.hex) scheduleGrid();
   }
   async function loadMore() {
@@ -297,11 +297,11 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
     });
     if (target && filters.mode === 'sort') {
       list = [...list].sort((a, b) => (a.swatches ? paletteDistance(target, a.swatches) : 9) - (b.swatches ? paletteDistance(target, b.swatches) : 9));
-    } else if (tab === 'results') {
+    } else if (tab === 'results' && !colorSearchActive) {
       // Score against the ORIGINAL query so alternate-query results
       // are ranked by relevance to what the user actually typed
       const scoreQ = query;
-      const expandedQ = (expanded && !useExact) ? expanded.main : query;
+      const expandedQ = expanded ? expanded.main : query;
       const excludeTerms = expanded?.exclude ?? [];
       const scored = list.map(it => {
         const origScore = scoreRelevance(it, scoreQ, excludeTerms);
@@ -429,14 +429,25 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
   function renderGrid() {
     if (detailItem) { renderDetail(); return; }
     const list = visible();
+    const loading = [...state.values()].some(s => s.status === 'loading');
     // Preload images for items not yet verified
     for (const it of list) if (!verified.has(it.id) && !failed.has(it.id)) preloadImage(it);
     const rendered = list.map(card).filter((el): el is HTMLElement => el !== null);
-    // Stable re-rank: only reorder if the set of ids changed or order differs
-    const currentIds = [...grid.children].map(c => (c as HTMLElement).dataset.id);
-    const newIds = rendered.map(c => c.dataset.id);
-    if (currentIds.join(',') !== newIds.join(',')) {
-      grid.replaceChildren(...rendered);
+    // Show skeleton tiles while loading and grid is empty
+    if (loading && !rendered.length) {
+      const skeletons = Array.from({ length: 12 }, () => {
+        const sk = document.createElement('div');
+        sk.className = 'au-card au-card--skeleton';
+        return sk;
+      });
+      grid.replaceChildren(...skeletons);
+    } else {
+      // Stable re-rank: only reorder if the set of ids changed or order differs
+      const currentIds = [...grid.children].map(c => (c as HTMLElement).dataset.id);
+      const newIds = rendered.map(c => c.dataset.id);
+      if (currentIds.join(',') !== newIds.join(',')) {
+        grid.replaceChildren(...rendered);
+      }
     }
     // Restore scroller structure if detail view replaced it
     if (!scroller.contains(grid)) scroller.replaceChildren(grid, empty, more);
@@ -444,9 +455,8 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
     tBoard.textContent = `Board ${board().items.length || ''}`.trim();
     tResults.classList.toggle('is-active', tab === 'results'); tBoard.classList.toggle('is-active', tab === 'board');
     tResults.setAttribute('aria-selected', String(tab === 'results')); tBoard.setAttribute('aria-selected', String(tab === 'board'));
-    const loading = [...state.values()].some(s => s.status === 'loading');
-    empty.textContent = list.length ? '' : tab === 'board' ? 'Add results to this board, then make a deck.'
-      : !query ? 'Search a subject across open archives, like “Swiss transit signage” or “Bauhaus posters”.'
+    empty.textContent = list.length ? '' : tab === 'board' ? 'Add results to this board.'
+      : !query ? ''
         : loading ? 'Searching…' : items.length ? 'Nothing matches these filters.' : 'No results.';
     empty.hidden = !!list.length;
     more.hidden = tab !== 'results' || ![...state.values()].some(s => s.status === 'done' && s.count < s.total);
@@ -458,13 +468,32 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
   function renderTypes() {
     const counts = new Map<string, number>();
     for (const it of items) { const t = shortType(it.type); if (t) counts.set(t, (counts.get(t) ?? 0) + 1); }
-    const top = [...counts.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([t]) => t);
-    for (const t of filters.types) if (!top.includes(t)) top.push(t);
-    const key = top.join('|') + '#' + [...filters.types].join('|');
+    const top = [...counts.entries()].sort((a, b) => b[1] - a[1]);
+    for (const t of filters.types) if (!top.some(([k]) => k === t)) top.push([t, 0]);
+
+    const showAll = typeHost.dataset.showAll === 'true';
+    const visibleTypes = showAll ? top : top.slice(0, 8);
+    const hasMore = top.length > 8;
+    const key = visibleTypes.map(([t]) => t).join('|') + '#' + [...filters.types].join('|') + '#' + showAll;
     if (typeHost.dataset.key === key) return;
     typeHost.dataset.key = key;
-    typeHost.replaceChildren(top.length ? chips<string>({ label: 'Type', multi: true, value: [...filters.types], options: top.map(t => ({ value: t, label: t })),
-      onChange: v => { filters.types = new Set(v as string[]); settings.set('types', [...filters.types]); renderGrid(); } }).el : note('Types appear after a search.'));
+
+    const els: HTMLElement[] = [];
+    if (visibleTypes.length) {
+      els.push(chips<string>({ label: 'Type', multi: true, value: [...filters.types],
+        options: visibleTypes.map(([t, n]) => ({ value: t, label: `${titleCase(t)} (${n})` })),
+        onChange: v => { filters.types = new Set(v as string[]); settings.set('types', [...filters.types]); renderGrid(); } }).el);
+      if (hasMore) {
+        const toggle = document.createElement('button');
+        toggle.type = 'button'; toggle.className = 'l-btn l-btn--ghost';
+        toggle.textContent = showAll ? 'Less' : `More (${top.length - 8})`;
+        toggle.addEventListener('click', () => { typeHost.dataset.showAll = String(!showAll); renderTypes(); });
+        els.push(toggle);
+      }
+    } else {
+      els.push(note('Types appear after a search.'));
+    }
+    typeHost.replaceChildren(...els);
   }
 
   function renderBoardUI() {
@@ -479,7 +508,7 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
       const hex = document.createElement('span'); hex.className = 'au-agg__hex'; hex.textContent = s.hex;
       sw.append(chip, hex); return sw;
     }));
-    if (!agg.length) aggHost.append(note("The board's palette appears here."));
+    if (!agg.length) aggHost.replaceChildren();
     tBoard.textContent = `Board ${b.items.length || ''}`.trim();
   }
 
@@ -550,17 +579,30 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
     if (it.width && it.height) pair('Dimensions', `${it.width} \u00d7 ${it.height}`);
     pair('Origin', it.sourceUrl, true);
 
-    if (it.swatches?.length) {
+    {
       const palRow = document.createElement('div');
       palRow.className = 'au-detail__palette';
-      for (const s of it.swatches) {
-        const sw = document.createElement('button');
-        sw.type = 'button';
-        sw.className = 'au-detail__swatch';
-        sw.style.background = s.hex;
-        sw.title = s.hex;
-        sw.addEventListener('click', () => { void navigator.clipboard.writeText(s.hex); emit('toast', `Copied ${s.hex}`); });
-        palRow.appendChild(sw);
+      if (it.swatches?.length) {
+        for (const s of it.swatches) {
+          const item = document.createElement('button');
+          item.type = 'button';
+          item.className = 'au-detail__swatch-item';
+          item.title = `Click to copy ${s.hex}`;
+          item.addEventListener('click', () => { void navigator.clipboard.writeText(s.hex); emit('toast', `Copied ${s.hex}`); });
+          const sw = document.createElement('span');
+          sw.className = 'au-detail__swatch';
+          sw.style.background = s.hex;
+          const hexLabel = document.createElement('span');
+          hexLabel.className = 'au-detail__hex';
+          hexLabel.textContent = s.hex;
+          item.append(sw, hexLabel);
+          palRow.appendChild(item);
+        }
+      } else {
+        const loading = document.createElement('span');
+        loading.className = 'au-detail__hex';
+        loading.textContent = 'Extracting\u2026';
+        palRow.appendChild(loading);
       }
       const palLabel = document.createElement('div');
       palLabel.className = 'l-stat';
@@ -593,20 +635,6 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
     window.addEventListener('keydown', onKey);
   }
 
-  /* ---------------- deck ---------------- */
-  async function buildDeckNow() {
-    const b = board();
-    if (!b.items.length) { emit('toast', 'Add results to the board first'); return; }
-    const deck = buildDeck({
-      query: query || b.name, items: b.items.map(it => ({ id: it.sourceId, source: it.source, title: it.title ?? '', creator: it.creator, date: it.date, year: it.year, imageUrl: it.imageUrl, thumbUrl: it.thumbUrl, width: it.width, height: it.height, license: it.license ?? '', isPublicDomain: it.isPublicDomain, sourceUrl: it.sourceUrl ?? '', type: it.type, palette: it.palette?.map(s => s.hex) })), theme: d.deckTheme as 'dark' | 'light',
-      sourceNames: Object.fromEntries(sources.map(s => [s.id, s.name])),
-      imagesPerSlide: d.imagesPerSlide as number, paletteSize: d.aggregateSize as number,
-    });
-    const name = `${(query || b.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'subject-audit'}.deck.json`;
-    const a = await assets.add(new Blob([JSON.stringify(deck)], { type: DECK_MIME }), { name, source: 'tool', origin: 'subject-audit' });
-    emit('send', a, 'deck');
-  }
-
   /* ---------------- boot ---------------- */
   // Migrate old collections to boards
   const oldColls = settings.get<any[]>('collections', []);
@@ -629,7 +657,6 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
   void listSources().then(list => { sources = list; renderSources(); if (query) void search(query); else renderGrid(); });
 
   return {
-    unmount() { controller?.abort(); palettes.destroy(); cancelAnimationFrame(gridRaf); },
-    export: () => void buildDeckNow(),
+    unmount() { controller?.abort(); palettes.destroy(); cancelAnimationFrame(gridRaf); loadObserver.disconnect(); },
   };
 }

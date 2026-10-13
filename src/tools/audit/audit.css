@@ -1,4 +1,4 @@
-.au { position: absolute; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto minmax(0, 1fr); }
+.au { position: absolute; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); }
 .au__bar { display: flex; gap: var(--space-3); padding: var(--space-5) var(--space-6) var(--space-3); }
 .au__q {
   flex: 1; min-width: 0; height: var(--search-h); padding: 0 var(--space-5);
@@ -9,8 +9,6 @@
 .au__q:focus { outline: none; border-color: var(--accent); }
 .au__q::placeholder { color: var(--text-3); }
 .au__go { height: var(--search-h); padding: 0 var(--space-6); font-size: var(--text-body); }
-.au__expand { padding: 0 var(--space-4) var(--space-2); display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
-.au__expand:empty { display: none; }
 .au__tabs { display: flex; gap: var(--space-1); padding: 0 var(--space-6) var(--space-3); }
 .au__tab { height: var(--control-h); padding: 0 var(--space-2); border: 0; border-radius: var(--radius-control); background: var(--fill-1); color: var(--text-2); font-variant-numeric: tabular-nums; }
 .au__tab.is-active { background: var(--accent); color: var(--accent-text); }
@@ -54,17 +52,24 @@
 .au-card--minimal.is-selected .au-card__add { opacity: 1; background: var(--accent); color: var(--accent-text); }
 @media (hover: none) { .au-card__add { opacity: 1; } }
 
+/* Skeleton loading */
+.au-card--skeleton { aspect-ratio: 3/4; background: var(--fill-1); border-radius: var(--radius-control); animation: skeleton-pulse 1.5s ease-in-out infinite; }
+@keyframes skeleton-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
 /* Detail view */
 /* Detail view: image left, metadata right, fits viewport */
-.au-detail { padding: var(--space-5); display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(240px, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; gap: var(--space-4); height: 100%; }
+.au-detail { padding: var(--space-3) 0; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(240px, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; gap: var(--space-4); height: 100%; }
 .au-detail__back { grid-column: 1 / -1; background: none; border: none; color: var(--text-2); cursor: pointer; font: inherit; padding: 0; text-align: left; }
 .au-detail__back:hover { color: var(--text-1); }
 .au-detail__img { grid-row: 2; width: 100%; height: 100%; object-fit: contain; border-radius: var(--radius-panel); background: var(--fill-1); min-height: 0; }
 .au-detail__meta { grid-row: 2; overflow-y: auto; display: flex; flex-direction: column; }
 .au-detail__actions { grid-column: 1 / -1; display: flex; gap: var(--space-3); }
-.au-detail__palette { display: flex; gap: var(--space-1); flex-wrap: wrap; }
-.au-detail__swatch { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); cursor: pointer; padding: 0; }
-.au-detail__swatch:hover { border-color: var(--text-1); }
+.au-detail__palette { display: flex; gap: var(--space-3); flex-wrap: wrap; }
+.au-detail__meta .l-stat:has(.au-detail__palette) { align-items: flex-start; }
+.au-detail__swatch-item { display: flex; align-items: center; gap: var(--space-1); cursor: pointer; background: none; border: none; padding: 0; font: inherit; }
+.au-detail__swatch { display: block; width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; }
+.au-detail__swatch-item:hover .au-detail__swatch { border-color: var(--text-1); }
+.au-detail__hex { font-size: var(--text-meta); color: var(--text-2); font-variant-numeric: tabular-nums; }
 @media (max-width: 767px) { .au-detail { grid-template-columns: 1fr; } .au-detail__img { max-height: 50vh; } }
 
 .au-src { display: flex; flex-direction: column; }
@@ -77,7 +82,9 @@
 .au-src__meta { color: var(--text-3); font-size: var(--text-meta); }
 .au-src__meta[data-state="loading"] { color: var(--accent); }
 .au-src__err { grid-column: 2 / -1; color: var(--text-3); font-size: var(--text-meta); overflow-wrap: anywhere; }
-.au-years { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+.au-years { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-3); }
+.au-years .l-field { min-width: 0; }
+.au-years .l-input { width: 100%; min-width: 0; }
 .au-hex { flex: 1; min-width: 0; text-transform: uppercase; }
 .au-agg { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); }
 .au-agg__sw { display: flex; flex-direction: column; gap: var(--space-1); }
