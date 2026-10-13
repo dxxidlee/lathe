@@ -179,8 +179,8 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
     }));
     const hidden = sources.filter(s => !s.available).length;
     srcNote.textContent = sources.length
-      ? `${hidden ? `${hidden} more sources appear when their API keys are set in .env.local. ` : ''}Responses are cached for ${d.cacheHours} hours.`
-      : 'Sources are unavailable: the /api functions are not running.';
+      ? (hidden ? `${hidden} source${hidden > 1 ? 's' : ''} need API keys to appear.` : '')
+      : 'Sources are loading\u2026';
   }
 
   /* ---------------- search ---------------- */

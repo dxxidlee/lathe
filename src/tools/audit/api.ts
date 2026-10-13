@@ -57,7 +57,9 @@ const STOPWORDS = new Set([
   'het','de','een','van','en','op','te','met','voor','dat','zijn','niet','er','als',
 ]);
 
-/** Score a result's relevance to the query. Higher is better. 0 = irrelevant. */
+/** Score a result's relevance to the query. Higher is better.
+ *  Returns a baseline of 1 for every result (the source API considered it relevant).
+ *  Only returns 0 for results that match exclusively on excluded terms. */
 export function scoreRelevance(result: AuditResult, query: string, exclude: string[] = []): number {
   const q = query.toLowerCase();
   const terms = q.split(/\s+/).filter(t => t.length > 1 && !STOPWORDS.has(t.toLowerCase()));
@@ -65,24 +67,33 @@ export function scoreRelevance(result: AuditResult, query: string, exclude: stri
 
   const title = (result.title || '').toLowerCase();
   const desc = ((result.creator || '') + ' ' + (result.date || '') + ' ' + (result.type || '')).toLowerCase();
+  const all = title + ' ' + desc;
 
+  // Only zero out results whose title matches ONLY an excluded term and nothing else
   for (const ex of exclude) {
     const exl = ex.toLowerCase();
-    if (title.includes(exl) && !terms.some(t => t !== exl && title.includes(t))) return 0;
+    if (title.includes(exl) && !terms.some(t => t !== exl && all.includes(t))) return 0;
   }
 
-  let score = 0;
+  let score = 1; // baseline: the source returned it, so it has some relevance
   const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const wordMatch = (text: string, term: string) => new RegExp(`\\b${esc(term)}\\b`, 'i').test(text);
+  const wordMatch = (text: string, term: string) => new RegExp(`(?:^|[\\s,;:.!?"\\'\\-])${esc(term)}(?:[\\s,;:.!?"\\'\\-]|$)`, 'i').test(text);
 
+  // Full phrase match in title
   if (title.includes(q)) score += 100;
 
-  const titleHits = terms.filter(t => wordMatch(title, t));
-  if (titleHits.length === terms.length) score += 50;
-  else score += titleHits.length * 15;
+  // Whole-word term matches in title
+  const titleWordHits = terms.filter(t => wordMatch(title, t));
+  if (titleWordHits.length === terms.length) score += 50;
+  else score += titleWordHits.length * 15;
 
-  const descHits = terms.filter(t => wordMatch(desc, t));
-  score += descHits.length * 5;
+  // Substring matches in title (lower weight, catches partial/compound words)
+  const titleSubHits = terms.filter(t => title.includes(t) && !titleWordHits.includes(t));
+  score += titleSubHits.length * 5;
+
+  // Matches in description/creator
+  const descHits = terms.filter(t => all.includes(t));
+  score += descHits.length * 3;
 
   return score;
 }
