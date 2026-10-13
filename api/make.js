@@ -86,7 +86,7 @@ export async function POST(request) {
       max_tokens: 4096,
       system: SYSTEM,
       tools: /** @type {any[]} */ ([TOOL_DEF]),
-      tool_choice: { type: 'tool', name: 'lathe_tool' },
+      tool_choice: { type: 'auto' },
       messages: [{ role: 'user', content: `Create a Lathe tool for: ${prompt}` }],
     });
 
