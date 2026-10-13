@@ -85,7 +85,7 @@ export function Library() {
     })();
   }, [shell.user]);
 
-  const showBoards = filter === 'all' || filter === 'board';
+  const showBoards = filter === 'all' || filter === 'board' || filter === 'subject-audit';
   const filtered = filter === 'all'
     ? [...tools.map(t => ({ id: t.id, type: 'tool' as const, name: t.name, createdAt: t.createdAt })), ...items.map(i => ({ id: i.id, type: i.type, name: i.name, createdAt: i.createdAt }))]
     : filter === 'tool'

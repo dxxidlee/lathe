@@ -100,7 +100,11 @@ async function loadCloud(): Promise<Board[]> {
 export async function loadBoards(): Promise<Board[]> {
   if (_userId) {
     const cloud = await loadCloud();
-    if (cloud.length) return cloud;
+    const local = await loadLocal();
+    // Merge: cloud is source of truth, add any local-only boards
+    const cloudIds = new Set(cloud.map(b => b.id));
+    const merged = [...cloud, ...local.filter(b => !cloudIds.has(b.id))];
+    return merged.length ? merged : local;
   }
   return loadLocal();
 }
