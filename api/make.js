@@ -3,7 +3,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { json } from './_lib/http.js';
 
-const MODEL = 'claude-haiku-4-5-20251001';
+const MODEL = process.env.ANTHROPIC_MODEL || 'claude-haiku-4-5-20251001';
 
 const GROUPS = ['Color', 'Image', 'Type', 'Layout', 'Motion', 'Export', 'Reference'];
 
@@ -69,8 +69,8 @@ const TOOL_DEF = {
 
 /** @param {Request} request */
 export async function POST(request) {
-  const apiKey = process.env.ANTHROPIC_WORKSPACE_KEY || process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) return json({ error: 'Tool generation needs ANTHROPIC_WORKSPACE_KEY or ANTHROPIC_API_KEY in .env.local' }, { status: 501 });
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey) return json({ error: 'Tool generation needs ANTHROPIC_API_KEY in .env.local' }, { status: 501 });
 
   /** @type {any} */ let body;
   try { body = await request.json(); } catch { return json({ error: 'Send JSON' }, { status: 400 }); }
@@ -79,7 +79,7 @@ export async function POST(request) {
   if (!prompt) return json({ error: 'prompt is required' }, { status: 400 });
   if (prompt.length > 2000) return json({ error: 'prompt too long (max 2000 chars)' }, { status: 400 });
 
-  const client = new Anthropic({ apiKey });
+  const client = new Anthropic({ apiKey, defaultHeaders: { 'anthropic-workspace-id': process.env.ANTHROPIC_WORKSPACE_ID || '' } });
   try {
     const msg = await client.messages.create({
       model: MODEL,
