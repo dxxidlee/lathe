@@ -322,3 +322,135 @@
 .lib__item-date { font-size: var(--text-meta); color: var(--text-3); }
 .lib__item-del { background: none; border: none; color: var(--text-3); cursor: pointer; font-size: var(--text-body); padding: var(--space-1); }
 .lib__item-del:hover { color: var(--danger); }
+
+@media (max-width: 767px) {
+  /* Shell grid: single column, no inspector column */
+  .shell {
+    height: 100dvh;
+    grid-template-columns: 1fr;
+    grid-template-rows: var(--topbar-h) minmax(0, 1fr) auto;
+    grid-template-areas:
+      "top"
+      "stage"
+      "sheet";
+  }
+
+  /* Top bar: compact */
+  .topbar { padding: 0 var(--space-2); gap: var(--space-2); }
+  .topbar__search { display: none; } /* search is in the menu on mobile */
+  .topbar__actions { display: none; } /* export is in inspector sheet */
+  .tab-bar { display: none; } /* tabs replaced by tool name + switcher */
+
+  /* Mobile tool name in topbar (shown via JS) */
+  .topbar__tool-name {
+    flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    font-size: var(--text-body); font-weight: var(--weight-medium);
+    background: none; border: none; color: var(--text-1); text-align: left;
+    padding: 0 var(--space-2); cursor: pointer;
+  }
+  .topbar__menu-btn {
+    width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
+    background: none; border: none; color: var(--text-2); cursor: pointer;
+  }
+
+  /* Inspector: becomes bottom sheet */
+  .inspector {
+    grid-area: sheet;
+    position: fixed; left: 0; right: 0; bottom: 0;
+    max-height: 70dvh; min-height: 48px;
+    background: var(--surface); border-top: 1px solid var(--border);
+    border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+    overflow-y: auto; z-index: 50;
+    transform: translateY(calc(100% - 48px));
+    transition: transform 200ms var(--ease);
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .inspector.is-expanded { transform: translateY(0); }
+  .inspector.is-full { max-height: 85dvh; transform: translateY(0); }
+
+  /* Sheet drag handle */
+  .inspector::before {
+    content: ""; display: block; width: 32px; height: 4px; margin: var(--space-2) auto;
+    background: var(--text-3); border-radius: 2px; flex-shrink: 0;
+  }
+
+  /* Hide inspector for 'view' mode tools */
+  .shell--view .inspector { display: none; }
+
+  /* Desktop-only tool screen */
+  .shell--desktop .stage { display: flex; align-items: center; justify-content: center; }
+  .desktop-only {
+    display: flex; flex-direction: column; align-items: center; gap: var(--space-4);
+    padding: var(--space-8); text-align: center; color: var(--text-2);
+  }
+  .desktop-only__icon { color: var(--text-3); }
+  .desktop-only__name { font-size: 20px; font-weight: var(--weight-medium); color: var(--text-1); margin: 0; }
+  .desktop-only__blurb { font-size: var(--text-body); max-width: 28ch; }
+  .desktop-only__label { font-size: var(--text-meta); color: var(--text-3); }
+
+  /* Status bar: hidden */
+  .statusbar { display: none; }
+
+  /* Mobile menu (full screen) */
+  .mobile-menu {
+    position: fixed; inset: 0; z-index: 100; background: var(--bg);
+    display: flex; flex-direction: column; overflow-y: auto;
+    padding: env(safe-area-inset-top, 0) 0 env(safe-area-inset-bottom, 0);
+    font-family: var(--font); font-size: var(--text-body); color: var(--text-1);
+  }
+  .mobile-menu__header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border);
+  }
+  .mobile-menu__close {
+    width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+    background: none; border: none; color: var(--text-2); cursor: pointer; font-size: 20px;
+  }
+  .mobile-menu__search {
+    margin: var(--space-3) var(--space-4);
+    height: var(--control-h); padding: 0 var(--space-3);
+    background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-control);
+    color: var(--text-1); font-size: var(--text-body); width: 100%;
+  }
+  .mobile-menu__group { padding: var(--space-3) var(--space-4) var(--space-1); color: var(--text-3); font-size: var(--text-meta); }
+  .mobile-menu__item {
+    display: flex; align-items: center; gap: var(--space-3);
+    padding: var(--space-3) var(--space-4); min-height: 44px;
+    background: none; border: none; color: var(--text-1); font: inherit; width: 100%;
+    text-align: left; cursor: pointer;
+  }
+  .mobile-menu__item:hover, .mobile-menu__item:active { background: var(--surface); }
+  .mobile-menu__item--active { color: var(--accent); }
+  .mobile-menu__icon { width: var(--icon-size); height: var(--icon-size); flex-shrink: 0; color: var(--text-2); }
+  .mobile-menu__divider { height: 1px; background: var(--border); margin: var(--space-2) var(--space-4); }
+  .mobile-menu__account {
+    padding: var(--space-4); border-top: 1px solid var(--border); margin-top: auto;
+    display: flex; flex-direction: column; gap: var(--space-3);
+  }
+
+  /* Tab switcher (bottom sheet) */
+  .tab-switcher {
+    position: fixed; left: 0; right: 0; bottom: 0; z-index: 95;
+    background: var(--surface); border-top: 1px solid var(--border);
+    border-radius: var(--radius-panel) var(--radius-panel) 0 0;
+    max-height: 60dvh; overflow-y: auto;
+    padding-bottom: env(safe-area-inset-bottom, 0);
+  }
+  .tab-switcher__scrim { position: fixed; inset: 0; z-index: 94; background: rgba(0,0,0,0.4); }
+  .tab-switcher__item {
+    display: flex; align-items: center; gap: var(--space-3);
+    padding: var(--space-3) var(--space-4); min-height: 44px;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab-switcher__item.is-active { background: rgba(255,255,255,0.06); }
+  .tab-switcher__name { flex: 1; color: var(--text-1); }
+  .tab-switcher__close {
+    width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
+    background: none; border: none; color: var(--text-3); cursor: pointer;
+  }
+  .tab-switcher__icon { width: var(--icon-size); height: var(--icon-size); color: var(--text-2); }
+
+  /* Auth menu: larger touch targets */
+  .auth-menu { display: none; } /* account is in the mobile menu */
+  .topbar__brand { display: none; } /* mark is enough on mobile */
+}

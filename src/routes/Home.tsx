@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Wordmark } from '../brand/Wordmark';
 import { TOOLS, isReady, toolsByGroup } from '../tools/registry';
+import { toolIcon } from '../shell/icons';
 import { useShell } from '../shell/state';
 import { modKey } from '../lib/format';
 import { MAKE, MARK_TRANSFORM, STRUCTURE, VIEW, routesFor } from './home-graph';
@@ -51,6 +52,22 @@ export function Home() {
       <h1 className="sr-only">Lathe. Tools for people who make tools.</h1>
 
       <main className="graph-wrap" aria-label="Tools">
+        {shell.isMobile ? (
+          <div className="home__mobile-list">
+            {TOOLS.filter(t => isReady(t) && !t.dev).map(t => {
+              const Icon = toolIcon(t.id);
+              return (
+                <Link key={t.id} to={`/t/${t.id}`} className="home__mobile-item" onClick={() => shell.openTab(t.id)}>
+                  {Icon && <Icon size={20} strokeWidth={1.5} />}
+                  <div>
+                    <div className="home__mobile-name">{t.name}</div>
+                    <div className="home__mobile-blurb">{t.blurb}</div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        ) : null}
         <svg className={`graph${active ? ' is-hovering' : ''}`} viewBox={box} preserveAspectRatio="xMidYMid meet" role="navigation" aria-label="Tools">
           <defs>
             {STRUCTURE.map((s, i) => s.dashed && (
