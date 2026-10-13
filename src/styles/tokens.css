@@ -144,3 +144,10 @@
   --radius: var(--radius-control);
   --icon: var(--icon-size);
 }
+
+@media (max-width: 767px) {
+  :root {
+    --text-body: 17px;
+    --text-meta: 13px;
+  }
+}

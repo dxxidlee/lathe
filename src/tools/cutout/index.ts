@@ -51,7 +51,7 @@ export const tool: LatheTool = {
     const srcSec = section('Source');
     const stats = statList();
     const input = imageInput({ toolId: 'cutout', name: 'Cutout', assets, settings, emit, onLoad: a => void run(a), accepts: t => t.startsWith('image/') && t !== 'image/svg+xml' });
-    srcSec.body.append(stats.el, input.urlEl);
+    srcSec.body.append(stats.el, input.fileEl, input.urlEl);
 
     const eSec = section('Edge');
     const debounced = (() => { let t = 0; return () => { clearTimeout(t); t = window.setTimeout(applyRefine, 60); }; })();

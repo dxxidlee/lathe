@@ -80,7 +80,7 @@ export const tool: LatheTool = {
     const srcSec = section('Source');
     const stats = statList();
     const input = imageInput({ toolId: 'vectorize', name: 'Vectorize', assets, settings, emit, onLoad: a => void load(a), accepts: t => t.startsWith('image/') && t !== 'image/svg+xml' });
-    srcSec.body.append(stats.el, input.urlEl);
+    srcSec.body.append(stats.el, input.fileEl, input.urlEl);
 
     const tSec = section('Trace');
     const oneCtl = document.createElement('div'), multiCtl = document.createElement('div'), cornerCtl = document.createElement('div');

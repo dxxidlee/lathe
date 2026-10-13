@@ -64,7 +64,7 @@ export const tool: LatheTool = {
     const srcSec = section('Source');
     const stats = statList();
     const input = imageInput({ toolId: 'dither', name: 'Dither', assets, settings, emit, onLoad: a => void load(a) });
-    srcSec.body.append(stats.el, input.urlEl);
+    srcSec.body.append(stats.el, input.fileEl, input.urlEl);
 
     const mSec = section('Method');
     const ordered = document.createElement('div'); const halfCtl = document.createElement('div');

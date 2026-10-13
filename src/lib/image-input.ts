@@ -9,6 +9,8 @@ import { button, field, select } from '../ui/primitives';
 export interface ImageInput {
   /** "From URL" field + button, for the inspector. */
   urlEl: HTMLElement;
+  /** "Choose file" button + hidden file input, for the inspector. */
+  fileEl: HTMLElement;
   current(): Asset | undefined;
   off(): void;
 }
@@ -17,7 +19,7 @@ export interface ImageInput {
  * Wire a tool to image assets. `onLoad` gets every image handed to the tool (and the last one on
  * mount). Non-images are refused with a toast.
  */
-export function imageInput(o: { toolId: string; name: string; assets: AssetsAPI; settings: SettingsAPI; emit: EmitFn; onLoad: (a: Asset) => void; accepts?: (type: string) => boolean }): ImageInput {
+export function imageInput(o: { toolId: string; name: string; assets: AssetsAPI; settings: SettingsAPI; emit: EmitFn; onLoad: (a: Asset) => void; accepts?: (type: string) => boolean; acceptAttr?: string; multiple?: boolean }): ImageInput {
   let cur: Asset | undefined;
   const ok = o.accepts ?? ((t: string) => t.startsWith('image/'));
   const take = (a: Asset) => {
@@ -46,8 +48,24 @@ export function imageInput(o: { toolId: string; name: string; assets: AssetsAPI;
     finally { go.disabled = false; }
   }
 
+  /* ---- File picker button ---- */
+  const fileRow = document.createElement('div'); fileRow.className = 'l-row';
+  const fileIn = document.createElement('input');
+  Object.assign(fileIn, { type: 'file', accept: o.acceptAttr ?? 'image/*', multiple: o.multiple ?? false, hidden: true });
+  fileIn.addEventListener('change', async () => {
+    const files = fileIn.files; if (!files) return;
+    for (const f of Array.from(files)) {
+      const a = await o.assets.add(f, { name: f.name, source: 'drop' });
+      take(a);
+    }
+    fileIn.value = '';
+  });
+  const pickBtn = button({ label: 'Choose file', onClick: () => fileIn.click() });
+  pickBtn.style.minHeight = '44px';
+  fileRow.append(pickBtn, fileIn);
+
   queueMicrotask(() => { if (cur) return; const last = o.assets.get(o.settings.get<string>('lastAsset', '')); if (last && ok(last.type)) take(last); });
-  return { urlEl: row, current: () => cur, off };
+  return { urlEl: row, fileEl: fileRow, current: () => cur, off };
 }
 
 /** Decode an image blob to pixels, longest edge at most `maxPx` (SVGs are drawn at that size). */

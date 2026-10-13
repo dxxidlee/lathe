@@ -9,6 +9,7 @@ import { changedKeys, effective, loadApplied, loadEdits, saveApplied, saveEdits,
 import { useShell } from './state';
 import { resetTool } from '../lib/reset';
 import { ASSET_MIME } from './Tray';
+import { BottomSheet } from './BottomSheet';
 
 type Phase = 'loading' | 'ready' | 'error';
 
@@ -119,6 +120,12 @@ export function ToolHost({ entry, active = true }: { entry: ToolEntry; active?: 
     shell.toast(`${entry.name} reset to how it was shipped`);
   };
 
+  const inspector = (
+    <aside className="inspector" aria-label="Inspector">
+      <div className="inspector__tool" ref={inspectorRef} />
+    </aside>
+  );
+
   return (
     <>
       <section className="stage" aria-label={`${entry.name} stage`}>
@@ -127,19 +134,26 @@ export function ToolHost({ entry, active = true }: { entry: ToolEntry; active?: 
         {phase === 'error' && (
           <div className="stage__note stage__note--error">
             <p>{entry.name} failed to start. {error}</p>
-            {Object.keys(edits).length > 0 && <button type="button" className="l-btn l-btn--primary" onClick={onResetAll}>Reset to maker’s defaults</button>}
+            {Object.keys(edits).length > 0 && <button type="button" className="l-btn l-btn--primary" onClick={onResetAll}>Reset to maker's defaults</button>}
           </div>
         )}
       </section>
-      <aside className="inspector" aria-label="Inspector">
-        <div className="inspector__tool" ref={inspectorRef} />
-      </aside>
+      {shell.isMobile ? <BottomSheet>{inspector}</BottomSheet> : inspector}
     </>
   );
 }
 
 /** Stage + inspector for tools that are not built yet. */
 export function PlannedTool({ entry }: { entry: ToolEntry }) {
+  const shell = useShell();
+  const inspector = (
+    <aside className="inspector" aria-label="Inspector">
+      <section className="l-section">
+        <h3 className="l-section__title">Inspector</h3>
+        <p className="l-note">Controls appear when {entry.name} is built. Dropped files still land in the tray.</p>
+      </section>
+    </aside>
+  );
   return (
     <>
       <section className="stage stage--planned" aria-label={`${entry.name} stage`}>
@@ -150,12 +164,7 @@ export function PlannedTool({ entry }: { entry: ToolEntry }) {
           <p className="planned__when tabular">Arrives in milestone {entry.milestone}</p>
         </div>
       </section>
-      <aside className="inspector" aria-label="Inspector">
-        <section className="l-section">
-          <h3 className="l-section__title">Inspector</h3>
-          <p className="l-note">Controls appear when {entry.name} is built. Dropped files still land in the tray.</p>
-        </section>
-      </aside>
+      {shell.isMobile ? <BottomSheet>{inspector}</BottomSheet> : inspector}
     </>
   );
 }

@@ -57,7 +57,7 @@ export const tool: LatheTool = {
     const srcSec = section('Source');
     const stats = statList();
     const input = imageInput({ toolId: 'icons', name: 'Icons', assets, settings, emit, onLoad: a => void load(a), accepts: t => ['image/svg+xml', 'image/png', 'image/jpeg', 'image/webp'].includes(t) });
-    srcSec.body.append(stats.el, input.urlEl, note('An SVG gives the sharpest small sizes and is shipped as favicon.svg too.'));
+    srcSec.body.append(stats.el, input.fileEl, input.urlEl, note('An SVG gives the sharpest small sizes and is shipped as favicon.svg too.'));
 
     const lSec = section('Look');
     const mkColor = (lbl: string, k: 'background' | 'themeColor') => {

@@ -93,25 +93,16 @@
 
 /* ---- Foot ---- */
 .home__foot {
-  position: absolute; left: 0; right: 0; bottom: 0; z-index: 1;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1;
   display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-6);
   padding: var(--s-4) var(--s-6); font-size: var(--fs-body); min-height: calc(var(--s-4) * 2 + var(--fs-body) * 1.4);
+  background: var(--lathe);
 }
 .home__foot-main { font-weight: var(--w-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .home__foot-dim { color: var(--black-64); font-weight: var(--w-regular); }
 
-/* ---- Mobile tool list ---- */
-.home__mobile-list { display: none; flex-direction: column; padding: var(--s-4); gap: var(--s-1); overflow-y: auto; }
-.home__mobile-item { display: flex; align-items: flex-start; gap: var(--s-3); padding: var(--s-3); color: var(--black); text-decoration: none; border-radius: 2.5px; min-height: 44px; }
-.home__mobile-item:active { background: var(--black-8); }
-.home__mobile-name { font-weight: var(--w-medium); }
-.home__mobile-blurb { font-size: var(--fs-small); color: var(--black-64); }
-
 @media (max-width: 767px) {
-  .home .graph { display: none; }
-  .home .toollist { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--s-6); }
   .home__link { display: none; }
-  .home__mobile-list { display: flex; }
 }
 
 /* The command palette over the home page takes the home page's colors: a chartreuse panel with
