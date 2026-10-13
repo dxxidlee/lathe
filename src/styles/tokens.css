@@ -1,13 +1,9 @@
 /* ==========================================================================
-   Lathe tokens. Every color, size, weight and duration lives here.
-   Components reference these variables only (enforced by `npm run check:tokens`).
-   Redesign by editing this file.
+   Lathe design system tokens.
    ========================================================================== */
 
 :root {
-  /* ---- New design system tokens ---- */
-
-  /* Palette */
+  /* ---- Palette ---- */
   --bg: #000000;
   --surface: #141414;
   --border: rgba(255,255,255,0.08);
@@ -18,91 +14,14 @@
   --accent-text: #000000;
   --danger: #FF453A;
 
-  /* Type */
+  /* ---- Type ---- */
   --font: "Helvetica Neue", Helvetica, Arial, sans-serif;
   --text-body: 13px;
   --text-meta: 11px;
   --weight: 400;
   --weight-medium: 500;
 
-  /* Spacing (4px grid) */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-7: 32px;
-  --space-8: 40px;
-
-  /* Radius */
-  --radius-control: 4px;
-  --radius-panel: 8px;
-
-  /* Sizes */
-  --control-h: 28px;
-  --icon-size: 16px;
-  --topbar-h: 40px;
-  --statusbar-h: 24px;
-  --tab-h: 40px;
-
-  /* Layers */
-  --z-drop: 20;
-  --z-menu: 40;
-  --z-modal: 60;
-  --z-toast: 80;
-  --z-rail: 90;
-
-  /* Motion */
-  --ease: cubic-bezier(.16, 1, .3, 1);
-  --t-fast: 120ms;
-  --t-med: 200ms;
-
-  /* ---- Backward-compatible aliases ---- */
-  /* These map old names to new tokens so existing tool CSS keeps working */
-  --lathe: var(--accent);
-  --black: #000000;
-  --white: #FFFFFF;
-  --alert: var(--danger);
-
-  --o-100: 1;
-  --o-64: 0.64;
-  --o-40: 0.4;
-  --o-16: 0.16;
-  --o-8: 0.08;
-  --white-64: var(--text-2);
-  --white-40: var(--text-3);
-  --white-16: var(--border);
-  --white-8: rgba(255,255,255,0.06);
-  --black-64: rgba(0,0,0,0.64);
-  --black-40: rgba(0,0,0,0.4);
-  --black-16: rgba(0,0,0,0.16);
-  --black-8: rgba(0,0,0,0.08);
-  --lathe-64: rgba(232,255,26,0.64);
-  --lathe-40: rgba(232,255,26,0.4);
-  --lathe-16: rgba(232,255,26,0.16);
-
-  --panel: var(--bg);
-  --stage: var(--bg);
-  --ink: var(--text-1);
-  --ink-2: var(--text-2);
-  --ink-3: var(--text-3);
-  --hairline-color: var(--border);
-  --fill: rgba(255,255,255,0.06);
-  --fill-strong: rgba(255,255,255,0.12);
-  --on-accent: var(--accent-text);
-  --scrim: rgba(0,0,0,0.64);
-
-  --w-light: 300;
-  --w-regular: var(--weight);
-  --w-medium: var(--weight-medium);
-  --w-bold: 700;
-
-  --fs-micro: 10px;
-  --fs-small: var(--text-meta);
-  --fs-ui: var(--text-body);
-  --fs-body: var(--text-body);
-  --fs-title: 20px;
+  /* Display sizes (headings, empty states, specimen names — not UI) */
   --fs-display-s: 32px;
   --fs-display-m: 56px;
   --fs-display-l: clamp(48px, 7.5vw, 128px);
@@ -115,44 +34,35 @@
 
   --track-display: -0.04em;
   --track-title: -0.02em;
-  --track-ui: 0;
-  --track-caps: 0.04em;
 
-  /* Old spacing (2.5px base) mapped to nearest new 4px grid values */
-  --s-1: var(--space-1);
-  --s-2: var(--space-2);
-  --s-3: var(--space-3);
-  --s-4: var(--space-4);
-  --s-5: var(--space-5);
-  --s-6: var(--space-6);
-  --s-7: var(--space-7);
-  --s-8: var(--space-8);
-  --s-9: 60px;
-  --s-10: 80px;
+  /* ---- Spacing (4px grid) ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
 
-  /* Old component sizes */
-  --hairline: 1px;
-  --radius: var(--radius-control);
-  --radius-pill: calc(var(--control-h) / 2);
-  --chip-h: var(--control-h);
-  --chip-pad-x: var(--space-2);
+  /* ---- Radius ---- */
+  --radius-control: 4px;
+  --radius-panel: 8px;
+
+  /* ---- Sizes ---- */
+  --control-h: 28px;
+  --icon-size: 16px;
+  --topbar-h: 40px;
+  --statusbar-h: 24px;
+  --tab-h: 40px;
+  --swatch: 20px;
   --rail-w: 8px;
   --rail-thumb-h: 12px;
-  --field-h: var(--control-h);
-  --swatch: 20px;
-  --focus-ring: 1px;
-  --stroke-thin: 1;
-  --stroke-med: 1.5;
-  --stroke-bold: 2;
-  --stroke-heavy: 2.5;
-  --icon: var(--icon-size);
-  --thumb: 60px;
   --mark-size: 0.714em;
   --mark-gap: 0.12em;
 
-  /* Shell layout */
+  /* ---- Shell layout ---- */
   --nav-w: 208px;
-  --nav-w-collapsed: 40px;
   --inspector-w: 288px;
   --tray-h: 112px;
   --palette-w: 560px;
@@ -171,4 +81,66 @@
   --card-w: 220px;
   --card-w-s: 120px;
   --search-h: 48px;
+  --thumb: 60px;
+
+  /* ---- Layers ---- */
+  --z-drop: 20;
+  --z-menu: 40;
+  --z-modal: 60;
+  --z-toast: 80;
+  --z-rail: 90;
+
+  /* ---- Motion ---- */
+  --ease: cubic-bezier(.16, 1, .3, 1);
+  --t-fast: 120ms;
+  --t-med: 200ms;
+
+  /* ---- Opacity steps (used by Home graph, brand colors) ---- */
+  --o-100: 1;
+  --o-64: 0.64;
+  --o-40: 0.4;
+  --o-16: 0.16;
+  --o-8: 0.08;
+  --lathe: var(--accent);
+  --lathe-64: rgba(232,255,26,0.64);
+  --lathe-40: rgba(232,255,26,0.4);
+  --lathe-16: rgba(232,255,26,0.16);
+  --black: #000000;
+  --white: #FFFFFF;
+
+  /* ---- Aliases for hidden tools (Cutout, Vectorize, Grid, Resize, Sandbox) ----
+     Remove these when hidden tools are migrated. */
+  --white-16: var(--border);
+  --white-8: rgba(255,255,255,0.06);
+  --scrim: rgba(0,0,0,0.64);
+  --radius-pill: calc(var(--control-h) / 2);
+  --stroke-thin: 1;
+  --stroke-med: 1.5;
+  --stroke-bold: 2;
+  --ink: var(--text-1);
+  --ink-2: var(--text-2);
+  --ink-3: var(--text-3);
+  --hairline-color: var(--border);
+  --hairline: 1px;
+  --fill: rgba(255,255,255,0.06);
+  --fill-strong: rgba(255,255,255,0.12);
+  --chip-h: var(--control-h);
+  --field-h: var(--control-h);
+  --s-1: var(--space-1);
+  --s-2: var(--space-2);
+  --s-3: var(--space-3);
+  --s-4: var(--space-4);
+  --s-5: var(--space-5);
+  --s-6: var(--space-6);
+  --s-7: var(--space-7);
+  --s-8: var(--space-8);
+  --fs-micro: 10px;
+  --fs-small: var(--text-meta);
+  --fs-body: var(--text-body);
+  --panel: var(--bg);
+  --stage: var(--bg);
+  --on-accent: var(--accent-text);
+  --alert: var(--danger);
+  --radius: var(--radius-control);
+  --icon: var(--icon-size);
 }

@@ -1,6 +1,6 @@
 .mg { position: absolute; inset: 0; display: grid; place-items: center; overflow: hidden; }
 .mg__wrap { position: relative; line-height: 0; }
-.mg__canvas { display: block; border-radius: var(--radius); }
+.mg__canvas { display: block; border-radius: var(--radius-control); }
 .mg__ov { position: absolute; inset: 0; overflow: visible; pointer-events: none; }
 .mg__ov .hit { pointer-events: auto; cursor: grab; }
 .mg__ov .hit:active { cursor: grabbing; }

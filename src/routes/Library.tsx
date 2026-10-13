@@ -52,8 +52,8 @@ export function Library() {
     return (
       <>
         <section className="stage" aria-label="Library">
-          <div style={{ padding: '2rem', color: 'var(--ink-2)' }}>
-            <h2 style={{ margin: 0, fontWeight: 500 }}>Library</h2>
+          <div style={{ padding: 'var(--space-7)', color: 'var(--text-2)' }}>
+            <h2 style={{ margin: 0, fontWeight: 'var(--weight-medium)' as any }}>Library</h2>
             <p>Sign in to save and access your work across devices.</p>
           </div>
         </section>

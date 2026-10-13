@@ -1,32 +1,32 @@
 .bt { position: absolute; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr) auto; }
-.bt__main { position: relative; min-height: 0; display: grid; place-items: center; padding: var(--s-6); }
-.bt__slide { position: relative; outline: var(--hairline) solid var(--hairline-color); }
+.bt__main { position: relative; min-height: 0; display: grid; place-items: center; padding: var(--space-6); }
+.bt__slide { position: relative; outline: 1px solid var(--border); }
 .bt__svg, .bt__svg svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .bt__overlay { position: absolute; inset: 0; }
 .bt__tile { position: absolute; cursor: grab; touch-action: none; }
-.bt__tile:hover { outline: var(--hairline) solid var(--white-40); }
-.bt__tile.is-selected { outline: calc(var(--hairline) * 2) solid var(--accent); z-index: 1; }
+.bt__tile:hover { outline: 1px solid var(--text-3); }
+.bt__tile.is-selected { outline: calc(1px * 2) solid var(--accent); z-index: 1; }
 .bt__tile.is-dragging { opacity: var(--o-64); cursor: grabbing; z-index: 2; }
-.bt__tile.is-locked::after { content: ""; position: absolute; inset: 0; outline: var(--hairline) dashed var(--white-40); pointer-events: none; }
-.bt__lock { position: absolute; top: var(--s-1); left: var(--s-1); padding: 0 var(--s-2); background: var(--black-64); color: var(--white); font-size: var(--fs-micro); border-radius: var(--radius); }
+.bt__tile.is-locked::after { content: ""; position: absolute; inset: 0; outline: 1px dashed var(--text-3); pointer-events: none; }
+.bt__lock { position: absolute; top: var(--space-1); left: var(--space-1); padding: 0 var(--space-2); background: rgba(0,0,0,0.64); color: var(--text-1); font-size: var(--text-meta); border-radius: var(--radius-control); }
 .bt__handle {
-  position: absolute; right: calc(var(--s-2) * -1); bottom: calc(var(--s-2) * -1);
-  width: var(--s-4); height: var(--s-4); background: var(--accent); border-radius: var(--radius); cursor: nwse-resize;
+  position: absolute; right: calc(var(--space-2) * -1); bottom: calc(var(--space-2) * -1);
+  width: var(--space-4); height: var(--space-4); background: var(--accent); border-radius: var(--radius-control); cursor: nwse-resize;
 }
 .bt__empty {
-  position: absolute; inset: 0; display: grid; place-items: center; padding: var(--s-8);
-  color: var(--ink-3); font-size: var(--fs-body); text-align: center; pointer-events: none;
+  position: absolute; inset: 0; display: grid; place-items: center; padding: var(--space-8);
+  color: var(--text-3); font-size: var(--text-body); text-align: center; pointer-events: none;
 }
 .bt__empty[hidden] { display: none; }
 .bt__strip {
-  display: flex; gap: var(--s-3); overflow-x: auto; padding: var(--s-3) var(--s-6) var(--s-4);
-  border-top: var(--hairline) solid var(--hairline-color);
+  display: flex; gap: var(--space-3); overflow-x: auto; padding: var(--space-3) var(--space-6) var(--space-4);
+  border-top: 1px solid var(--border);
 }
 .bt__thumb {
   position: relative; flex: 0 0 auto; width: calc(var(--thumb) * 2.4); aspect-ratio: 16 / 9; padding: 0;
-  border: var(--hairline) solid var(--hairline-color); border-radius: var(--radius); background: var(--panel); overflow: hidden;
+  border: 1px solid var(--border); border-radius: var(--radius-control); background: var(--bg); overflow: hidden;
 }
 .bt__thumb svg { width: 100%; height: 100%; display: block; }
-.bt__thumb.is-active { outline: calc(var(--hairline) * 2) solid var(--accent); }
-.bt__num { position: absolute; left: var(--s-1); bottom: var(--s-1); padding: 0 var(--s-1); background: var(--black-64); color: var(--white); font-size: var(--fs-micro); font-variant-numeric: tabular-nums; border-radius: var(--radius); }
-.bt__span { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--s-2); }
+.bt__thumb.is-active { outline: calc(1px * 2) solid var(--accent); }
+.bt__num { position: absolute; left: var(--space-1); bottom: var(--space-1); padding: 0 var(--space-1); background: rgba(0,0,0,0.64); color: var(--text-1); font-size: var(--text-meta); font-variant-numeric: tabular-nums; border-radius: var(--radius-control); }
+.bt__span { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); }

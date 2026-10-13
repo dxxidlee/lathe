@@ -26,8 +26,10 @@ export function ToolHost({ entry, active = true }: { entry: ToolEntry; active?: 
   const editsRef = useRef<Edits>({});
   editsRef.current = edits;
   const activeCbsRef = useRef(new Set<(a: boolean) => void>());
+  const activeRef = useRef(active);
 
   useEffect(() => {
+    activeRef.current = active;
     activeCbsRef.current.forEach(cb => cb(active));
   }, [active]);
 
@@ -72,7 +74,7 @@ export function ToolHost({ entry, active = true }: { entry: ToolEntry; active?: 
         const ctx: MountContext = {
           defaults: values, changedDefaults: changed,
           stage, inspector, assets, settings, emit,
-          statusbar: { set: info => shell.setStatus(info), clear: () => shell.setStatus({}) },
+          statusbar: { set: info => { if (activeRef.current) shell.setStatus(info); }, clear: () => { if (activeRef.current) shell.setStatus({}); } },
           onActivate,
         };
         shell.resetToolRef.current = () => onResetTool();
