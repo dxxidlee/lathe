@@ -26,7 +26,7 @@ interface ShellState {
   sheetOpen: boolean;
   setSheetOpen: (v: boolean) => void;
   status: StatusInfo;
-  setStatus: (s: StatusInfo) => void;
+  setStatus: (s: StatusInfo, tabId?: string) => void;
   toasts: Toast[];
   toast: (message: string) => void;
   /** Set by the mounted tool when it answers Cmd+E. */
@@ -58,7 +58,15 @@ export function ShellProvider({ children }: { children: ReactNode }) {
   const [trayOpen, setTrayOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
-  const [status, setStatus] = useState<StatusInfo>({});
+  const statusMap = useRef(new Map<string, StatusInfo>());
+  const [status, setStatusRaw] = useState<StatusInfo>({});
+  const activeTabRef = useRef(activeTabId);
+  activeTabRef.current = activeTabId;
+  const setStatus = useCallback((info: StatusInfo, tabId?: string) => {
+    const id = tabId ?? activeTabRef.current;
+    statusMap.current.set(id, info);
+    if (id === activeTabRef.current) setStatusRaw(info);
+  }, []);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [tabs, setTabs] = useState<Tab[]>([{ id: 'make', pinned: true }]);
   const [activeTabId, setActiveTabId] = useState('make');
@@ -93,6 +101,10 @@ export function ShellProvider({ children }: { children: ReactNode }) {
     mql.addEventListener('change', onChange);
     return () => mql.removeEventListener('change', onChange);
   }, []);
+
+  useEffect(() => {
+    setStatusRaw(statusMap.current.get(activeTabId) ?? {});
+  }, [activeTabId]);
 
   useEffect(() => {
     if (prefsLoaded.current) saveShellPrefs({ railOpen, trayOpen, tabs, activeTabId });

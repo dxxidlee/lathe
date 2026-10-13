@@ -75,7 +75,7 @@ export function ToolHost({ entry, active = true }: { entry: ToolEntry; active?: 
         const ctx: MountContext = {
           defaults: values, changedDefaults: changed,
           stage, inspector, assets, settings, emit,
-          statusbar: { set: info => { if (activeRef.current) shell.setStatus(info); }, clear: () => { if (activeRef.current) shell.setStatus({}); } },
+          statusbar: { set: info => shell.setStatus(info, entry.id), clear: () => shell.setStatus({}, entry.id) },
           onActivate,
         };
         shell.resetToolRef.current = () => onResetTool();
