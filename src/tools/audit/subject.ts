@@ -23,6 +23,29 @@ const TYPE_SYNONYMS: Record<string, string> = {
 };
 const normalizeType = (t: string): string => { const lower = t.toLowerCase().trim(); return TYPE_SYNONYMS[lower] ?? lower; };
 const titleCase = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+/** Convert a hex color to descriptive search terms for archive queries. */
+function hexToColorTerms(hex: string): string[] {
+  const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+  const max = Math.max(r, g, b), min = Math.min(r, g, b), l = (max + min) / 510;
+  const terms: string[] = [];
+  if (l < 0.15) terms.push('black', 'dark', 'noir');
+  else if (l > 0.85) terms.push('white', 'light', 'bright');
+  else {
+    const h = max === min ? 0 : max === r ? ((g - b) / (max - min) + (g < b ? 6 : 0)) * 60 : max === g ? ((b - r) / (max - min) + 2) * 60 : ((r - g) / (max - min) + 4) * 60;
+    const sat = max === 0 ? 0 : (max - min) / max;
+    if (sat < 0.15) terms.push('gray', 'grey', 'monochrome');
+    else if (h < 15 || h >= 345) terms.push('red', 'crimson', 'scarlet');
+    else if (h < 45) terms.push('orange', 'amber', 'warm');
+    else if (h < 70) terms.push('yellow', 'gold', 'golden');
+    else if (h < 160) terms.push('green', 'emerald', 'verdant');
+    else if (h < 200) terms.push('cyan', 'teal', 'turquoise');
+    else if (h < 260) terms.push('blue', 'azure', 'cobalt');
+    else if (h < 290) terms.push('purple', 'violet', 'indigo');
+    else terms.push('pink', 'magenta', 'rose');
+  }
+  return terms;
+}
 const shortType = (t: string | null) => {
   if (!t) return null;
   const raw = t.split(/[;,/]/)[0].trim().toLowerCase().replace(/^image\//, '');
@@ -235,28 +258,34 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, setting
     // then sort by palette distance. No query expansion needed.
     expanded = isColorSearch ? null : await expandQuery(query);
 
-    // Color search: use broad terms to pull lots of images, then palette-sort
-    const searchQuery = isColorSearch ? 'art design' : (expanded ? expanded.main : query);
+    // Color search: search with color name + broad terms, compute palettes, sort by distance
+    const colorTerms = isColorSearch ? hexToColorTerms(colorHex) : [];
+    const searchQuery = isColorSearch ? colorTerms[0] : (expanded ? expanded.main : query);
     const live = sources.filter(s => s.available && !disabled.has(s.id));
     for (const s of live) state.set(s.id, { status: 'loading', count: 0, total: 0, ms: 0, page: 1 });
     renderSources(); renderGrid();
-    const queries = isColorSearch ? ['art', 'design', 'photograph', 'poster'] : [searchQuery];
+    const queries = isColorSearch ? colorTerms : [searchQuery];
     if (!isColorSearch && expanded?.alternates?.length) queries.push(...expanded.alternates);
     await Promise.all(queries.flatMap(sq => live.map(s => fetchPage(s.id, 1, controller!.signal, sq))));
-    // For color search, compute palettes for everything immediately
+    // For color search, eagerly compute palettes for all results
     if (isColorSearch) {
       const sig = controller!.signal;
-      for (const it of items) { if (!it.swatches) void paletteFor(it, sig); }
+      await Promise.all(items.filter(it => !it.swatches).map(it => paletteFor(it, sig)));
+      renderGrid();
     }
-    // Auto-load until 50 results pass relevance + image checks
+    // Auto-load until target results pass checks
     let autoLoadAttempts = 0;
     const target = isColorSearch ? 100 : 50;
-    while (visible().filter(it => verified.has(it.id)).length < target && autoLoadAttempts < 5) {
+    while (visible().filter(it => verified.has(it.id) && (!colorSearchActive || it.swatches)).length < target && autoLoadAttempts < 5) {
       const moreSrcs = [...state.entries()].filter(([, s]) => s.status === 'done' && s.count < s.total && s.page < 20);
       if (!moreSrcs.length) break;
       autoLoadAttempts++;
-      await Promise.all(moreSrcs.map(([id, s]) => fetchPage(id, s.page + 1, controller!.signal, isColorSearch ? queries[autoLoadAttempts % queries.length] : searchQuery)));
-      if (isColorSearch) { const sig = controller!.signal; for (const it of items) { if (!it.swatches) void paletteFor(it, sig); } }
+      await Promise.all(moreSrcs.map(([id, s]) => fetchPage(id, s.page + 1, controller!.signal, queries[autoLoadAttempts % queries.length])));
+      if (isColorSearch) {
+        const sig = controller!.signal;
+        await Promise.all(items.filter(it => !it.swatches).map(it => paletteFor(it, sig)));
+        renderGrid();
+      }
     }
   }
   async function fetchPage(id: string, page: number, signal: AbortSignal, overrideQuery?: string) {
@@ -308,6 +337,8 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, setting
     const target = filters.hex ? hexToOklab(filters.hex) : null;
     let list = (tab === 'board' ? board().items.map((bi): Item => ({ ...bi as any, id: bi.sourceId, swatches: bi.palette, order: bi.position })) : items).filter(it => {
       if (!it.thumbUrl) return false;
+      // Color search: hide results until their palette is computed
+      if (colorSearchActive && !it.swatches) return false;
       if (tab === 'results' && disabled.has(it.source)) return false;
       if (filters.types.size && !filters.types.has(shortType(it.type) ?? '')) return false;
       if (filters.yearFrom != null && (it.year == null || it.year < filters.yearFrom)) return false;
