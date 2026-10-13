@@ -6,10 +6,13 @@
   /* ---- Palette ---- */
   --bg: #000000;
   --surface: #141414;
-  --border: rgba(255,255,255,0.08);
-  --text-1: rgba(255,255,255,1);
-  --text-2: rgba(255,255,255,0.55);
-  --text-3: rgba(255,255,255,0.3);
+  --border: #222222;
+  --text-1: #FFFFFF;
+  --text-2: #8C8C8C;
+  --text-3: #4D4D4D;
+  /* Solid fills computed against --bg (#000) */
+  --fill-1: #0F0F0F;  /* was rgba(255,255,255,0.06) */
+  --fill-2: #1F1F1F;  /* was rgba(255,255,255,0.12) */
   --accent: #E8FF1A;
   --accent-text: #000000;
   --danger: #FF453A;
@@ -111,7 +114,7 @@
   /* ---- Aliases for hidden tools (Cutout, Vectorize, Grid, Resize, Sandbox) ----
      Remove these when hidden tools are migrated. */
   --white-16: var(--border);
-  --white-8: rgba(255,255,255,0.06);
+  --white-8: var(--fill-1);
   --scrim: rgba(0,0,0,0.64);
   --radius-pill: calc(var(--control-h) / 2);
   --stroke-thin: 1;
@@ -122,8 +125,8 @@
   --ink-3: var(--text-3);
   --hairline-color: var(--border);
   --hairline: 1px;
-  --fill: rgba(255,255,255,0.06);
-  --fill-strong: rgba(255,255,255,0.12);
+  --fill: var(--fill-1);
+  --fill-strong: var(--fill-2);
   --chip-h: var(--control-h);
   --field-h: var(--control-h);
   --s-1: var(--space-1);

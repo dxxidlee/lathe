@@ -3,7 +3,7 @@
 .ic__h { margin: 0; padding-bottom: var(--space-3); border-bottom: 1px solid var(--border); font-size: 20px; font-weight: var(--weight-medium); letter-spacing: var(--track-title); }
 .ic__sizes { display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--space-5); }
 .ic-size { margin: 0; display: flex; flex-direction: column; align-items: center; gap: var(--space-2); }
-.ic-size img { display: block; image-rendering: auto; background: repeating-conic-gradient(var(--border) 0 25%, rgba(255,255,255,0.06) 0 50%) 0 0 / var(--space-3) var(--space-3); }
+.ic-size img { display: block; image-rendering: auto; background: repeating-conic-gradient(var(--border) 0 25%, var(--fill-1) 0 50%) 0 0 / var(--space-3) var(--space-3); }
 .ic-size figcaption, .ic-mask figcaption { color: var(--text-3); font-size: var(--text-meta); font-variant-numeric: tabular-nums; }
 .ic__masks { display: flex; flex-wrap: wrap; gap: var(--space-7); }
 .ic-mask { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); }
@@ -11,6 +11,6 @@
 .ic-mask--circle img { border-radius: 50%; }
 .ic-mask--squircle img { border-radius: 22%; }
 .ic-mask--apple img { border-radius: 22.5%; }
-.ic-tab { display: inline-flex; align-self: flex-start; align-items: center; gap: var(--space-3); height: calc(var(--control-h) * 1.4); padding: 0 var(--space-5); border-radius: var(--radius-control) var(--radius-control) 0 0; background: rgba(255,255,255,0.12); color: var(--text-1); font-size: var(--text-body); }
+.ic-tab { display: inline-flex; align-self: flex-start; align-items: center; gap: var(--space-3); height: calc(var(--control-h) * 1.4); padding: 0 var(--space-5); border-radius: var(--radius-control) var(--radius-control) 0 0; background: var(--fill-2); color: var(--text-1); font-size: var(--text-body); }
 .ic-color { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--text-2); }
 .ic-colors { gap: var(--space-4); }

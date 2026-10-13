@@ -24,7 +24,7 @@
 .mk__chat { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--border); }
 .mk__thread { flex: 1; overflow-y: auto; padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-3); }
 .mk__msg { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3); border-radius: var(--radius-control); }
-.mk__msg--user { background: rgba(255,255,255,0.12); }
+.mk__msg--user { background: var(--fill-2); }
 .mk__msg--assistant { background: transparent; border: 1px solid var(--border); }
 .mk__msg-who { font-size: var(--text-meta); color: var(--text-3); font-weight: var(--weight-medium); }
 .mk__msg-text { font-size: var(--text-body); line-height: var(--lh-body); white-space: pre-wrap; }

@@ -10,10 +10,10 @@
 :is(.cs, .cs-inspector) .rc-btn {
   display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
   height: var(--control-h); padding: 0 var(--space-2);
-  border: 0; border-radius: var(--radius-control); background: rgba(255,255,255,0.06); color: var(--text-2);
+  border: 0; border-radius: var(--radius-control); background: var(--fill-1); color: var(--text-2);
   font-size: var(--text-body); text-decoration: none; white-space: nowrap; cursor: pointer;
 }
-:is(.cs, .cs-inspector) .rc-btn:hover:not(:disabled) { background: rgba(255,255,255,0.12); color: var(--text-1); }
+:is(.cs, .cs-inspector) .rc-btn:hover:not(:disabled) { background: var(--fill-2); color: var(--text-1); }
 :is(.cs, .cs-inspector) .rc-btn:disabled { opacity: var(--o-40); cursor: not-allowed; }
 :is(.cs, .cs-inspector) .rc-btn.primary { background: var(--accent); color: var(--accent-text); font-weight: var(--weight-medium); }
 :is(.cs, .cs-inspector) .rc-btn.primary:hover:not(:disabled) { background: var(--accent); color: var(--accent-text); }
@@ -59,13 +59,13 @@
   -webkit-appearance: none; appearance: none; display: block; width: 100%; height: var(--rail-thumb-h);
   margin: 0; background: transparent; cursor: pointer;
 }
-:is(.cs, .cs-inspector) input[type=range]::-webkit-slider-runnable-track { height: var(--rail-w); background: rgba(255,255,255,0.06); border-radius: calc(var(--control-h) / 2); }
+:is(.cs, .cs-inspector) input[type=range]::-webkit-slider-runnable-track { height: var(--rail-w); background: var(--fill-1); border-radius: calc(var(--control-h) / 2); }
 :is(.cs, .cs-inspector) input[type=range]::-webkit-slider-thumb {
   -webkit-appearance: none; width: var(--rail-thumb-h); height: var(--rail-thumb-h); margin-top: calc((var(--rail-w) - var(--rail-thumb-h)) / 2);
   border: 0; border-radius: calc(var(--control-h) / 2); background: var(--text-1);
 }
 :is(.cs, .cs-inspector) input[type=range]:hover::-webkit-slider-thumb { background: var(--accent); }
-:is(.cs, .cs-inspector) input[type=range]::-moz-range-track { height: var(--rail-w); background: rgba(255,255,255,0.06); border-radius: calc(var(--control-h) / 2); }
+:is(.cs, .cs-inspector) input[type=range]::-moz-range-track { height: var(--rail-w); background: var(--fill-1); border-radius: calc(var(--control-h) / 2); }
 :is(.cs, .cs-inspector) input[type=range]::-moz-range-thumb { width: var(--rail-thumb-h); height: var(--rail-thumb-h); border: 0; border-radius: calc(var(--control-h) / 2); background: var(--text-1); }
 :is(.cs, .cs-inspector) input[type=range]:disabled { opacity: var(--o-40); cursor: not-allowed; }
 
@@ -122,7 +122,7 @@
 .cs-inspector .swatch-name:focus { outline: none; color: var(--accent); }
 .cs-inspector .swatch-mid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--space-2); margin-top: var(--space-2); }
 .cs-inspector .lock-btn { flex: 0 0 auto; padding: var(--space-1); border: 0; border-radius: var(--radius-control); background: transparent; color: var(--text-3); line-height: 0; cursor: pointer; }
-.cs-inspector .lock-btn:hover { background: rgba(255,255,255,0.06); color: var(--text-1); }
+.cs-inspector .lock-btn:hover { background: var(--fill-1); color: var(--text-1); }
 .cs-inspector .lock-btn.on { color: var(--accent); }
 
 /* clusters, rules, presets */
@@ -137,7 +137,7 @@
 .cs-inspector .rule-head { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); }
 .cs-inspector .rule-title { flex: 1 1 auto; color: var(--text-2); }
 .cs-inspector .preset-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-1); }
-.cs-inspector .preset-grid .btn { height: var(--control-h); border: 0; border-radius: var(--radius-control); background: rgba(255,255,255,0.06); color: var(--text-2); font-size: var(--text-meta); cursor: pointer; }
+.cs-inspector .preset-grid .btn { height: var(--control-h); border: 0; border-radius: var(--radius-control); background: var(--fill-1); color: var(--text-2); font-size: var(--text-meta); cursor: pointer; }
 .cs-inspector .preset-grid .btn:hover { background: var(--accent); color: var(--accent-text); }
 
 /* ---------- stage ---------- */
@@ -151,8 +151,8 @@
 .cs .viewbar select.input { width: auto; flex: 0 0 auto; }
 .cs .tb-spacer { flex: 1 1 auto; }
 .cs .seg { display: inline-flex; gap: 1px; }
-.cs .seg button { height: var(--control-h); padding: 0 var(--space-2); border: 0; border-radius: var(--radius-control); background: rgba(255,255,255,0.06); color: var(--text-2); font-size: var(--text-body); cursor: pointer; }
-.cs .seg button:hover { color: var(--text-1); background: rgba(255,255,255,0.12); }
+.cs .seg button { height: var(--control-h); padding: 0 var(--space-2); border: 0; border-radius: var(--radius-control); background: var(--fill-1); color: var(--text-2); font-size: var(--text-body); cursor: pointer; }
+.cs .seg button:hover { color: var(--text-1); background: var(--fill-2); }
 .cs .seg button.on { background: var(--accent); color: var(--accent-text); }
 .cs .divider { flex: 0 0 auto; width: 1px; height: var(--space-6); background: var(--border); }
 
@@ -202,5 +202,5 @@
 .cs .kv span:last-child { color: var(--text-1); font-variant-numeric: tabular-nums; }
 .cs .note { margin-top: var(--space-4); padding: var(--space-3); border: 1px solid var(--border); border-radius: var(--radius-control); color: var(--text-2); font-size: var(--text-meta); line-height: var(--lh-body); }
 .cs #expProgWrap { margin-top: var(--space-4); }
-.cs .progress { height: var(--space-1); background: rgba(255,255,255,0.06); border-radius: var(--radius-control); overflow: hidden; }
+.cs .progress { height: var(--space-1); background: var(--fill-1); border-radius: var(--radius-control); overflow: hidden; }
 .cs .progress-bar { width: 0; height: 100%; background: var(--accent); transition: width var(--t-fast); }
