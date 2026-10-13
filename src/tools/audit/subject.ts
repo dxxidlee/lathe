@@ -338,9 +338,10 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, setting
   }
 
   function card(it: Item): HTMLElement | null {
-    if (failed.has(it.id)) return null;
-    // Board items were already verified when added; skip preload check for them
-    if (!verified.has(it.id) && tab !== 'board') { preloadImage(it); return null; }
+    if (tab !== 'board') {
+      if (failed.has(it.id)) return null;
+      if (!verified.has(it.id)) { preloadImage(it); return null; }
+    }
     let el = cards.get(it.id);
     if (!el) {
       el = document.createElement('article');
