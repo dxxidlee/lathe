@@ -484,8 +484,38 @@
 .lib__board-cover img { width: 100%; height: 100%; object-fit: cover; }
 .lib__board-empty { background: var(--surface); }
 .lib__board-lock { position: absolute; top: var(--space-2); left: var(--space-2); font-size: var(--text-meta); }
-.lib__board-name { font-weight: var(--weight-medium); margin-top: var(--space-2); }
+/* Board card info row + menu */
+.lib__board-info { display: flex; align-items: center; justify-content: space-between; margin-top: var(--space-2); }
+.lib__board-name { font-weight: var(--weight-medium); cursor: pointer; }
+.lib__board-name:hover { color: var(--accent); }
+.lib__board-menu-btn { background: none; border: none; color: var(--text-3); cursor: pointer; font-size: 16px; padding: var(--space-1); }
+.lib__board-menu-btn:hover { color: var(--text-1); }
+.lib__board-menu { display: flex; flex-direction: column; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-control); overflow: hidden; margin-top: var(--space-1); }
+.lib__board-menu button { padding: var(--space-2) var(--space-3); background: none; border: none; color: var(--text-1); text-align: left; cursor: pointer; font: inherit; }
+.lib__board-menu button:hover { background: var(--fill-1); }
+.lib__board-menu-danger { color: var(--danger) !important; }
+.lib__board-menu-danger:hover { background: color-mix(in srgb, var(--danger) 10%, var(--bg)) !important; }
+.lib__board-shared { position: absolute; top: var(--space-2); left: var(--space-2); font-size: var(--text-meta); }
 .lib__board-meta { font-size: var(--text-meta); color: var(--text-2); }
+
+/* Profile header */
+.lib__profile { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); padding: var(--space-7) 0; }
+.lib__avatar { width: 64px; height: 64px; border-radius: 50%; background: var(--surface); display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: var(--weight-medium); color: var(--text-1); }
+.lib__username { font-size: 20px; font-weight: var(--weight-medium); }
+.lib__member { font-size: var(--text-meta); color: var(--text-2); }
+.lib__stats { font-size: var(--text-meta); color: var(--text-2); }
+
+/* Auth profile button */
+.auth-menu__profile { display: flex; align-items: center; gap: var(--space-2); background: none; border: none; color: var(--text-1); cursor: pointer; font: inherit; padding: 0; }
+.auth-menu__avatar { width: 24px; height: 24px; border-radius: 50%; background: var(--surface); display: flex; align-items: center; justify-content: center; font-size: var(--text-meta); font-weight: var(--weight-medium); flex-shrink: 0; }
+.auth-menu__name { font-size: var(--text-body); color: var(--text-2); }
+.auth-menu__name:hover { color: var(--text-1); }
+
+/* Create board */
+.lib__create { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-4); }
+
+/* Sign out in Library */
+.lib__signout { margin-top: var(--space-4); }
 
 /* ---- Shared board (public /b/:slug) ---- */
 .shared-board { min-height: 100dvh; background: var(--bg); color: var(--text-1); font-family: var(--font); font-size: var(--text-body); padding: var(--space-7) var(--space-6); max-width: 1200px; margin: 0 auto; }

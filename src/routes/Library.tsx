@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useShell } from '../shell/state';
 import { BottomSheet } from '../shell/BottomSheet';
 import { cloudLoadLibrary, cloudDeleteItem, type LibraryItem } from '../lib/cloud-library';
 import { loadCustomTools, type CustomTool } from '../lib/custom-tools';
-import { loadBoards, type Board } from '../lib/boards';
+import { loadBoards, createBoard, deleteBoard, toggleSharing, type Board } from '../lib/boards';
+import { signOut } from '../lib/auth';
 
 const TYPES = ['all', 'board', 'deck', 'subject-audit', 'brand-audit', 'palette', 'image', 'tool'] as const;
 const TYPE_LABELS: Record<string, string> = {
@@ -23,24 +25,38 @@ function formatAge(ts: number): string {
   return `${weeks}w`;
 }
 
-function BoardCard({ board, onClick }: { board: Board; onClick: () => void }) {
+function BoardCard({ board, onOpen, onShare, onDelete }: { board: Board; onOpen: () => void; onShare: () => void; onDelete: () => void }) {
+  const [menuOpen, setMenuOpen] = useState(false);
   const imgs = board.items.slice(0, 3);
   const age = formatAge(board.updatedAt);
   return (
-    <div className="lib__board" onClick={onClick}>
-      <div className={`lib__board-cover lib__board-cover--${Math.min(imgs.length, 3)}`}>
+    <div className="lib__board">
+      <div className={`lib__board-cover lib__board-cover--${Math.min(imgs.length, 3)}`} onClick={onOpen}>
         {imgs.map((it, i) => <img key={i} src={it.thumbUrl} alt="" loading="lazy" />)}
         {!imgs.length && <div className="lib__board-empty" />}
-        {board.visibility === 'private' && <span className="lib__board-lock" title="Private">{'\ud83d\udd12'}</span>}
+        {board.visibility === 'unlisted' && <span className="lib__board-shared" title="Shared">{'\ud83d\udd17'}</span>}
       </div>
-      <div className="lib__board-name">{board.name}</div>
+      <div className="lib__board-info">
+        <span className="lib__board-name" onClick={onOpen}>{board.name}</span>
+        <button type="button" className="lib__board-menu-btn" onClick={() => setMenuOpen(o => !o)}>{'\u22EF'}</button>
+      </div>
       <div className="lib__board-meta">{board.items.length} image{board.items.length !== 1 ? 's' : ''} &middot; {age}</div>
+      {menuOpen && (
+        <div className="lib__board-menu">
+          <button type="button" onClick={() => { onOpen(); setMenuOpen(false); }}>Open</button>
+          <button type="button" onClick={() => { onShare(); setMenuOpen(false); }}>
+            {board.visibility === 'unlisted' ? 'Make private' : 'Share link'}
+          </button>
+          <button type="button" className="lib__board-menu-danger" onClick={() => { onDelete(); setMenuOpen(false); }}>Delete</button>
+        </div>
+      )}
     </div>
   );
 }
 
 export function Library() {
   const shell = useShell();
+  const navigate = useNavigate();
   const [items, setItems] = useState<LibraryItem[]>([]);
   const [tools, setTools] = useState<CustomTool[]>([]);
   const [boards, setBoards] = useState<Board[]>([]);
@@ -85,27 +101,69 @@ export function Library() {
     shell.toast('Removed from library');
   };
 
-  if (!shell.user) {
-    const inspector = <aside className="inspector" aria-label="Inspector" />;
-    return (
-      <>
-        <section className="stage" aria-label="Library">
-          <div style={{ padding: 'var(--space-7)', color: 'var(--text-2)' }}>
-            <h2 style={{ margin: 0, fontWeight: 'var(--weight-medium)' as any }}>Library</h2>
-            <p>Sign in to save and access your work across devices.</p>
-          </div>
-        </section>
-        {shell.isMobile ? <BottomSheet>{inspector}</BottomSheet> : inspector}
-      </>
-    );
+  async function handleCreate() {
+    const board = await createBoard('Untitled board');
+    setBoards(await loadBoards());
+    shell.openTab('subject-audit');
+    navigate('/t/subject-audit');
   }
+
+  async function handleDelete(id: string) {
+    if (!window.confirm('Delete this board? This cannot be undone.')) return;
+    await deleteBoard(id);
+    setBoards(await loadBoards());
+    shell.toast('Board deleted');
+  }
+
+  async function handleShare(board: Board) {
+    const updated = await toggleSharing(board);
+    setBoards(await loadBoards());
+    if (updated.visibility === 'unlisted' && updated.shareSlug) {
+      await navigator.clipboard.writeText(`${window.location.origin}/b/${updated.shareSlug}`);
+      shell.toast('Link copied');
+    } else {
+      shell.toast('Board is now private');
+    }
+  }
+
+  function handleOpen(board: Board) {
+    shell.openTab('subject-audit');
+    navigate('/t/subject-audit');
+  }
+
+  // Profile info
+  const email = shell.user?.email ?? '';
+  const username = email.split('@')[0] || 'You';
+  const initial = username[0]?.toUpperCase() || '?';
+  const memberSince = shell.user?.created_at
+    ? new Date(shell.user.created_at).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+    : '';
+
+  const profileHeader = shell.user ? (
+    <div className="lib__profile">
+      <div className="lib__avatar">{initial}</div>
+      <div className="lib__username">{username}</div>
+      {memberSince && <div className="lib__member">Member since {memberSince}</div>}
+      <div className="lib__stats">{boards.length} board{boards.length !== 1 ? 's' : ''} &middot; {items.length} saved</div>
+    </div>
+  ) : (
+    <div style={{ padding: 'var(--space-7)', color: 'var(--text-2)' }}>
+      <h2 style={{ margin: 0, fontWeight: 'var(--weight-medium)' as any }}>Library</h2>
+      <p>Sign in to save and access your work across devices.</p>
+    </div>
+  );
+
+  const inspector = <aside className="inspector" aria-label="Inspector" />;
 
   return (
     <>
       <section className="stage" aria-label="Library">
         <div className="lib">
+          {profileHeader}
+          <div className="lib__create">
+            <button type="button" className="l-btn l-btn--primary" onClick={handleCreate}>+ Create board</button>
+          </div>
           <div className="lib__head">
-            <h2 className="lib__title">Library</h2>
             <div className="l-chip-row">
               {TYPES.map(t => (
                 <button key={t} type="button" className={`l-chip${filter === t ? ' is-active' : ''}`}
@@ -117,7 +175,12 @@ export function Library() {
           {!loading && !filtered.length && !showBoards && <p className="l-note">Nothing saved yet. Use "Save to Library" in any tool.</p>}
           {showBoards && (
             <div className="lib__boards">
-              {boards.map(b => <BoardCard key={b.id} board={b} onClick={() => shell.openTab('subject-audit')} />)}
+              {boards.map(b => (
+                <BoardCard key={b.id} board={b}
+                  onOpen={() => handleOpen(b)}
+                  onShare={() => void handleShare(b)}
+                  onDelete={() => void handleDelete(b.id)} />
+              ))}
             </div>
           )}
           <div className="lib__grid">
@@ -132,9 +195,14 @@ export function Library() {
               </div>
             ))}
           </div>
+          {shell.user && (
+            <div className="lib__signout">
+              <button type="button" className="l-btn" onClick={() => void signOut()}>Sign out</button>
+            </div>
+          )}
         </div>
       </section>
-      {shell.isMobile ? <BottomSheet><aside className="inspector" aria-label="Inspector" /></BottomSheet> : <aside className="inspector" aria-label="Inspector" />}
+      {shell.isMobile ? <BottomSheet>{inspector}</BottomSheet> : inspector}
     </>
   );
 }
