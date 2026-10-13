@@ -1,5 +1,5 @@
 // @ts-check
-/* POST /api/make -> generate a Lathe tool from a natural-language prompt. */
+/* POST /api/make → generate a Lathe tool from a natural-language prompt. */
 import Anthropic from '@anthropic-ai/sdk';
 import { createClient } from '@supabase/supabase-js';
 import { json } from './_lib/http.js';

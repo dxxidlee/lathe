@@ -1,7 +1,7 @@
 /* Subject Audit: query open archives in parallel, stream results in, extract an OKLab palette
    from every thumbnail, filter and sort by color, collect, and build a deck. */
 import type { MountContext, MountResult } from '../types';
-import { PaletteQueue, listSources, proxied, searchSource, type AuditResult, type SourceInfo } from './api';
+import { PaletteQueue, listSources, proxied, scoreRelevance, searchSource, type AuditResult, type SourceInfo } from './api';
 import { buildDeck } from './deck';
 import { DECK_MIME } from '../bento/model';
 import { aggregatePalette, hexToOklab, paletteDistance, type Swatch } from '../../lib/color';
@@ -48,6 +48,16 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
   const coll = () => collections.find(c => c.id === active)!;
   const saveColl = () => { settings.set('collections', collections); settings.set('activeCollection', active); };
 
+  let expanded: { main: string; alternates: string[]; exclude: string[]; interpreted: string } | null = null;
+  let useExact = false;
+  async function expandQuery(text: string): Promise<typeof expanded> {
+    try {
+      const r = await fetch(`/api/expand?q=${encodeURIComponent(text)}`);
+      if (!r.ok) return null;
+      return await r.json();
+    } catch { return null; }
+  }
+
   /* ---------------- stage ---------------- */
   const root = document.createElement('div'); root.className = 'au';
   const bar = document.createElement('form'); bar.className = 'au__bar'; bar.setAttribute('role', 'search');
@@ -60,13 +70,14 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
   const tabBtn = (id: typeof tab) => { const b = document.createElement('button'); b.type = 'button'; b.className = 'au__tab'; b.setAttribute('role', 'tab'); b.dataset.tab = id; b.addEventListener('click', () => { tab = id; renderGrid(); }); return b; };
   const tResults = tabBtn('results'), tColl = tabBtn('collection');
   tabs.append(tResults, tColl);
+  const expandNote = document.createElement('div'); expandNote.className = 'au__expand';
   const grid = document.createElement('div'); grid.className = 'au__grid';
   const empty = document.createElement('div'); empty.className = 'au__empty';
   const more = document.createElement('button'); more.type = 'button'; more.className = 'l-btn au__more'; more.textContent = 'Load more';
   more.addEventListener('click', () => void loadMore());
   const scroller = document.createElement('div'); scroller.className = 'au__scroll';
   scroller.append(grid, empty, more);
-  root.append(bar, tabs, scroller);
+  root.append(bar, expandNote, tabs, scroller);
   stage.appendChild(root);
   bar.addEventListener('submit', e => { e.preventDefault(); void search(q.value); });
 
@@ -168,8 +179,8 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
     }));
     const hidden = sources.filter(s => !s.available).length;
     srcNote.textContent = sources.length
-      ? `${hidden ? `${hidden} more sources appear when their API keys are set in .env.local. ` : ''}Responses are cached for ${d.cacheHours} hours.`
-      : 'Sources are unavailable: the /api functions are not running.';
+      ? (hidden ? `${hidden} source${hidden > 1 ? 's' : ''} need API keys to appear.` : '')
+      : 'Sources are loading\u2026';
   }
 
   /* ---------------- search ---------------- */
@@ -180,22 +191,50 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
     controller?.abort(); controller = new AbortController();
     palettes.cancelPending();
     items = []; state.clear(); tab = 'results';
+
+    // Query expansion
+    if (!useExact) {
+      expanded = await expandQuery(query);
+      if (expanded) {
+        expandNote.innerHTML = '';
+        const span = document.createElement('span');
+        span.style.color = 'var(--text-2)';
+        span.textContent = `Searching: ${expanded.interpreted}`;
+        const exact = document.createElement('button');
+        exact.type = 'button'; exact.className = 'l-btn'; exact.style.marginLeft = 'var(--space-3)';
+        exact.textContent = `Search exactly "${query}"`;
+        exact.addEventListener('click', () => { useExact = true; void search(query); });
+        expandNote.append(span, exact);
+      }
+    } else {
+      expandNote.innerHTML = '';
+    }
+
+    const searchQuery = (expanded && !useExact) ? expanded.main : query;
     const live = sources.filter(s => s.available && !disabled.has(s.id));
     for (const s of live) state.set(s.id, { status: 'loading', count: 0, total: 0, ms: 0, page: 1 });
     renderSources(); renderGrid();
-    await Promise.all(live.map(s => fetchPage(s.id, 1, controller!.signal)));
+    // Search main query + alternates in parallel
+    const queries = [searchQuery];
+    if (expanded && !useExact && expanded.alternates?.length) queries.push(...expanded.alternates);
+    await Promise.all(queries.flatMap(sq => live.map(s => fetchPage(s.id, 1, controller!.signal, sq))));
   }
-  async function fetchPage(id: string, page: number, signal: AbortSignal) {
+  async function fetchPage(id: string, page: number, signal: AbortSignal, overrideQuery?: string) {
     const st = state.get(id)!;
     st.status = 'loading'; renderSources();
     try {
-      const r = await searchSource(id, query, page, d.cacheHours as number, signal);
+      const q = overrideQuery ?? ((expanded && !useExact) ? expanded.main : query);
+      const r = await searchSource(id, q, page, d.cacheHours as number, signal);
       if (signal.aborted) return;
       if (r.error) { st.status = 'error'; st.error = r.error; }
       else {
         st.status = 'done'; st.total = r.total; st.ms = r.ms; st.page = page; st.cached = r.cached;
-        const seen = new Set(items.map(i => i.id));
-        const fresh = r.results.filter(x => !seen.has(x.id)).map((x, i) => ({ ...x, order: (page - 1) * 1000 + i * 20 + sources.findIndex(s => s.id === id) }));
+        const seenIds = new Set(items.map(i => i.id));
+        const seenUrls = new Set(items.map(i => i.thumbUrl));
+        const seenTitles = new Set(items.map(i => i.title?.toLowerCase()));
+        const fresh = r.results
+          .filter(x => x.thumbUrl && !seenIds.has(x.id) && !seenUrls.has(x.thumbUrl) && !(x.title && seenTitles.has(x.title.toLowerCase())))
+          .map((x, i) => ({ ...x, order: (page - 1) * 1000 + i * 20 + sources.findIndex(s => s.id === id) }));
         st.count += fresh.length;
         items.push(...fresh);
         for (const it of fresh) void paletteFor(it, signal);
@@ -229,6 +268,7 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
   function visible(): Item[] {
     const target = filters.hex ? hexToOklab(filters.hex) : null;
     let list = (tab === 'collection' ? coll().items : items).filter(it => {
+      if (!it.thumbUrl) return false;
       if (tab === 'results' && disabled.has(it.source)) return false;
       if (filters.types.size && !filters.types.has(shortType(it.type) ?? '')) return false;
       if (filters.yearFrom != null && (it.year == null || it.year < filters.yearFrom)) return false;
@@ -240,22 +280,64 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
     });
     if (target && filters.mode === 'sort') {
       list = [...list].sort((a, b) => (a.swatches ? paletteDistance(target, a.swatches) : 9) - (b.swatches ? paletteDistance(target, b.swatches) : 9));
-    } else if (tab === 'results') list = [...list].sort((a, b) => a.order - b.order);
+    } else if (tab === 'results') {
+      // Score against the ORIGINAL query so alternate-query results
+      // are ranked by relevance to what the user actually typed
+      const scoreQ = query;
+      const expandedQ = (expanded && !useExact) ? expanded.main : query;
+      const excludeTerms = expanded?.exclude ?? [];
+      const scored = list.map(it => {
+        const origScore = scoreRelevance(it, scoreQ, excludeTerms);
+        const expScore = expandedQ !== scoreQ ? scoreRelevance(it, expandedQ, excludeTerms) : origScore;
+        return { ...it, _rel: Math.max(origScore, expScore) };
+      });
+      const before = scored.length;
+      list = scored.filter(it => it._rel > 0).sort((a, b) => b._rel - a._rel);
+      const dropped = before - list.length;
+      if (dropped > 0) {
+        const bySource = new Map<string, number>();
+        for (const it of scored) if (it._rel === 0) bySource.set(it.source, (bySource.get(it.source) ?? 0) + 1);
+        const perSrc = [...bySource.entries()].map(([s, n]) => {
+          const total = scored.filter(x => x.source === s).length;
+          const pct = Math.round(n / total * 100);
+          const warn = pct > 80 ? ' (nearly all dropped — sparse metadata?)' : '';
+          return `${sourceName(s)}: ${n}/${total} (${pct}%)${warn}`;
+        }).join(', ');
+        console.log(`[audit] relevance: dropped ${dropped}/${before} (threshold >0). Per source: ${perSrc}`);
+      }
+    }
     return list;
   }
 
-  function card(it: Item): HTMLElement {
+  const verified = new Set<string>();
+  const failed = new Set<string>();
+
+  function preloadImage(it: Item) {
+    if (verified.has(it.id) || failed.has(it.id)) return;
+    const img = new Image();
+    let retried = false;
+    const fail = () => { failed.add(it.id); scheduleGrid(); };
+    const ok = () => { verified.add(it.id); scheduleGrid(); };
+    const timeout = setTimeout(() => { if (!retried) { retried = true; img.src = proxied(it.thumbUrl); } else fail(); }, 8000);
+    img.onload = () => { clearTimeout(timeout); ok(); };
+    img.onerror = () => { if (!retried) { retried = true; img.src = proxied(it.thumbUrl); } else { clearTimeout(timeout); fail(); } };
+    img.src = it.thumbUrl;
+  }
+
+  function card(it: Item): HTMLElement | null {
+    if (failed.has(it.id)) return null;
+    if (!verified.has(it.id)) { preloadImage(it); return null; }
     let el = cards.get(it.id);
     if (!el) {
       el = document.createElement('article'); el.className = 'au-card'; el.dataset.id = it.id;
       const pick = document.createElement('button'); pick.type = 'button'; pick.className = 'au-card__pick';
       pick.addEventListener('click', () => toggle(it.id));
-      const img = document.createElement('img'); img.className = 'au-card__img'; img.loading = 'lazy'; img.alt = it.title; img.src = it.thumbUrl;
-      img.addEventListener('error', () => { if (!img.src.includes('/api/img')) img.src = proxied(it.thumbUrl); }, { once: true });
+      const img = document.createElement('img'); img.className = 'au-card__img'; img.loading = 'lazy'; img.alt = it.title;
+      img.src = verified.has(it.id) ? it.thumbUrl : proxied(it.thumbUrl);
       img.addEventListener('click', () => toggle(it.id));
       const meta = document.createElement('div'); meta.className = 'au-card__meta';
       const t = document.createElement('div'); t.className = 'au-card__title'; t.textContent = it.title;
-      const by = document.createElement('div'); by.className = 'au-card__by'; by.textContent = [it.creator, it.date].filter(Boolean).join(', ') || '—';
+      const by = document.createElement('div'); by.className = 'au-card__by'; by.textContent = [it.creator, it.date].filter(Boolean).join(', ') || '\u2014';
       const src = document.createElement('div'); src.className = 'au-card__src';
       const a = document.createElement('a'); a.href = it.sourceUrl; a.target = '_blank'; a.rel = 'noopener'; a.textContent = sourceName(it.source);
       src.append(a);
@@ -302,8 +384,16 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
   const scheduleGrid = () => { cancelAnimationFrame(gridRaf); gridRaf = requestAnimationFrame(renderGrid); };
   function renderGrid() {
     const list = visible();
-    grid.replaceChildren(...list.map(card));
-    tResults.textContent = `Results ${items.length ? items.length : ''}`.trim();
+    // Preload images for items not yet verified
+    for (const it of list) if (!verified.has(it.id) && !failed.has(it.id)) preloadImage(it);
+    const rendered = list.map(card).filter((el): el is HTMLElement => el !== null);
+    // Stable re-rank: only reorder if the set of ids changed or order differs
+    const currentIds = [...grid.children].map(c => (c as HTMLElement).dataset.id);
+    const newIds = rendered.map(c => c.dataset.id);
+    if (currentIds.join(',') !== newIds.join(',')) {
+      grid.replaceChildren(...rendered);
+    }
+    tResults.textContent = `Results ${rendered.length || ''}`.trim();
     tColl.textContent = `Collection ${coll().items.length || ''}`.trim();
     tResults.classList.toggle('is-active', tab === 'results'); tColl.classList.toggle('is-active', tab === 'collection');
     tResults.setAttribute('aria-selected', String(tab === 'results')); tColl.setAttribute('aria-selected', String(tab === 'collection'));
@@ -314,8 +404,9 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
     empty.hidden = !!list.length;
     more.hidden = tab !== 'results' || ![...state.values()].some(s => s.status === 'done' && s.count < s.total);
     renderTypes();
-    sumStats.set([['Results', String(items.length)], ['Shown', String(list.length)], ['Sources', String([...state.values()].filter(s => s.status === 'done').length)]]);
-    statusbar.set({ name: query ? `”${query}”` : 'Subject Audit', state: `${items.length} results · ${list.length} shown${loading ? ' · searching' : ''}` });
+    const shownCount = rendered.length;
+    sumStats.set([['Results', String(items.length)], ['Shown', String(shownCount)], ['Sources', String([...state.values()].filter(s => s.status === 'done').length)]]);
+    statusbar.set({ name: query ? `”${query}”` : 'Subject Audit', state: `${items.length} results \u00b7 ${shownCount} shown${loading ? ' \u00b7 searching' : ''}` });
   }
   function renderTypes() {
     const counts = new Map<string, number>();
