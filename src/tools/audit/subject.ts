@@ -142,11 +142,6 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, setting
   const boardName = field({ label: 'Name', value: board().name, onChange: v => { void renameBoard(board(), v); renderBoardUI(); } });
   const boardStats = statList();
   const aggHost = document.createElement('div'); aggHost.className = 'au-agg';
-  const boardRow = document.createElement('div'); boardRow.className = 'l-row';
-  boardRow.append(
-    button({ label: 'New', onClick: async () => { const b = await createBoard(`Board ${boards.length + 1}`, query); boards.push(b); activeBoard = b.id; renderBoardUI(); renderGrid(); } }),
-    button({ label: 'Clear', onClick: () => { board().items = []; saveBoard(board()); renderBoardUI(); renderGrid(); } }),
-  );
   const shareBtn = button({ label: board().visibility === 'unlisted' ? 'Copy link' : 'Share', onClick: async () => {
     const b = board();
     if (b.visibility === 'private') {
@@ -158,18 +153,22 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, setting
       emit('toast', 'Link copied');
     }
   }});
-  const deleteBoardBtn = button({ label: 'Delete board', onClick: async () => {
-    if (!window.confirm(`Delete "${board().name}"?`)) return;
-    await deleteBoard(board().id);
-    boards = boards.filter(b => b.id !== activeBoard);
-    if (!boards.length) boards = [await createBoard('Board 1')];
-    activeBoard = boards[0].id;
-    renderBoardUI(); renderGrid();
-    emit('toast', 'Board deleted');
-  }});
-  const boardRow2 = document.createElement('div'); boardRow2.className = 'l-row';
-  boardRow2.append(shareBtn, deleteBoardBtn);
-  boardSec.body.append(boardPick.el, boardName.el, boardStats.el, aggHost, boardRow, boardRow2);
+  const boardActions = document.createElement('div'); boardActions.className = 'l-row';
+  boardActions.append(
+    button({ label: 'New', onClick: async () => { const b = await createBoard(`Board ${boards.length + 1}`, query); boards.push(b); activeBoard = b.id; renderBoardUI(); renderGrid(); } }),
+    button({ label: 'Clear', onClick: () => { board().items = []; saveBoard(board()); renderBoardUI(); renderGrid(); } }),
+    shareBtn,
+    button({ label: 'Delete', onClick: async () => {
+      if (!window.confirm(`Delete "${board().name}"?`)) return;
+      await deleteBoard(board().id);
+      boards = boards.filter(b => b.id !== activeBoard);
+      if (!boards.length) boards = [await createBoard('Board 1')];
+      activeBoard = boards[0].id;
+      renderBoardUI(); renderGrid();
+      emit('toast', 'Board deleted');
+    }}),
+  );
+  boardSec.body.append(boardPick.el, boardName.el, boardStats.el, aggHost, boardActions);
   const sumSec = section('Results');
   const sumStats = statList();
   sumSec.body.append(sumStats.el);
