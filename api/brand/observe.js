@@ -96,9 +96,9 @@ export async function POST(request) {
     }, { cache: 'no-store' });
   } catch (e) {
     if (e instanceof Anthropic.AuthenticationError) return json({ error: 'ANTHROPIC_API_KEY was rejected' }, { status: 401 });
-    if (e instanceof Anthropic.RateLimitError) return json({ error: 'Claude rate limit reached; try again shortly' }, { status: 429 });
-    if (e instanceof Anthropic.BadRequestError) return json({ error: `Claude rejected the request: ${e.message}` }, { status: 400 });
-    if (e instanceof Anthropic.APIError) return json({ error: `Claude API error ${e.status ?? ''}`.trim() }, { status: 502 });
-    return json({ error: 'Could not reach Claude' }, { status: 502 });
+    if (e instanceof Anthropic.RateLimitError) return json({ error: 'Lathe rate limit reached; try again shortly' }, { status: 429 });
+    if (e instanceof Anthropic.BadRequestError) return json({ error: `Lathe could not generate observations: ${e.message}` }, { status: 400 });
+    if (e instanceof Anthropic.APIError) return json({ error: `Lathe observation error ${e.status ?? ''}`.trim() }, { status: 502 });
+    return json({ error: 'Could not reach Lathe observation service' }, { status: 502 });
   }
 }

@@ -34,7 +34,9 @@ EXAMPLE of a valid code field:
   ctx.statusbar.set({ name: 'My Tool', state: 'Ready' });
   return () => el.remove();
 
-CSS classes for controls: l-section, l-section__title, l-section__body, l-label, l-note, l-input, l-btn, l-btn--primary, l-slider, l-chip-row, l-chip, l-field, l-stats, l-stat, l-stat__label, l-stat__value.`;
+CSS classes for controls: l-section, l-section__title, l-section__body, l-label, l-note, l-input, l-btn, l-btn--primary, l-slider, l-chip-row, l-chip, l-field, l-stats, l-stat, l-stat__label, l-stat__value.
+
+REFINEMENT: When given existing code to modify, change only what the user asks. Keep the rest intact. Return the complete updated code.`;
 
 const TOOL_DEF = {
   name: 'lathe_tool',
@@ -79,6 +81,18 @@ export async function POST(request) {
   if (!prompt) return json({ error: 'prompt is required' }, { status: 400 });
   if (prompt.length > 2000) return json({ error: 'prompt too long (max 2000 chars)' }, { status: 400 });
 
+  const currentCode = typeof body?.currentCode === 'string' ? body.currentCode.slice(0, 10000) : '';
+  const baseSource = typeof body?.baseSource === 'string' ? body.baseSource.slice(0, 30000) : '';
+
+  let userContent;
+  if (currentCode) {
+    userContent = `Here is the current tool code:\n\n${currentCode}\n\nApply this change: ${prompt}`;
+  } else if (baseSource) {
+    userContent = `Create a Lathe tool based on this existing tool:\n\n${baseSource}\n\nModification requested: ${prompt}`;
+  } else {
+    userContent = `Create a Lathe tool for: ${prompt}`;
+  }
+
   const client = new Anthropic({ apiKey, defaultHeaders: { 'anthropic-workspace-id': process.env.ANTHROPIC_WORKSPACE_ID || '' } });
   try {
     const msg = await client.messages.create({
@@ -87,7 +101,7 @@ export async function POST(request) {
       system: SYSTEM,
       tools: /** @type {any[]} */ ([TOOL_DEF]),
       tool_choice: { type: 'auto' },
-      messages: [{ role: 'user', content: `Create a Lathe tool for: ${prompt}` }],
+      messages: [{ role: 'user', content: userContent }],
     });
 
     const block = msg.content.find(b => b.type === 'tool_use');
@@ -114,9 +128,9 @@ export async function POST(request) {
     }, { cache: 'no-store' });
   } catch (e) {
     if (e instanceof Anthropic.AuthenticationError) return json({ error: 'ANTHROPIC_API_KEY was rejected' }, { status: 401 });
-    if (e instanceof Anthropic.RateLimitError) return json({ error: 'Claude rate limit reached; try again shortly' }, { status: 429 });
-    if (e instanceof Anthropic.BadRequestError) return json({ error: `Claude rejected the request: ${e.message}` }, { status: 400 });
-    if (e instanceof Anthropic.APIError) return json({ error: `Claude API error ${e.status ?? ''}: ${e.message}` }, { status: 502 });
-    return json({ error: `Could not reach Claude: ${e instanceof Error ? e.message : String(e)}` }, { status: 502 });
+    if (e instanceof Anthropic.RateLimitError) return json({ error: 'Lathe rate limit reached; try again shortly' }, { status: 429 });
+    if (e instanceof Anthropic.BadRequestError) return json({ error: `Lathe could not generate the tool: ${e.message}` }, { status: 400 });
+    if (e instanceof Anthropic.APIError) return json({ error: `Lathe generation error ${e.status ?? ''}: ${e.message}` }, { status: 502 });
+    return json({ error: `Could not reach Lathe generation service: ${e instanceof Error ? e.message : String(e)}` }, { status: 502 });
   }
 }
