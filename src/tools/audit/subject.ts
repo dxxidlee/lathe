@@ -5,7 +5,7 @@ import { PaletteQueue, listSources, proxied, scoreRelevance, searchSource, type 
 import { buildDeck } from './deck';
 import { DECK_MIME } from '../bento/model';
 import { aggregatePalette, hexToOklab, paletteDistance, type Swatch } from '../../lib/color';
-import { loadBoards, createBoard, saveBoard, renameBoard, migrateCollections, type Board } from '../../lib/boards';
+import { loadBoards, createBoard, saveBoard, renameBoard, deleteBoard, toggleSharing, migrateCollections, type Board } from '../../lib/boards';
 import { button, chips, field, note, section, select, slider, statList } from '../../ui/primitives';
 import './audit.css';
 
@@ -142,7 +142,29 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
     button({ label: 'New', onClick: async () => { const b = await createBoard(`Board ${boards.length + 1}`, query); boards.push(b); activeBoard = b.id; renderBoardUI(); renderGrid(); } }),
     button({ label: 'Clear', onClick: () => { board().items = []; saveBoard(board()); renderBoardUI(); renderGrid(); } }),
   );
-  boardSec.body.append(boardPick.el, boardName.el, boardStats.el, aggHost, deckOpts, boardRow);
+  const shareBtn = button({ label: board().visibility === 'unlisted' ? 'Copy link' : 'Share', onClick: async () => {
+    const b = board();
+    if (b.visibility === 'private') {
+      await toggleSharing(b);
+      shareBtn.textContent = 'Copy link';
+    }
+    if (b.shareSlug) {
+      await navigator.clipboard.writeText(`${window.location.origin}/b/${b.shareSlug}`);
+      emit('toast', 'Link copied');
+    }
+  }});
+  const deleteBoardBtn = button({ label: 'Delete board', onClick: async () => {
+    if (!window.confirm(`Delete "${board().name}"?`)) return;
+    await deleteBoard(board().id);
+    boards = boards.filter(b => b.id !== activeBoard);
+    if (!boards.length) boards = [await createBoard('Board 1')];
+    activeBoard = boards[0].id;
+    renderBoardUI(); renderGrid();
+    emit('toast', 'Board deleted');
+  }});
+  const boardRow2 = document.createElement('div'); boardRow2.className = 'l-row';
+  boardRow2.append(shareBtn, deleteBoardBtn);
+  boardSec.body.append(boardPick.el, boardName.el, boardStats.el, aggHost, deckOpts, boardRow, boardRow2);
   const sumSec = section('Results');
   const sumStats = statList();
   sumSec.body.append(sumStats.el);
