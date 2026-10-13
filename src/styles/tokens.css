@@ -150,7 +150,7 @@
 
 @media (max-width: 767px) {
   :root {
-    --text-body: 17px;
-    --text-meta: 13px;
+    --text-body: 14px;
+    --text-meta: 12px;
   }
 }
