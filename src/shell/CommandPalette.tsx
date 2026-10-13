@@ -34,6 +34,7 @@ export function CommandPalette() {
   const commands = useMemo<Command[]>(() => {
     const mod = modKey();
     const open = (path: string) => () => { close(); navigate(path); };
+    const openTool = (toolId: string) => () => { close(); shell.openTab(toolId); navigate(`/t/${toolId}`); };
     // Old names that alias to each current tool id, for search
     const aliasesFor = (id: string) =>
       Object.entries(ID_ALIASES).filter(([, v]) => v === id).map(([k]) => k);
@@ -43,11 +44,11 @@ export function CommandPalette() {
         id: `tool:${t.id}`, label: t.name,
         hint: isReady(t) ? (t.custom ? `${t.group} · Custom` : t.group) : `${t.group} · Milestone ${t.milestone}`,
         keys: i < 9 && !t.custom ? String(i + 1) : undefined,
-        run: open(`/t/${t.id}`),
+        run: openTool(t.id),
         _extra: aliasesFor(t.id).join(' '),
       })),
       { id: 'home', label: 'Go home', run: open('/') },
-      { id: 'make', label: 'Make a tool', run: open('/make') },
+      { id: 'make', label: 'Make a tool', run: openTool('make') },
       { id: 'export', label: 'Export', keys: `${mod}E`, run: () => { close(); shell.runExport(); } },
       { id: 'nav', label: 'Toggle tool rail', run: () => { close(); shell.toggleNav(); } },
       { id: 'tray', label: 'Toggle asset tray', run: () => { close(); shell.toggleTray(); } },

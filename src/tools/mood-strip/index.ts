@@ -543,6 +543,7 @@ export const tool: LatheTool = {
 
     /* ============ PASTE ============ */
     const onPaste = (e: ClipboardEvent) => {
+      if (!stage.closest('[data-active-tab]')) return;
       if (typing(e.target)) return; // the link field handles its own paste
       const items = e.clipboardData && e.clipboardData.items;
       if (items) for (const it of Array.from(items)) {

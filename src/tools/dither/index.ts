@@ -54,9 +54,11 @@ export const tool: LatheTool = {
     stage.appendChild(root);
     const paintView = () => { root.dataset.view = s.view; root.dataset.compare = String(compare); };
     // Hold to compare with the original
-    root.addEventListener('pointerdown', () => { compare = true; paintView(); });
-    const release = () => { if (compare) { compare = false; paintView(); } };
-    window.addEventListener('pointerup', release);
+    root.addEventListener('pointerdown', (e) => {
+      compare = true; paintView();
+      const release = () => { if (compare) { compare = false; paintView(); } window.removeEventListener('pointerup', release); };
+      window.addEventListener('pointerup', release);
+    });
 
     /* ---------------- inspector ---------------- */
     const srcSec = section('Source');
@@ -202,7 +204,7 @@ export const tool: LatheTool = {
 
     paintView(); sync();
     return {
-      unmount() { input.off(); clearTimeout(timer); cancelAnimationFrame(raf); window.removeEventListener('pointerup', release); },
+      unmount() { input.off(); clearTimeout(timer); cancelAnimationFrame(raf); },
       export: () => void exportPng(),
     };
   },

@@ -28,7 +28,7 @@ const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: 
   const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e;
 };
 
-export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, settings, emit }: MountContext, modeEl?: HTMLElement): MountResult {
+export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, settings, emit, onActivate }: MountContext, modeEl?: HTMLElement): MountResult {
   let query = settings.get('brandQuery', '');
   let cap: BrandCapture | null = null;
   let capError: string | null = null;
@@ -62,9 +62,18 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
     for (const e of entries) {
       const v = e.target.querySelector('video');
       if (!v) continue;
-      if (e.isIntersecting) { if (!v.src && v.dataset.src) v.src = v.dataset.src; void v.play().catch(() => {}); } else v.pause();
+      if (e.isIntersecting && igTabActive) { if (!v.src && v.dataset.src) v.src = v.dataset.src; void v.play().catch(() => {}); } else v.pause();
     }
   }, { root: null, rootMargin: '25% 0%' });
+  let igTabActive = true;
+  const offActivate = onActivate(active => {
+    igTabActive = active;
+    if (!active) {
+      // Pause all playing Instagram videos when tab becomes inactive
+      igNodes.forEach(n => { const v = n.card.querySelector('video'); if (v) v.pause(); });
+    }
+    // When active, let the IntersectionObserver handle re-playing visible ones on next scroll/paint
+  });
   /** Site photography seen only once the page is rendered (script-built sites). */
   let rendered: SiteImage[] = [];
   /** Logos found only in the rendered page. */
@@ -782,7 +791,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   void fetchCatalog().then(c => { features = c.brand; render(); if (query) void run(query); });
 
   return {
-    unmount() { controller?.abort(); igViews.disconnect(); palettes.destroy(); cancelAnimationFrame(raf); urls.forEach(u => URL.revokeObjectURL(u)); },
+    unmount() { controller?.abort(); igViews.disconnect(); palettes.destroy(); cancelAnimationFrame(raf); urls.forEach(u => URL.revokeObjectURL(u)); offActivate(); },
     export: () => void buildDeckNow(),
   };
 }

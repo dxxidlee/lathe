@@ -4,8 +4,17 @@ import { loadShellPrefs, saveShellPrefs } from '../lib/settings';
 
 interface Toast { id: number; message: string }
 
+export interface Tab {
+  id: string;      // toolId or 'make'
+  pinned: boolean;
+}
+
 interface ShellState {
+  railOpen: boolean;
+  toggleRail: () => void;
+  /** @deprecated Use railOpen / toggleRail instead */
   navCollapsed: boolean;
+  /** @deprecated Use railOpen / toggleRail instead */
   toggleNav: () => void;
   trayOpen: boolean;
   toggleTray: (open?: boolean) => void;
@@ -22,31 +31,44 @@ interface ShellState {
   /** Set by the mounted tool host: forget this tool's settings and reopen it fresh. */
   resetToolRef: React.MutableRefObject<(() => void) | null>;
   runExport: () => void;
+  tabs: Tab[];
+  activeTabId: string;
+  openTab: (toolId: string) => void;
+  closeTab: (id: string) => void;
+  reorderTabs: (fromIndex: number, toIndex: number) => void;
+  nextTab: () => void;
+  prevTab: () => void;
 }
 
 const Ctx = createContext<ShellState | null>(null);
 
 export function ShellProvider({ children }: { children: ReactNode }) {
-  const [navCollapsed, setNavCollapsed] = useState(false);
+  const [railOpen, setRailOpen] = useState(false);
   const [trayOpen, setTrayOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [status, setStatus] = useState<StatusInfo>({});
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [tabs, setTabs] = useState<Tab[]>([{ id: 'make', pinned: true }]);
+  const [activeTabId, setActiveTabId] = useState('make');
   const exportRef = useRef<(() => void) | null>(null);
   const resetToolRef = useRef<(() => void) | null>(null);
   const prefsLoaded = useRef(false);
 
   useEffect(() => {
     loadShellPrefs().then(p => {
-      if (typeof p.navCollapsed === 'boolean') setNavCollapsed(p.navCollapsed);
+      if (typeof p.railOpen === 'boolean') setRailOpen(p.railOpen);
+      // migrate old pref
+      else if (typeof p.navCollapsed === 'boolean') setRailOpen(!p.navCollapsed);
       if (typeof p.trayOpen === 'boolean') setTrayOpen(p.trayOpen);
+      if (Array.isArray(p.tabs) && p.tabs.length > 0) setTabs(p.tabs as Tab[]);
+      if (typeof p.activeTabId === 'string') setActiveTabId(p.activeTabId as string);
       prefsLoaded.current = true;
     });
   }, []);
   useEffect(() => {
-    if (prefsLoaded.current) saveShellPrefs({ navCollapsed, trayOpen });
-  }, [navCollapsed, trayOpen]);
+    if (prefsLoaded.current) saveShellPrefs({ railOpen, trayOpen, tabs, activeTabId });
+  }, [railOpen, trayOpen, tabs, activeTabId]);
 
   const toast = useCallback((message: string) => {
     const id = Date.now() + Math.random();
@@ -59,12 +81,75 @@ export function ShellProvider({ children }: { children: ReactNode }) {
     else toast('Nothing to export here yet');
   }, [toast]);
 
+  const openTab = useCallback((toolId: string) => {
+    setTabs(prev => {
+      const existing = prev.find(t => t.id === toolId);
+      if (existing) { setActiveTabId(toolId); return prev; }
+      const lastPinned = prev.reduce((acc, t, i) => t.pinned ? i : acc, -1);
+      const inserted = [...prev];
+      inserted.splice(lastPinned + 1, 0, { id: toolId, pinned: false });
+      setActiveTabId(toolId);
+      return inserted;
+    });
+  }, []);
+
+  const closeTab = useCallback((id: string) => {
+    setTabs(prev => {
+      const tab = prev.find(t => t.id === id);
+      if (!tab || tab.pinned) return prev;
+      const idx = prev.indexOf(tab);
+      const next = prev.filter(t => t.id !== id);
+      setActiveTabId(cur => {
+        if (cur !== id) return cur;
+        // activate the tab to the left, or the first tab
+        return next[Math.min(idx, next.length - 1)]?.id ?? next[0]?.id ?? 'make';
+      });
+      return next;
+    });
+  }, []);
+
+  const reorderTabs = useCallback((from: number, to: number) => {
+    setTabs(prev => {
+      if (prev[from]?.pinned || prev[to]?.pinned) return prev;
+      if (from === to || from < 0 || to < 0 || from >= prev.length || to >= prev.length) return prev;
+      const arr = [...prev];
+      const [moved] = arr.splice(from, 1);
+      arr.splice(to, 0, moved);
+      return arr;
+    });
+  }, []);
+
+  const tabsRef = useRef(tabs);
+  tabsRef.current = tabs;
+
+  const nextTab = useCallback(() => {
+    setActiveTabId(cur => {
+      const t = tabsRef.current;
+      const idx = t.findIndex(x => x.id === cur);
+      return t[(idx + 1) % t.length].id;
+    });
+  }, []);
+
+  const prevTab = useCallback(() => {
+    setActiveTabId(cur => {
+      const t = tabsRef.current;
+      const idx = t.findIndex(x => x.id === cur);
+      return t[(idx - 1 + t.length) % t.length].id;
+    });
+  }, []);
+
+  const toggleRail = useCallback(() => setRailOpen(v => !v), []);
+
   const value = useMemo<ShellState>(() => ({
-    navCollapsed, toggleNav: () => setNavCollapsed(v => !v),
+    railOpen, toggleRail,
+    // compat aliases
+    navCollapsed: !railOpen, toggleNav: toggleRail,
     trayOpen, toggleTray: (open?: boolean) => setTrayOpen(v => (open === undefined ? !v : open)),
     paletteOpen, setPaletteOpen, sheetOpen, setSheetOpen,
     status, setStatus, toasts, toast, exportRef, resetToolRef, runExport,
-  }), [navCollapsed, trayOpen, paletteOpen, sheetOpen, status, toasts, toast, runExport]);
+    tabs, activeTabId, openTab, closeTab, reorderTabs, nextTab, prevTab,
+  }), [railOpen, toggleRail, trayOpen, paletteOpen, sheetOpen, status, toasts, toast, runExport,
+       tabs, activeTabId, openTab, closeTab, reorderTabs, nextTab, prevTab]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

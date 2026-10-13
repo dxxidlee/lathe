@@ -261,6 +261,8 @@ export const tool: LatheTool = {
       const fresh = overlay.querySelector<HTMLElement>(`.bt__tile[data-id="${id}"]`)!;
       drag = { id, mode: (e.target as HTMLElement).dataset.handle ? 'resize' : 'move', x0: e.clientX, y0: e.clientY, el: fresh, moved: false };
       fresh.setPointerCapture?.(e.pointerId);
+      document.addEventListener('pointermove', onMove);
+      document.addEventListener('pointerup', onUp);
     });
     const onMove = (e: PointerEvent) => {
       if (!drag) return;
@@ -278,6 +280,8 @@ export const tool: LatheTool = {
     const onUp = (e: PointerEvent) => {
       if (!drag) return;
       const d0 = drag; drag = null;
+      document.removeEventListener('pointermove', onMove);
+      document.removeEventListener('pointerup', onUp);
       if (d0.mode === 'resize') { if (d0.moved) save(); return; }
       d0.el.style.transform = ''; d0.el.classList.remove('is-dragging');
       if (!d0.moved) return;
@@ -288,10 +292,9 @@ export const tool: LatheTool = {
       const a = slide.tiles.find(x => x.id === d0.id), b = under && slide.tiles.find(x => x.id === under.dataset.id);
       if (a && b && a !== b) { [a.rect, b.rect] = [b.rect, a.rect]; commit(); } else render();
     };
-    document.addEventListener('pointermove', onMove);
-    document.addEventListener('pointerup', onUp);
 
     const onKey = (e: KeyboardEvent) => {
+      if (!stage.closest('[data-active-tab]')) return;
       if (typing(e.target) || !sel || isCredits(cur) || e.metaKey || e.ctrlKey) return;
       const slide = deck.slides[cur], t = slide.tiles.find(x => x.id === sel); if (!t?.rect) return;
       const r = { ...t.rect };
@@ -356,7 +359,7 @@ export const tool: LatheTool = {
     render();
 
     return {
-      unmount() { off(); ro.disconnect(); document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); document.removeEventListener('keydown', onKey); },
+      unmount() { off(); ro.disconnect(); document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); document.removeEventListener('keydown', onKey); if (drag) drag = null; },
       export: () => void run('pptx'),
     };
   },

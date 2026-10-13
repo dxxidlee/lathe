@@ -1,21 +1,23 @@
 import { Link } from 'react-router-dom';
 import { Wordmark } from '../brand/Wordmark';
-import type { ToolEntry } from '../tools/registry';
 import { useShell } from './state';
 import { modKey } from '../lib/format';
+import { TabBar } from './TabBar';
 
-export function TopBar({ tool, title }: { tool?: ToolEntry; title?: string }) {
+export function TopBar() {
   const shell = useShell();
   const mod = modKey();
   return (
     <header className="topbar">
+      <button type="button" className="topbar__rail-toggle" onClick={shell.toggleRail}
+        aria-label={shell.railOpen ? 'Close rail' : 'Open rail'} title={`${mod}\\`}>
+        {shell.railOpen ? '\u2190' : '\u2261'}
+      </button>
       <Link to="/" className="topbar__brand" aria-label="Lathe home"><Wordmark /></Link>
-      <div className="topbar__current" aria-live="polite">
-        {tool ? (<><span className="topbar__group">{tool.group}</span><span className="topbar__tool">{tool.name}</span></>)
-          : <span className="topbar__tool">{title}</span>}
-      </div>
+      <TabBar tabs={shell.tabs} activeTabId={shell.activeTabId}
+        onActivate={shell.openTab} onClose={shell.closeTab} onReorder={shell.reorderTabs} />
       <button type="button" className="topbar__search" onClick={() => shell.setPaletteOpen(true)}>
-        <span>Search tools and actions</span>
+        <span>Search</span>
         <span className="l-kbd">{mod}K</span>
       </button>
       <div className="topbar__actions">

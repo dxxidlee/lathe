@@ -10,12 +10,14 @@ import { INSPECTOR_HTML, STAGE_HTML } from './markup.js';
 /* ============================================================
    UIController — wires DOM to the engine
    ============================================================ */
-const $ = id => document.getElementById(id);
-
 export class UIController {
   /* ctx: { stage, inspector, defaults, palette, presets, settings, statusbar, assets, emit } */
   constructor(ctx){
     this.ctx = ctx;
+    // Scope all ID lookups to the tool's container so multiple tools don't clash.
+    const root = ctx.stage.parentElement || ctx.stage;
+    this.$ = id => root.querySelector('#' + id) || ctx.inspector.querySelector('#' + id);
+    const $ = this.$;
     this.ac = new AbortController();   // every global listener is removed on unmount
     this.defs = SETTING_DEFS.map(d => ({ ...d, def: typeof ctx.defaults[d.key] === 'number' ? ctx.defaults[d.key] : d.def }));
     this.presets = ctx.presets || PRESETS;
@@ -50,6 +52,23 @@ export class UIController {
     this.palette.onChange = () => { this.renderPalette(); this.renderClusters(); this.renderRules(); this.persist(); };
     this.mapping.onChange = () => { this.renderRules(); this.renderPreserve(); this.persist(); };
 
+    this._active = true;
+    this._wasPlaying = false;
+    if(ctx.onActivate){
+      this._offActivate = ctx.onActivate(active => {
+        this._active = active;
+        if(!active){
+          // Pause video when tab becomes inactive
+          this._wasPlaying = this.video.loaded && !this.video.v.paused;
+          if(this._wasPlaying) this.video.pause();
+        } else {
+          // Restart rAF loop and resume video when tab becomes active
+          if(!this._raf) this.loop();
+          if(this._wasPlaying && this.video.loaded) this.video.play().catch(() => {});
+        }
+      });
+    }
+
     this.buildSettings();
     this.buildPresets();
     this.renderPalette();
@@ -63,6 +82,7 @@ export class UIController {
 
   /* ---------------- status + toast ---------------- */
   status(text, kind){
+    const $ = this.$;
     $('statusText').textContent = text;
     const v = this.video && this.video.v;
     const w = (v && v.videoWidth) || (this.video && this.video._stillCanvas && this.video._stillCanvas.width) || undefined;
@@ -77,6 +97,7 @@ export class UIController {
 
   /* ---------------- settings panel ---------------- */
   buildSettings(){
+    const $ = this.$;
     const host = $('settingsList');
     host.innerHTML = '';
     this.defs.forEach(def => {
@@ -113,6 +134,7 @@ export class UIController {
     });
   }
   syncSettingsUI(){
+    const $ = this.$;
     this.defs.forEach(d => {
       const s = $('set_'+d.key), v = $('set_'+d.key+'_v');
       if(s && v){ s.value = Math.round(this.settings[d.key]*100); v.textContent = s.value; }
@@ -120,6 +142,7 @@ export class UIController {
   }
 
   buildPresets(){
+    const $ = this.$;
     const host = $('presetGrid');
     host.innerHTML = '';
     Object.keys(this.presets).forEach(name => {
@@ -140,6 +163,7 @@ export class UIController {
 
   /* ---------------- palette panel ---------------- */
   renderPalette(){
+    const $ = this.$;
     const host = $('swatchList');
     host.innerHTML = '';
     $('paletteCount').textContent = this.palette.active.length + ' active';
@@ -224,6 +248,7 @@ export class UIController {
 
   /* ---------------- clusters ---------------- */
   renderClusters(){
+    const $ = this.$;
     const host = $('clusterList');
     host.innerHTML = '';
     if(!this.clusters.length){ return; }
@@ -269,6 +294,7 @@ export class UIController {
 
   /* ---------------- rules ---------------- */
   renderRules(){
+    const $ = this.$;
     const host = $('ruleList');
     host.innerHTML = '';
     $('ruleCount').textContent = this.mapping.rules.length + (this.mapping.rules.length===1?' rule':' rules');
@@ -336,6 +362,7 @@ export class UIController {
 
   /* ---------------- preserved colors ---------------- */
   renderPreserve(){
+    const $ = this.$;
     const host = $('preserveList');
     host.innerHTML = '';
     this.mapping.preserve.forEach(p => {
@@ -388,7 +415,9 @@ export class UIController {
   }
 
   loop(){
+    const $ = this.$;
     const draw = () => {
+      if(!this._active){ this._raf = 0; return; }
       this._raf = requestAnimationFrame(draw);
       if(!this.video.loaded || !this.renderer.ok) return;
       if(this.exporter.active) return;   // export owns the video element
@@ -426,6 +455,7 @@ export class UIController {
   }
 
   updateTransport(){
+    const $ = this.$;
     const v = this.video.v;
     if(!isFinite(v.duration)) return;
     if(!this._scrubbing){
@@ -441,6 +471,7 @@ export class UIController {
 
   /* ---------------- video loading ---------------- */
   async handleFile(file){
+    const $ = this.$;
     if(!file) return;
     // Case-by-case: each import clears prior analysis/mappings for this media
     this.clusters = [];
@@ -487,6 +518,7 @@ export class UIController {
   }
 
   async analyze(){
+    const $ = this.$;
     if(!this.video.loaded) return;
     $('btnReanalyze').disabled = true;
     this.status('Analyzing color families…', 'busy');
@@ -522,6 +554,7 @@ export class UIController {
 
   /* ---------------- stage sizing ---------------- */
   fitStage(){
+    const $ = this.$;
     const stage = $('stage'), inner = $('stageInner');
     if(!stage || !inner) return; // unmounted
     const v = this.video.v;
@@ -542,6 +575,7 @@ export class UIController {
   }
 
   updateSplitUI(){
+    const $ = this.$;
     const showSplit = this.view === 'split';
     $('splitHandle').hidden = !showSplit;
     $('tagL').hidden = !showSplit;
@@ -554,6 +588,7 @@ export class UIController {
 
   /* ---------------- color picking from the preview ---------------- */
   startPick(mode, clusterIdx){
+    const $ = this.$;
     if(!this.video.loaded){ this.toast('Load a video first'); return; }
     this.pickMode = mode;
     this.pickClusterIdx = clusterIdx ?? -1;
@@ -564,11 +599,13 @@ export class UIController {
       : 'Click a color in the preview to use as the rule source';
   }
   endPick(){
+    const $ = this.$;
     this.pickMode = null;
     $('stage').classList.remove('picking');
     $('pickHint').hidden = true;
   }
   pickAt(clientX, clientY){
+    const $ = this.$;
     const canvas = $('outCanvas');
     const rect = canvas.getBoundingClientRect();
     const x = (clientX - rect.left)/rect.width;
@@ -648,6 +685,7 @@ export class UIController {
     return true;
   }
   restore(){
+    const $ = this.$;
     let saved = null;
     saved = this.ctx.settings.get('state', null);
     saved = saved ? JSON.parse(JSON.stringify(saved)) : null;
@@ -661,8 +699,9 @@ export class UIController {
     this.renderPreserve();
     this.renderClusters();
     $('selQuality').value = this.quality;
-    document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === this.view));
-    document.querySelectorAll('[data-fit]').forEach(b => b.classList.toggle('on', b.dataset.fit === this.fit));
+    const $$ = sel => [...this.ctx.stage.querySelectorAll(sel), ...this.ctx.inspector.querySelectorAll(sel)];
+    $$('[data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === this.view));
+    $$('[data-fit]').forEach(b => b.classList.toggle('on', b.dataset.fit === this.fit));
     this.updateSplitUI();
   }
   resetAll(){
@@ -684,9 +723,11 @@ export class UIController {
    ============================================================ */
 UIController.prototype.bind = function(){
   const self = this;
+  const $ = self.$;
+  const $$ = sel => [...self.ctx.stage.querySelectorAll(sel), ...self.ctx.inspector.querySelectorAll(sel)];
 
   /* ---- collapsible sections ---- */
-  document.querySelectorAll('.section-head').forEach(head => {
+  $$('.section-head').forEach(head => {
     const toggle = () => {
       const sec = head.parentElement;
       sec.classList.toggle('collapsed');
@@ -764,16 +805,16 @@ UIController.prototype.bind = function(){
   self.video.v.addEventListener('play', () => self.renderer.resetHistory());
 
   /* ---- view + quality + fit ---- */
-  document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => {
-    document.querySelectorAll('[data-view]').forEach(x => x.classList.remove('on'));
+  $$('[data-view]').forEach(b => b.addEventListener('click', () => {
+    $$('[data-view]').forEach(x => x.classList.remove('on'));
     b.classList.add('on');
     self.view = b.dataset.view;
     self.updateSplitUI();
     self.renderer.resetHistory();
     self.persist();
   }));
-  document.querySelectorAll('[data-fit]').forEach(b => b.addEventListener('click', () => {
-    document.querySelectorAll('[data-fit]').forEach(x => x.classList.remove('on'));
+  $$('[data-fit]').forEach(b => b.addEventListener('click', () => {
+    $$('[data-fit]').forEach(x => x.classList.remove('on'));
     b.classList.add('on');
     self.fit = b.dataset.fit;
     $('stage').classList.toggle('fill', self.fit === 'fill');
@@ -905,8 +946,8 @@ UIController.prototype.bind = function(){
         self.syncSettingsUI();
         self.renderPalette(); self.renderRules(); self.renderPreserve(); self.renderClusters();
         $('selQuality').value = self.quality;
-        document.querySelectorAll('[data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === self.view));
-        document.querySelectorAll('[data-fit]').forEach(b => b.classList.toggle('on', b.dataset.fit === self.fit));
+        $$('[data-view]').forEach(b => b.classList.toggle('on', b.dataset.view === self.view));
+        $$('[data-fit]').forEach(b => b.classList.toggle('on', b.dataset.fit === self.fit));
         self.updateSplitUI();
         self.renderer.resetHistory();
         self.persist();
@@ -925,9 +966,9 @@ UIController.prototype.bind = function(){
   });
 
   /* ---- modals ---- */
-  document.querySelectorAll('[data-close]').forEach(b =>
+  $$('[data-close]').forEach(b =>
     b.addEventListener('click', () => self.closeModal(b.dataset.close)));
-  document.querySelectorAll('.rc-overlay').forEach(o =>
+  $$('.rc-overlay').forEach(o =>
     o.addEventListener('click', e => { if(e.target === o) self.closeModal(o.id); }));
 
   /* ---- export ---- */
@@ -939,9 +980,10 @@ UIController.prototype.bind = function(){
   /* ---- keyboard ---- */
   const signal = self.ac.signal;
   document.addEventListener('keydown', e => {
+    if(!self.ctx.stage.closest('[data-active-tab]')) return;
     if(e.key === 'Escape'){
       if(self.pickMode){ self.endPick(); return; }
-      const open = document.querySelector('.rc-overlay:not([hidden])');
+      const open = self.ctx.stage.closest('[data-active-tab]')?.querySelector('.rc-overlay:not([hidden])');
       if(open){ self.closeModal(open.id); return; }
     }
     const tag = (e.target.tagName || '').toLowerCase();
@@ -969,6 +1011,7 @@ UIController.prototype.bind = function(){
 
 /* ---- modal helpers ---- */
 UIController.prototype.openModal = function(id){
+  const $ = this.$;
   const m = $(id);
   m.hidden = false;
   this._lastFocus = document.activeElement;
@@ -976,11 +1019,13 @@ UIController.prototype.openModal = function(id){
   if(first) first.focus();
 };
 UIController.prototype.closeModal = function(id){
+  const $ = this.$;
   $(id).hidden = true;
   if(id === 'exportModal' && this.exporter.active) this.exporter.cancel();
   if(this._lastFocus && this._lastFocus.focus) this._lastFocus.focus();
 };
 UIController.prototype.confirm = function(title, body, onOk){
+  const $ = this.$;
   $('confirmTitle').textContent = title;
   $('confirmBody').textContent = body;
   const ok = $('confirmOk');
@@ -992,6 +1037,7 @@ UIController.prototype.confirm = function(title, body, onOk){
 
 /* ---- export flow ---- */
 UIController.prototype.openExport = function(){
+  const $ = this.$;
   const mime = ExportManager.pickMime();
   if(!mime){
     $('expNote').innerHTML = '<b>Recording is unavailable.</b> This browser does not support MediaRecorder with WebM. Try Chrome, Edge, or Firefox.';
@@ -1008,6 +1054,7 @@ UIController.prototype.openExport = function(){
 };
 
 UIController.prototype.updateExportReadout = function(){
+  const $ = this.$;
   const v = this.video.v;
   if(!v.videoWidth) return;
   const [w,h] = ExportManager.targetSize($('expRes').value, v.videoWidth, v.videoHeight);
@@ -1021,6 +1068,7 @@ UIController.prototype.updateExportReadout = function(){
 
 UIController.prototype.runExport = function(){
   const self = this;
+  const $ = self.$;
   const opts = {
     resolution: $('expRes').value,
     fps: $('expFps').value,
@@ -1076,6 +1124,7 @@ UIController.prototype.loadAsset = function(a){
 /** Tear down: listeners, render loop, media, audio graph, GL context. */
 UIController.prototype.destroy = function(){
   this.ac.abort();
+  if(this._offActivate) this._offActivate();
   if(this._ro) this._ro.disconnect();
   cancelAnimationFrame(this._raf);
   clearTimeout(this._persistT);

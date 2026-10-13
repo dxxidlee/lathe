@@ -99,6 +99,8 @@ export interface MountContext {
   assets: AssetsAPI;
   settings: SettingsAPI;
   emit: EmitFn;
+  /** Called when the tool's tab becomes active/inactive. Tools with animation loops or video should pause when inactive. */
+  onActivate: (cb: (active: boolean) => void) => () => void;
 }
 
 export type Unmount = () => void;

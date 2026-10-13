@@ -15,7 +15,7 @@ type Phase = 'loading' | 'ready' | 'error';
 
 /** Mounts a ready tool into shell-owned DOM nodes (stage, inspector) with its effective defaults.
     Editing a default saves it and remounts the tool, so the change applies at once. */
-export function ToolHost({ entry }: { entry: ToolEntry }) {
+export function ToolHost({ entry, active = true }: { entry: ToolEntry; active?: boolean }) {
   const shell = useShell();
   const navigate = useNavigate();
   const stageRef = useRef<HTMLDivElement>(null);
@@ -27,6 +27,11 @@ export function ToolHost({ entry }: { entry: ToolEntry }) {
   const [version, setVersion] = useState(0);
   const editsRef = useRef<Edits>({});
   editsRef.current = edits;
+  const activeCbsRef = useRef(new Set<(a: boolean) => void>());
+
+  useEffect(() => {
+    activeCbsRef.current.forEach(cb => cb(active));
+  }, [active]);
 
   useEffect(() => {
     const stage = stageRef.current!, inspector = inspectorRef.current!;
@@ -40,6 +45,7 @@ export function ToolHost({ entry }: { entry: ToolEntry }) {
       else if (event === 'send' && typeof a === 'object' && target) {
         const t = findTool(target);
         if (!t?.load) { shell.toast(`${t?.name ?? target} is not built yet`); return; }
+        shell.openTab(target);
         navigate(`/t/${target}`);
         loadInto(a, target);
       }
@@ -61,10 +67,15 @@ export function ToolHost({ entry }: { entry: ToolEntry }) {
         for (const k of changed) settings.remove(k);
         void saveApplied(entry.id, values);
         setManifest(tool.defaults); setEdits(live);
+        const onActivate = (cb: (active: boolean) => void) => {
+          activeCbsRef.current.add(cb);
+          return () => activeCbsRef.current.delete(cb);
+        };
         const ctx: MountContext = {
           defaults: values, changedDefaults: changed,
           stage, inspector, assets, settings, emit,
           statusbar: { set: info => shell.setStatus(info), clear: () => shell.setStatus({}) },
+          onActivate,
         };
         shell.resetToolRef.current = () => onResetTool();
         result = tool.mount(ctx);

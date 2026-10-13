@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ShellLayout } from '../shell/ShellLayout';
+
 import { useShell } from '../shell/state';
 import {
   saveCustomTool, loadCustomTools, deleteCustomTool,
@@ -232,7 +232,7 @@ export function Make() {
 
   if (!hasSession) {
     return (
-      <ShellLayout title="Make a tool">
+      <>
         <section className="stage" aria-label="Make a tool">
           <div className="mk">
             <form className="mk__ask" onSubmit={e => { e.preventDefault(); void start(prompt); }}>
@@ -257,7 +257,7 @@ export function Make() {
         <aside className="inspector" aria-label="Inspector">
           <LibraryPanel library={library} onOpen={t => navigate(`/t/${t.id}`)} onEdit={editTool} onRemove={removeTool} onExport={doExport} onImport={doImport} fileRef={fileRef} />
         </aside>
-      </ShellLayout>
+      </>
     );
   }
 

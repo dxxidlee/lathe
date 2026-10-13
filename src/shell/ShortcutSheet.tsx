@@ -10,6 +10,10 @@ export function ShortcutSheet() {
     [`${mod} K`, 'Command palette'],
     [`${mod} E`, 'Export'],
     ['?', 'This sheet'],
+    ['\u2325W', 'Close tab'],
+    ['\u2325\u21e7[', 'Previous tab'],
+    ['\u2325\u21e7]', 'Next tab'],
+    [`${mod}\\`, 'Toggle rail'],
     ['Esc', 'Close any panel'],
     ['Drop a file', 'Load it into the active tool'],
   ];

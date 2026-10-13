@@ -22,7 +22,7 @@ export const tool: LatheTool = {
   group: 'Offcuts',
   defaults,
 
-  mount({ defaults: d, changedDefaults, stage, inspector, statusbar, settings, emit }) {
+  mount({ defaults: d, changedDefaults, stage, inspector, statusbar, settings, emit, onActivate }) {
     const PALETTES = d.palettes as Record<string, string[]>;
     const LOOP_S = d.loopSeconds as number;
     if (!(d.palette as string in PALETTES)) d.palette = Object.keys(PALETTES)[0];
@@ -265,7 +265,13 @@ export const tool: LatheTool = {
 
     /* ---------- animation ---------- */
     let animRAF = 0;
+    let tabActive = true;
+    const offActivate = onActivate(a => {
+      tabActive = a;
+      if (a && PH.on && !animRAF) animTick(); // restart animation when tab becomes active
+    });
     function animTick() {
+      if (!tabActive) { animRAF = 0; return; }
       PH.t = ((performance.now() / 1000) % LOOP_S) / LOOP_S;
       PH.frame++;
       let W = Math.round(cw), H = Math.round(ch);
@@ -342,7 +348,7 @@ export const tool: LatheTool = {
     draw();
 
     return {
-      unmount() { ro.disconnect(); cancelAnimationFrame(animRAF); PH.on = false; clearTimeout(persistT); },
+      unmount() { ro.disconnect(); cancelAnimationFrame(animRAF); PH.on = false; clearTimeout(persistT); offActivate(); },
       export: () => exportAt('image/png', 'png'),
     };
   },

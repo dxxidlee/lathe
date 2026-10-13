@@ -22,7 +22,7 @@ export const tool: LatheTool = {
   defaults,
   accepts: ['font/*', 'text/plain', 'application/font-woff', 'application/x-font-ttf', 'application/x-font-otf', 'application/vnd.ms-opentype'],
 
-  mount({ defaults: d, stage, inspector, statusbar, assets, settings, emit }) {
+  mount({ defaults: d, stage, inspector, statusbar, assets, settings, emit, onActivate }) {
     const [cw, ch] = String(d.canvas).split('x').map(Number);
     const s: Spec = {
       text: settings.get('text', d.text as string), font: d.font as string, weight: settings.get('weight', d.weight as number),
@@ -121,7 +121,13 @@ export const tool: LatheTool = {
     const restart = () => { t0 = performance.now(); if (!playing) draw(paused); };
     const draw = (t: number) => drawFrame(ctx, s, letters, t, Math.floor(t * fps), scratch);
     let raf = 0;
+    let active = true;
+    const offActivate = onActivate(a => {
+      active = a;
+      if (a && !raf) tick(); // restart when tab becomes active
+    });
     const tick = () => {
+      if (!active) { raf = 0; return; }
       raf = requestAnimationFrame(tick);
       if (!playing) return;
       const c = cycle(s, slots(letters));
@@ -196,7 +202,7 @@ export const tool: LatheTool = {
     void document.fonts.ready.then(() => { relay(); if (saved) void useFont(saved); });
     tick();
     return {
-      unmount() { cancelAnimationFrame(raf); off(); },
+      unmount() { cancelAnimationFrame(raf); off(); offActivate(); },
       export: () => void exportGif(),
     };
   },

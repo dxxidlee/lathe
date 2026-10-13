@@ -1,7 +1,10 @@
-import { BrowserRouter, Navigate, Route, Routes, useParams } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import { ShellProvider, useShell } from './shell/state';
-import { ShellLayout } from './shell/ShellLayout';
-import { PlannedTool, ToolHost } from './shell/ToolHost';
+import { TopBar } from './shell/TopBar';
+import { NavRail } from './shell/NavRail';
+import { StatusBar } from './shell/StatusBar';
+import { Tray } from './shell/Tray';
+import { ToolHost, PlannedTool, useStageDrop } from './shell/ToolHost';
 import { CommandPalette } from './shell/CommandPalette';
 import { ShortcutSheet } from './shell/ShortcutSheet';
 import { Keyboard } from './shell/Keyboard';
@@ -9,29 +12,66 @@ import { findTool, loadCustomEntries } from './tools/registry';
 import { Home } from './routes/Home';
 import { Make } from './routes/Make';
 import { useEffect, useState } from 'react';
-import { modKey } from './lib/format';
 
-function ToolRoute() {
+function ToolView() {
   const { toolId } = useParams();
-  const entry = findTool(toolId);
-  useEffect(() => { document.title = entry ? `${entry.name} · Lathe` : 'Lathe'; }, [entry]);
-  if (!entry) {
-    return (
-      <ShellLayout title="Not found">
-        <section className="stage stage--planned" aria-label="Not found">
-          <div className="planned">
-            <h1 className="planned__name">No tool called “{toolId}”</h1>
-            <p className="planned__blurb">Press {modKey()}K to find one.</p>
-          </div>
-        </section>
-        <aside className="inspector" aria-label="Inspector" />
-      </ShellLayout>
-    );
-  }
+  const shell = useShell();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (toolId && toolId !== shell.activeTabId) {
+      shell.openTab(toolId);
+    }
+  }, [toolId]);
+
+  useEffect(() => {
+    if (shell.activeTabId && shell.activeTabId !== toolId) {
+      const path = shell.activeTabId === 'make' ? '/t/make' : `/t/${shell.activeTabId}`;
+      navigate(path, { replace: true });
+    }
+  }, [shell.activeTabId]);
+
+  const activeEntry = shell.activeTabId === 'make' ? undefined : findTool(shell.activeTabId);
+  const drop = useStageDrop(activeEntry);
+
+  useEffect(() => {
+    document.title = activeEntry ? `${activeEntry.name} \u00b7 Lathe` : 'Make a tool \u00b7 Lathe';
+  }, [activeEntry]);
+
   return (
-    <ShellLayout tool={entry}>
-      {entry.load ? <ToolHost key={entry.id} entry={entry} /> : <PlannedTool entry={entry} />}
-    </ShellLayout>
+    <div className={`shell${shell.trayOpen ? ' tray-open' : ''}`} {...drop.handlers}>
+      <TopBar />
+      <NavRail />
+      <div className="shell__panes">
+        {shell.tabs.map(tab => {
+          const isActive = tab.id === shell.activeTabId;
+          const entry = tab.id === 'make' ? undefined : findTool(tab.id);
+          return (
+            <div key={tab.id} className="shell__pane" data-active-tab={isActive || undefined}
+              style={{ display: isActive ? 'contents' : 'none' }}>
+              {tab.id === 'make' ? (
+                <Make />
+              ) : entry?.load ? (
+                <ToolHost entry={entry} active={isActive} />
+              ) : entry ? (
+                <PlannedTool entry={entry} />
+              ) : (
+                <section className="stage stage--planned">
+                  <div className="planned"><h1 className="planned__name">Tool not found</h1></div>
+                </section>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <Tray />
+      <StatusBar />
+      {drop.over && (
+        <div className="dropzone" aria-hidden="true">
+          <span>{activeEntry?.load ? `Drop to load into ${activeEntry.name}` : 'Drop to add to the tray'}</span>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -66,8 +106,8 @@ export function App() {
           <Route path="/t/mood-strip" element={<Navigate to="/t/reference" replace />} />
           <Route path="/t/mesh-gradient" element={<Navigate to="/t/gradient" replace />} />
           <Route path="/t/color-swap" element={<Navigate to="/t/recolor" replace />} />
-          <Route path="/t/:toolId" element={<ToolRoute />} />
-          <Route path="/make" element={<Make />} />
+          <Route path="/t/:toolId" element={<ToolView />} />
+          <Route path="/make" element={<Navigate to="/t/make" replace />} />
           <Route path="/resize" element={<Navigate to="/t/resize" replace />} />
           <Route path="*" element={<Home />} />
         </Routes>

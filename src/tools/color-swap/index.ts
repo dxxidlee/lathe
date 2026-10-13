@@ -13,7 +13,7 @@ export const tool: LatheTool = {
   defaults,
   accepts: ['image/*', 'video/*'],
 
-  mount({ defaults: d, changedDefaults, stage, inspector, statusbar, assets, settings, emit }) {
+  mount({ defaults: d, changedDefaults, stage, inspector, statusbar, assets, settings, emit, onActivate }) {
     // A default edited in the Defaults panel replaces the matching value in the saved snapshot.
     const snap = settings.get<{ palette?: unknown; settings?: Record<string, number> } | null>('state', null);
     if (snap && changedDefaults.length) {
@@ -24,12 +24,12 @@ export const tool: LatheTool = {
       settings.set('state', snap);
     }
     const ui = new UIController({
-      stage, inspector, defaults: d, settings, statusbar, assets, emit,
+      stage, inspector, defaults: d, settings, statusbar, assets, emit, onActivate,
       palette: d.palette as unknown[],
       presets: d.presets as Record<string, Record<string, number>>,
     });
     // Export dialog starts from the manifest's choices.
-    const set = (id: string, v: unknown) => { const el = document.getElementById(id) as HTMLInputElement | HTMLSelectElement | null; if (!el) return; if (el instanceof HTMLInputElement && el.type === 'checkbox') el.checked = !!v; else el.value = String(v); };
+    const set = (id: string, v: unknown) => { const el = (stage.querySelector('#' + id) ?? inspector.querySelector('#' + id)) as HTMLInputElement | HTMLSelectElement | null; if (!el) return; if (el instanceof HTMLInputElement && el.type === 'checkbox') el.checked = !!v; else el.value = String(v); };
     set('expRes', d.exportResolution); set('expFps', d.exportFps); set('expQual', d.exportQuality); set('expAudio', d.exportAudio);
 
     const off = assets.onChange(e => { if (e.type === 'load' && e.target === 'recolor') void ui.loadAsset(e.asset); });
@@ -38,7 +38,7 @@ export const tool: LatheTool = {
     if (last) void ui.loadAsset(last);
     return {
       unmount() { off(); ui.destroy(); },
-      export: () => { const btn = document.getElementById('btnExport') as HTMLButtonElement | null; if (btn && !btn.disabled) ui.openExport(); else emit('toast', 'Load an image or video first'); },
+      export: () => { const btn = (stage.querySelector('#btnExport') ?? inspector.querySelector('#btnExport')) as HTMLButtonElement | null; if (btn && !btn.disabled) ui.openExport(); else emit('toast', 'Load an image or video first'); },
     };
   },
 };
