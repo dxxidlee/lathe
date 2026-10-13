@@ -267,6 +267,7 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, setting
     it.palette = p.swatches.map(s => s.hex);
     if (!it.width && p.width) { it.width = p.width; it.height = p.height ?? null; }
     updateCard(it);
+    if (detailItem?.id === it.id) renderDetail();
     if (filters.hex) scheduleGrid();
   }
   async function loadMore() {
