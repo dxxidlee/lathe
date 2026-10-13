@@ -1,12 +1,14 @@
-import { useMemo, useRef, useState, useEffect } from 'react';
+import { createElement, useMemo, useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { allTools, isReady, ID_ALIASES, HIDDEN_TOOLS } from '../tools/registry';
 import { resetEverything } from '../lib/reset';
 import { useShell } from './state';
 import { Modal } from './Modal';
 import { modKey } from '../lib/format';
+import { toolIcon } from './icons';
+import type { LucideIcon } from 'lucide-react';
 
-interface Command { id: string; label: string; hint?: string; keys?: string; run: () => void; _extra?: string }
+interface Command { id: string; label: string; hint?: string; keys?: string; run: () => void; _extra?: string; icon?: LucideIcon | null }
 
 /** Subsequence match, scored by contiguity and start position. Lower is better; -1 = no match. */
 function score(q: string, s: string): number {
@@ -46,6 +48,7 @@ export function CommandPalette() {
         keys: i < 9 && !t.custom ? String(i + 1) : undefined,
         run: openTool(t.id),
         _extra: aliasesFor(t.id).join(' '),
+        icon: toolIcon(t.id),
       })),
       { id: 'home', label: 'Go home', run: open('/') },
       { id: 'make', label: 'Make a tool', run: openTool('make') },
@@ -91,6 +94,7 @@ export function CommandPalette() {
           {results.map((c, i) => (
             <li key={c.id} id={`cmd-${c.id}`} role="option" aria-selected={i === sel}
               className="palette__item" onMouseMove={() => setSel(i)} onClick={() => c.run()}>
+              {c.icon ? createElement(c.icon, { size: 16, strokeWidth: 1.5, className: 'palette__icon' }) : null}
               <span className="palette__label">{c.label}</span>
               {c.hint && <span className="palette__hint">{c.hint}</span>}
               {c.keys && <span className="l-kbd">{c.keys}</span>}

@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { createElement, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { findTool } from '../tools/registry';
 import { Mark } from '../brand/Wordmark';
+import { toolIcon } from './icons';
 import type { Tab } from './state';
 
 interface Props {
@@ -27,6 +28,7 @@ export function TabBar({ tabs, activeTabId, onActivate, onClose, onReorder }: Pr
         const tool = findTool(tab.id);
         const label = tab.id === 'make' ? 'Make a tool' : tab.id === 'library' ? 'Library' : tool?.name ?? tab.id;
         const active = tab.id === activeTabId;
+        const Icon = toolIcon(tab.id);
         return (
           <button
             key={tab.id}
@@ -40,7 +42,7 @@ export function TabBar({ tabs, activeTabId, onActivate, onClose, onReorder }: Pr
             onDragOver={e => { if (!tab.pinned) e.preventDefault(); }}
             onDrop={e => { e.preventDefault(); const from = Number(e.dataTransfer.getData('text/plain')); if (!isNaN(from)) onReorder(from, i); setDragIdx(null); }}
           >
-            {tab.id === 'make' && <Mark className="tab__mark" />}
+            {tab.id === 'make' ? <Mark className="tab__mark" /> : Icon ? createElement(Icon, { className: 'tab__icon', size: 16, strokeWidth: 1.5 }) : null}
             {label}
             {!tab.pinned && (
               <span className="tab__close" role="button" aria-label={`Close ${label}`}

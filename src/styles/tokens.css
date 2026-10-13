@@ -5,58 +5,103 @@
    ========================================================================== */
 
 :root {
-  /* ---- Color: exactly three ---- */
-  --lathe: #E8FF1A;
+  /* ---- New design system tokens ---- */
+
+  /* Palette */
+  --bg: #000000;
+  --surface: #141414;
+  --border: rgba(255,255,255,0.08);
+  --text-1: rgba(255,255,255,1);
+  --text-2: rgba(255,255,255,0.55);
+  --text-3: rgba(255,255,255,0.3);
+  --accent: #E8FF1A;
+  --accent-text: #000000;
+  --danger: #FF453A;
+
+  /* Type */
+  --font: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --text-body: 13px;
+  --text-meta: 11px;
+  --weight: 400;
+  --weight-medium: 500;
+
+  /* Spacing (4px grid) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+
+  /* Radius */
+  --radius-control: 4px;
+  --radius-panel: 8px;
+
+  /* Sizes */
+  --control-h: 28px;
+  --icon-size: 16px;
+  --topbar-h: 40px;
+  --statusbar-h: 24px;
+  --tab-h: 40px;
+
+  /* Layers */
+  --z-drop: 20;
+  --z-menu: 40;
+  --z-modal: 60;
+  --z-toast: 80;
+  --z-rail: 90;
+
+  /* Motion */
+  --ease: cubic-bezier(.16, 1, .3, 1);
+  --t-fast: 120ms;
+  --t-med: 200ms;
+
+  /* ---- Backward-compatible aliases ---- */
+  /* These map old names to new tokens so existing tool CSS keeps working */
+  --lathe: var(--accent);
   --black: #000000;
   --white: #FFFFFF;
-  /* The one exception to the three colors: Resize flags overflowing variants in red, as asked
-     for (2026-10-07). Used only for that warning. */
-  --alert: #FF3B30;
+  --alert: var(--danger);
 
-  /* ---- Opacity steps: 100 / 64 / 40 / 16 / 8 ---- */
   --o-100: 1;
   --o-64: 0.64;
   --o-40: 0.4;
   --o-16: 0.16;
   --o-8: 0.08;
+  --white-64: var(--text-2);
+  --white-40: var(--text-3);
+  --white-16: var(--border);
+  --white-8: rgba(255,255,255,0.06);
+  --black-64: rgba(0,0,0,0.64);
+  --black-40: rgba(0,0,0,0.4);
+  --black-16: rgba(0,0,0,0.16);
+  --black-8: rgba(0,0,0,0.08);
+  --lathe-64: rgba(232,255,26,0.64);
+  --lathe-40: rgba(232,255,26,0.4);
+  --lathe-16: rgba(232,255,26,0.16);
 
-  /* Derived tones: the three colors at those steps. No new hex values. */
-  --white-64: rgb(255 255 255 / var(--o-64));
-  --white-40: rgb(255 255 255 / var(--o-40));
-  --white-16: rgb(255 255 255 / var(--o-16));
-  --white-8: rgb(255 255 255 / var(--o-8));
-  --black-64: rgb(0 0 0 / var(--o-64));
-  --black-40: rgb(0 0 0 / var(--o-40));
-  --black-16: rgb(0 0 0 / var(--o-16));
-  --black-8: rgb(0 0 0 / var(--o-8));
-  --lathe-64: rgb(232 255 26 / var(--o-64));
-  --lathe-40: rgb(232 255 26 / var(--o-40));
-  --lathe-16: rgb(232 255 26 / var(--o-16));
+  --panel: var(--bg);
+  --stage: var(--bg);
+  --ink: var(--text-1);
+  --ink-2: var(--text-2);
+  --ink-3: var(--text-3);
+  --hairline-color: var(--border);
+  --fill: rgba(255,255,255,0.06);
+  --fill-strong: rgba(255,255,255,0.12);
+  --on-accent: var(--accent-text);
+  --scrim: rgba(0,0,0,0.64);
 
-  /* ---- Roles ---- */
-  --panel: var(--black);
-  --stage: var(--black);
-  --ink: var(--white);
-  --ink-2: var(--white-64);
-  --ink-3: var(--white-40);
-  --hairline-color: var(--white-16);
-  --fill: var(--white-8);
-  --fill-strong: var(--white-16);
-  --accent: var(--lathe);
-  --on-accent: var(--black);
-  --scrim: var(--black-64);
-
-  /* ---- Type: Helvetica Neue only (native on macOS/iOS, never self-hosted) ---- */
-  --font: "Helvetica Neue", Helvetica, Arial, sans-serif;
   --w-light: 300;
-  --w-regular: 400;
-  --w-medium: 500;
+  --w-regular: var(--weight);
+  --w-medium: var(--weight-medium);
   --w-bold: 700;
 
   --fs-micro: 10px;
-  --fs-small: 11px;
-  --fs-ui: 12px;
-  --fs-body: 14px;
+  --fs-small: var(--text-meta);
+  --fs-ui: var(--text-body);
+  --fs-body: var(--text-body);
   --fs-title: 20px;
   --fs-display-s: 32px;
   --fs-display-m: 56px;
@@ -73,44 +118,42 @@
   --track-ui: 0;
   --track-caps: 0.04em;
 
-  /* ---- Rhythm: 2.5px base (the reference suite's 0.5× scale) ---- */
-  --s-1: 2.5px;
-  --s-2: 5px;
-  --s-3: 7.5px;
-  --s-4: 10px;
-  --s-5: 15px;
-  --s-6: 20px;
-  --s-7: 30px;
-  --s-8: 40px;
+  /* Old spacing (2.5px base) mapped to nearest new 4px grid values */
+  --s-1: var(--space-1);
+  --s-2: var(--space-2);
+  --s-3: var(--space-3);
+  --s-4: var(--space-4);
+  --s-5: var(--space-5);
+  --s-6: var(--space-6);
+  --s-7: var(--space-7);
+  --s-8: var(--space-8);
   --s-9: 60px;
   --s-10: 80px;
 
-  /* ---- Components ---- */
+  /* Old component sizes */
   --hairline: 1px;
-  --radius: 2.5px;
-  --radius-pill: 3.75px;
-  --chip-h: 22.5px;
-  --chip-pad-x: 7.5px;
-  --rail-w: 7.5px;
-  --rail-thumb-h: 10.5px;
-  --field-h: 22.5px;
-  --swatch: 15px;
+  --radius: var(--radius-control);
+  --radius-pill: calc(var(--control-h) / 2);
+  --chip-h: var(--control-h);
+  --chip-pad-x: var(--space-2);
+  --rail-w: 8px;
+  --rail-thumb-h: 12px;
+  --field-h: var(--control-h);
+  --swatch: 20px;
   --focus-ring: 1px;
   --stroke-thin: 1;
   --stroke-med: 1.5;
   --stroke-bold: 2;
   --stroke-heavy: 2.5;
-  --icon: 12px;
+  --icon: var(--icon-size);
   --thumb: 60px;
-  --mark-size: 0.714em;        /* Helvetica Neue cap height */
+  --mark-size: 0.714em;
   --mark-gap: 0.12em;
 
-  /* ---- Shell layout ---- */
-  --topbar-h: 40px;
+  /* Shell layout */
   --nav-w: 208px;
   --nav-w-collapsed: 40px;
   --inspector-w: 288px;
-  --statusbar-h: 24px;
   --tray-h: 112px;
   --palette-w: 560px;
   --palette-max-h: 420px;
@@ -128,15 +171,4 @@
   --card-w: 220px;
   --card-w-s: 120px;
   --search-h: 48px;
-
-  /* ---- Layers ---- */
-  --z-drop: 20;
-  --z-menu: 40;
-  --z-modal: 60;
-  --z-toast: 80;
-
-  /* ---- Motion ---- */
-  --ease: cubic-bezier(.16, 1, .3, 1);
-  --t-fast: 120ms;
-  --t-med: 240ms;
 }

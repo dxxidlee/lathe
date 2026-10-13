@@ -32,6 +32,7 @@
     "imagetracerjs": "^1.2.6",
     "jspdf": "^4.2.1",
     "jszip": "^3.10.2",
+    "lucide-react": "^1.55.0",
     "node-html-parser": "^9.0.4",
     "opentype.js": "^2.0.0",
     "pptxgenjs": "^4.0.1",

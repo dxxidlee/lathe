@@ -107,7 +107,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   const capStats = statList();
   const capNote = note('');
   const actions = el('div', 'l-row');
-  const deckBtn = button({ label: 'Build deck in Bento', primary: true, onClick: () => void buildDeckNow() });
+  const deckBtn = button({ label: 'Build deck', onClick: () => void buildDeckNow() });
   const saveLibBtn = button({ label: 'Save to Library', onClick: async () => {
     if (!cap) { emit('toast', 'Capture a brand first'); return; }
     const { supabase } = await import('../../lib/supabase');
@@ -141,13 +141,13 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
       ['Brandfetch', !features?.brandfetch ? 'Needs BRANDFETCH_KEY' : cap?.brandfetch ? `${cap.brandfetch.logos.length} logos · ${cap.brandfetch.colors.length} colors` : cap?.brandfetchError ? 'Error' : '—'],
       ['Observations', !features?.observations ? 'Needs ANTHROPIC_API_KEY' : obsState === 'loading' ? 'Writing…' : obs ? `${obs.observations.length} generated` : obsState === 'error' ? 'Error' : '—'],
     ]);
+    deckBtn.classList.toggle('l-btn--primary', !!cap);
     obsBtn.style.display = features?.observations ? '' : 'none';
     igField.el.style.display = cap && !igLoading && (!igName || igError) ? '' : 'none';
     if (document.activeElement !== igField.input) igField.input.value = igName ? `@${igName}` : '';
     capNote.textContent = [
-      features && !features.screenshotsLimited ? 'Screenshots: Microlink, with your key.' : `Screenshots use Microlink’s free tier, a small daily quota; set MICROLINK_KEY in .env.local to lift it.${quota != null ? ` ${quota} left today.` : ''}`,
-      quotaSpent ? 'The quota is spent: remaining screenshots were skipped.' : '',
-      `Captures are cached for ${d.cacheHours} hours, so re-running costs nothing.`,
+      quotaSpent ? 'Screenshot quota spent: remaining screenshots were skipped.' : quota != null ? `${quota} screenshots left today.` : '',
+      `Captures are cached for ${d.cacheHours} hours.`,
     ].filter(Boolean).join(' ');
   }
 
@@ -341,7 +341,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   function paint() {
     renderInspector();
     const s = cap?.site;
-    statusbar.set({ name: cap ? cap.domain : query ? `“${query}”` : 'Audit', state: capturing ? 'capturing' : capError ? 'error' : cap ? `${[...shots.values()].filter(x => x.status === 'loading').length ? 'loading captures · ' : ''}${s!.colorStats.unique} colors · ${s!.typefaces.length} typefaces` : 'brand mode' });
+    statusbar.set({ name: cap ? cap.domain : query ? `"${query}"` : 'Audit', state: capturing ? 'capturing' : capError ? 'error' : cap ? `${[...shots.values()].filter(x => x.status === 'loading').length ? 'loading captures · ' : ''}${s!.colorStats.unique} colors · ${s!.typefaces.length} typefaces` : 'Brand Audit' });
     if (!cap) {
       report.replaceChildren(el('div', 'au__empty', capturing ? `Capturing ${query}…` : capError ?? 'Audit a brand: type a domain like stripe.com, or a company name to look up its website.'));
       return;
@@ -359,8 +359,8 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
       head.append(n);
     }
     if (cap.company) head.append(el('p', 'ab__meta', cap.company.wikidata
-      ? `Resolved “${cap.query}” to ${cap.company.name}${cap.company.description ? `, ${cap.company.description}` : ''} via Wikidata.`
-      : `Wikidata lists no website for “${cap.query}”; found ${new URL(cap.company.website).hostname}, whose title names it.`));
+      ? `Resolved "${cap.query}" to ${cap.company.name}${cap.company.description ? `, ${cap.company.description}` : ''} via Wikidata.`
+      : `Wikidata lists no website for "${cap.query}"; found ${new URL(cap.company.website).hostname}, whose title names it.`));
 
     report.replaceChildren(head, shotsSection(), imagerySection(), paletteSection(), typeSection(), logoSection(), timelineSection(), obsSection());
   }
@@ -411,7 +411,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
       if (c.vars.length) sw.append(el('span', 'ab-pal__vars', c.vars.join(' ')));
       grid.append(sw);
     }
-    if (!s.colors.length) grid.append(note('No colors found in the site’s CSS.'));
+    if (!s.colors.length) grid.append(note('No colors found in the CSS.'));
     sec.append(el('h4', 'ab__sub', 'Declared in CSS'), grid);
     const desk = shots.get('desktop');
     if (desk?.swatches) {
@@ -447,7 +447,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
       if (t.stack) r.title = t.stack;
       list.append(r);
     }
-    if (!s.typefaces.length) list.append(note('No typefaces declared in the site’s CSS.'));
+    if (!s.typefaces.length) list.append(note('No typefaces declared in the CSS.'));
     for (const f of cap!.brandfetch?.fonts ?? []) {
       const r = el('div', 'ab-type__row'); r.append(el('span', 'ab-type__fam', f.name), el('span', 'ab-type__src', `Brandfetch${f.origin ? ` · ${f.origin}` : ''}`), el('span', 'ab-type__w', f.type ?? ''), el('span', 'ab-type__uses', ''));
       list.append(r);
@@ -492,9 +492,9 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
     sec.append(...instagramBlock());
     // YouTube
     const yt = social?.youtube;
-    const ytHead = socialLoading ? 'Looking for the brand’s YouTube…' : socialError ? `YouTube: ${socialError}`
+    const ytHead = socialLoading ? 'Looking for YouTube\u2026' : socialError ? `YouTube: ${socialError}`
       : !yt ? (social?.notes?.join('; ') || 'No YouTube videos found.')
-        : yt.source === 'channel' ? `YouTube · ${yt.channel?.title} (the brand’s channel)` : `YouTube · videos that name “${yt.query}” (no official channel found; check each)`;
+        : yt.source === 'channel' ? `YouTube · ${yt.channel?.title} (the brand's channel)` : `YouTube · videos that name "${yt.query}" (no official channel found; check each)`;
     const ytH = el('h4', 'ab__sub', ytHead);
     if (yt?.channel) { const a = el('a', 'ab-pick__link', 'Open channel') as HTMLAnchorElement; a.href = yt.channel.url; a.target = '_blank'; a.rel = 'noopener'; ytH.append(' · ', a); }
     sec.append(ytH);
@@ -513,7 +513,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
     }
     // The site's photography
     const imgs = siteImages();
-    sec.append(el('h4', 'ab__sub', imgs.length ? `From ${cap!.domain}` : `No large photography found on ${cap!.domain}’s homepage.`));
+    sec.append(el('h4', 'ab__sub', imgs.length ? `From ${cap!.domain}` : `No large photography found on ${cap!.domain}'s homepage.`));
     if (imgs.length) {
       const g = el('div', 'ab-picks');
       imgs.forEach((im, i) => g.append(tile(`site:${i}`, siteSrc(im.url), im.alt ?? `Image from ${cap!.domain}`)));
@@ -539,7 +539,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
       : !igName ? 'Instagram · neither Brandfetch nor the site links an account; type the handle in the inspector.'
         : igError ? `Instagram · @${igName}: ${igError}`
           : !ig ? `Instagram · @${igName}`
-            : ig.mock ? 'Instagram · sample posts, not from Instagram: INSTAGRAM_ACCESS_TOKEN isn’t set on the server.'
+            : ig.mock ? 'Instagram \u00b7 sample posts, not from Instagram: INSTAGRAM_ACCESS_TOKEN is not set on the server.'
               : [`Instagram · @${ig.username} (${from})`, ig.profile.followers != null ? `${n(ig.profile.followers)} followers` : '', ig.profile.mediaCount != null ? `${n(ig.profile.mediaCount)} posts` : ''].filter(Boolean).join(' · '));
     if (ig && !ig.mock) { const a = el('a', 'ab-pick__link', 'Open profile') as HTMLAnchorElement; a.href = `https://www.instagram.com/${ig.username}/`; a.target = '_blank'; a.rel = 'noopener'; head.append(' · ', a); }
     if (!ig?.posts.length) return [head];
@@ -606,10 +606,10 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   }
   function obsSection() {
     const sec = block('Observations', obs ? `Generated by ${obs.model}` : undefined);
-    if (!features?.observations) { sec.append(note('Generated observations need ANTHROPIC_API_KEY in .env.local.')); return sec; }
+    if (!features?.observations) { sec.append(note('Generated observations require an API key on the server.')); return sec; }
     if (obsState === 'loading') { sec.append(note('Writing observations from the captures…')); return sec; }
     if (obsState === 'error') sec.append(note(obsError ?? 'Failed'));
-    if (!obs) { sec.append(note('”Write observations” analyzes the captures and extracted data for a short audit. Every observation must cite a capture.')); return sec; }
+    if (!obs) { sec.append(note('"Write observations" analyzes the captures and extracted data for a short audit. Every observation must cite a capture.')); return sec; }
     sec.append(el('p', 'ab-obs__label', `Generated by ${obs.model} on ${new Date(obs.generatedAt).toLocaleString()}. Check each against the captures it cites.`));
     if (obs.summary) sec.append(el('p', 'ab-obs__sum', obs.summary));
     const list = el('ol', 'ab-obs');

@@ -1,4 +1,6 @@
+import { createElement } from 'react';
 import { Link } from 'react-router-dom';
+import { PanelLeft } from 'lucide-react';
 import { Wordmark } from '../brand/Wordmark';
 import { useShell } from './state';
 import { modKey } from '../lib/format';
@@ -12,7 +14,7 @@ export function TopBar() {
     <header className="topbar">
       <button type="button" className="topbar__rail-toggle" onClick={shell.toggleRail}
         aria-label={shell.railOpen ? 'Close rail' : 'Open rail'} title={`${mod}\\`}>
-        {shell.railOpen ? '\u2190' : '\u2261'}
+        {createElement(PanelLeft, { size: 16, strokeWidth: 1.5 })}
       </button>
       <Link to="/" className="topbar__brand" aria-label="Lathe home"><Wordmark /></Link>
       <TabBar tabs={shell.tabs} activeTabId={shell.activeTabId}
@@ -23,7 +25,7 @@ export function TopBar() {
       </button>
       <AuthMenu />
       <div className="topbar__actions">
-        <button type="button" className="l-btn l-btn--primary" onClick={shell.runExport} title={`Export (${mod}E)`}>Export</button>
+        <button type="button" className="l-btn" onClick={shell.runExport} title={`Export (${mod}E)`}>Export</button>
       </div>
     </header>
   );

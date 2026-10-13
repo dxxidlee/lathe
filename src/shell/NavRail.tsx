@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { createElement, useState } from 'react';
 import { TOOLS, isReady, toolsByGroup, allTools } from '../tools/registry';
 import { Mark } from '../brand/Wordmark';
+import { toolIcon } from './icons';
 import { useShell } from './state';
 
 export function NavRail() {
@@ -45,6 +46,7 @@ export function NavRail() {
                           <button type="button"
                             className={`nav__item${shell.activeTabId === t.id ? ' is-active' : ''}${isReady(t) ? '' : ' is-planned'}`}
                             title={t.blurb} onClick={() => openTool(t.id)}>
+                            {(() => { const Ic = toolIcon(t.id); return Ic ? createElement(Ic, { size: 16, strokeWidth: 1.5, className: 'nav__icon' }) : null; })()}
                             <span className="nav__abbr" aria-hidden="true">{t.name.slice(0, 2)}</span>
                             <span className="nav__name">{t.name}</span>
                             <span className="nav__meta">{isReady(t) ? (n < 9 ? n + 1 : '') : `M${t.milestone}`}</span>
@@ -66,6 +68,7 @@ export function NavRail() {
                     <button type="button"
                       className={`nav__item${shell.activeTabId === t.id ? ' is-active' : ''}`}
                       title={t.blurb} onClick={() => openTool(t.id)}>
+                      {(() => { const Ic = toolIcon(t.id); return Ic ? createElement(Ic, { size: 16, strokeWidth: 1.5, className: 'nav__icon' }) : null; })()}
                       <span className="nav__abbr" aria-hidden="true">{t.name.slice(0, 2)}</span>
                       <span className="nav__name">{t.name}</span>
                     </button>
