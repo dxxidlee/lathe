@@ -1,4 +1,4 @@
-.au { position: absolute; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr); }
+.au { position: absolute; inset: 0; display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto auto minmax(0, 1fr); }
 .au__bar { display: flex; gap: var(--space-3); padding: var(--space-5) var(--space-6) var(--space-3); }
 .au__q {
   flex: 1; min-width: 0; height: var(--search-h); padding: 0 var(--space-5);
