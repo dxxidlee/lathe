@@ -281,9 +281,16 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
     if (target && filters.mode === 'sort') {
       list = [...list].sort((a, b) => (a.swatches ? paletteDistance(target, a.swatches) : 9) - (b.swatches ? paletteDistance(target, b.swatches) : 9));
     } else if (tab === 'results') {
-      const searchQ = (expanded && !useExact) ? expanded.main : query;
+      // Score against the ORIGINAL query so alternate-query results
+      // are ranked by relevance to what the user actually typed
+      const scoreQ = query;
+      const expandedQ = (expanded && !useExact) ? expanded.main : query;
       const excludeTerms = expanded?.exclude ?? [];
-      const scored = list.map(it => ({ ...it, _rel: scoreRelevance(it, searchQ, excludeTerms) }));
+      const scored = list.map(it => {
+        const origScore = scoreRelevance(it, scoreQ, excludeTerms);
+        const expScore = expandedQ !== scoreQ ? scoreRelevance(it, expandedQ, excludeTerms) : origScore;
+        return { ...it, _rel: Math.max(origScore, expScore) };
+      });
       const before = scored.length;
       list = scored.filter(it => it._rel > 0).sort((a, b) => b._rel - a._rel);
       const dropped = before - list.length;

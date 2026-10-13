@@ -5,9 +5,15 @@ import { json } from './_lib/http.js';
 
 const MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5';
 
-const SYSTEM = `You help expand search queries for cultural archive searches (museums, libraries, art collections).
-Given a query, return: main (best expanded phrase), alternates (2-3 alternate phrasings), exclude (false positive terms), interpreted (human-readable interpretation).
-Rules: never produce 1-2 letter stopwords. Expand place abbreviations (LA → Los Angeles). Alternates should be distinct phrasings.`;
+const SYSTEM = `You expand search queries for cultural archive searches (museums, libraries, art collections).
+
+Rules:
+- ONLY expand abbreviations and initialisms (LA → Los Angeles, NYC → New York City). Do NOT add synonyms, related concepts, or descriptions.
+- The main query should be the original query with abbreviations expanded. Nothing more.
+- Alternates: 1-2 tighter rephrasing using the same core nouns. Not broader, not more abstract.
+- Exclude: terms in other languages that collide with query terms (e.g. "la" in French for an English "LA" query).
+- Keep it literal. "LA Sky" → "Los Angeles sky", NOT "atmospheric scenes" or "skyline photography" or "clouds".
+- Never add art/media terms the user didn't use (painting, photograph, artwork, etc.).`;
 
 const TOOL_DEF = {
   name: 'expanded_query', description: 'An expanded search query',
