@@ -8,7 +8,7 @@ import { useShell } from './state';
 import { useStageDrop } from './ToolHost';
 
 /** Standalone shell frame for pages outside the tab system (e.g. Home). */
-export function ShellLayout({ tool, title, children }: { tool?: ToolEntry; title?: string; children: ReactNode }) {
+export function ShellLayout({ tool, children }: { tool?: ToolEntry; children: ReactNode }) {
   const shell = useShell();
   const drop = useStageDrop(tool);
   return (
