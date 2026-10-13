@@ -11,9 +11,9 @@ import './multi-export.css';
 const ACCEPT = ['image/png', 'image/jpeg', 'image/svg+xml'];
 
 export const tool: LatheTool = {
-  id: 'multi-export',
+  id: 'logo-export',
   name: 'Multi-export',
-  group: 'Export',
+  group: 'Workbench',
   defaults,
   accepts: ACCEPT,
 
@@ -134,7 +134,7 @@ export const tool: LatheTool = {
           epsRasterMax: d.epsRasterMax as number, grayWeights: d.grayWeights as number[],
         }, setState);
         if ('error' in r) { setState(r.error); return; }
-        await saveExport(r.blob, r.zipName, 'multi-export');
+        await saveExport(r.blob, r.zipName, 'logo-export');
         setState(`Export completed: ${r.count} files across ${r.folders} folders.${r.notes.length ? ' ' + r.notes.join(' ') : ''}`);
       } catch (err) {
         console.error(err);
@@ -144,7 +144,7 @@ export const tool: LatheTool = {
       }
     }
 
-    const off = assets.onChange(e => { if (e.type === 'load' && e.target === 'multi-export') void load(e.asset); });
+    const off = assets.onChange(e => { if (e.type === 'load' && e.target === 'logo-export') void load(e.asset); });
 
     paintSurface();
     const last = assets.get(settings.get<string>('lastAsset', ''));

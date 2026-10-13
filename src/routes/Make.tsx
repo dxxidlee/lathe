@@ -13,7 +13,7 @@ import { assets } from '../lib/assets';
 import tokensCss from '../styles/tokens.css?raw';
 import primitiveCss from '../styles/primitives.css?raw';
 
-const BASE_TOOLS = TOOLS.filter(t => isReady(t) && t.id !== 'audit' && !t.dev);
+const BASE_TOOLS = TOOLS.filter(t => isReady(t) && t.id !== 'subject-audit' && t.id !== 'brand-audit' && !t.dev);
 const TOOL_SOURCES = import.meta.glob('../tools/**/*', { query: '?raw', import: 'default' }) as Record<string, () => Promise<string>>;
 const SOURCE_CAP = 15000;
 

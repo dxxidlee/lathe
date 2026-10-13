@@ -7,9 +7,9 @@ import { UIController } from './ui.js';
 import './color-swap.css';
 
 export const tool: LatheTool = {
-  id: 'color-swap',
+  id: 'recolor',
   name: 'Color-swap',
-  group: 'Color',
+  group: 'Offcuts',
   defaults,
   accepts: ['image/*', 'video/*'],
 
@@ -32,7 +32,7 @@ export const tool: LatheTool = {
     const set = (id: string, v: unknown) => { const el = document.getElementById(id) as HTMLInputElement | HTMLSelectElement | null; if (!el) return; if (el instanceof HTMLInputElement && el.type === 'checkbox') el.checked = !!v; else el.value = String(v); };
     set('expRes', d.exportResolution); set('expFps', d.exportFps); set('expQual', d.exportQuality); set('expAudio', d.exportAudio);
 
-    const off = assets.onChange(e => { if (e.type === 'load' && e.target === 'color-swap') void ui.loadAsset(e.asset); });
+    const off = assets.onChange(e => { if (e.type === 'load' && e.target === 'recolor') void ui.loadAsset(e.asset); });
     // Reopen the last image or video (after a reload, or a remount from a Defaults edit).
     const last = assets.get(settings.get<string>('lastAsset', ''));
     if (last) void ui.loadAsset(last);

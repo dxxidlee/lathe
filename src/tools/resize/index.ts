@@ -42,7 +42,7 @@ async function sfnt(blob: Blob): Promise<ArrayBuffer> {
 export const tool: LatheTool = {
   id: 'resize',
   name: 'Resize',
-  group: 'Layout',
+  group: 'Workbench',
   defaults,
   accepts: ['image/svg+xml', 'font/*', 'application/font-woff', 'application/x-font-ttf', 'application/x-font-otf', 'application/vnd.ms-opentype'],
 

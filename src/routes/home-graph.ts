@@ -62,17 +62,17 @@ const route = (r: { line: string; end: P; from: P }, label: P, anchor: Route['an
 /** Hand-placed routes, by tool id. */
 const PLACED: Record<string, Route> = {
   // along the NW diagonal, out of the square's corner
-  audit: route(ray(pol(-135, 150), pol(-135, 330)), { x: 352, y: 196 }, 'end'),
+  'subject-audit': route(ray(pol(-135, 150), pol(-135, 330)), { x: 352, y: 196 }, 'end'),
   // out of the mark's top lobe, bending right
-  'mood-strip': route(cubic({ x: 600, y: 266 }, { x: 612, y: 190 }, { x: 650, y: 150 }, { x: 702, y: 140 }), { x: 714, y: 140 }, 'start'),
+  'reference': route(cubic({ x: 600, y: 266 }, { x: 612, y: 190 }, { x: 650, y: 150 }, { x: 702, y: 140 }), { x: 714, y: 140 }, 'start'),
   // a long arc over the top of the outer circle
-  'color-check': route(arc(CA, -160, -52), { x: 776, y: 232 }, 'start'),
+  'contrast': route(arc(CA, -160, -52), { x: 776, y: 232 }, 'start'),
   // a swoop out to the right, like a signature
   palette: route(cubic(pol(22, CA.r), { x: 930, y: 470 }, { x: 960, y: 260 }, { x: 1052, y: 258 }), { x: 1064, y: 258 }, 'start'),
   // a short arc down the offset circle's right side
-  'color-swap': route(arc(CB, -40, -10), { x: 856, y: 392 }, 'start'),
+  'recolor': route(arc(CB, -40, -10), { x: 856, y: 392 }, 'start'),
   // from the centre, out past the circles and round in a long loop
-  'mesh-gradient': route(cubic({ x: 616, y: 462 }, { x: 1180, y: 600 }, { x: 1140, y: 830 }, { x: 880, y: 805 }), { x: 866, y: 805 }, 'end'),
+  'gradient': route(cubic({ x: 616, y: 462 }, { x: 1180, y: 600 }, { x: 1140, y: 830 }, { x: 880, y: 805 }), { x: 866, y: 805 }, 'end'),
   // along the SE diagonal, out of the square's corner
   dither: route(ray(pol(45, 290), pol(45, 345)), { x: 853, y: 708 }, 'start'),
   // a short arc round the bottom of the outer circle
@@ -82,15 +82,15 @@ const PLACED: Record<string, Route> = {
   // along the SW diagonal, out of the square's corner
   specimen: route(ray(pol(135, 290), pol(135, 345)), { x: 347, y: 708 }, 'end'),
   // an arc down the outer circle's left side
-  bento: route(arc(CA, 196, 158), { x: 340, y: 560 }, 'end'),
+  deck: route(arc(CA, 196, 158), { x: 340, y: 560 }, 'end'),
   // down the square's left edge, label inside the square
   grid: route(ray({ x: SQ.x0, y: SQ.y0 + 18 }, { x: SQ.x0, y: 352 }), { x: 424, y: 360 }, 'start', 'hanging'),
   // the long sweep, out to the far left
   'kinetic-type': route(cubic({ x: 470, y: 560 }, { x: 330, y: 640 }, { x: 170, y: 560 }, { x: 205, y: 430 }), { x: 205, y: 416 }, 'middle', 'auto'),
   // a short arc up the offset circle's left side
-  'multi-export': route(arc(CB, 200, 166), { x: 384, y: 360 }, 'end'),
+  'logo-export': route(arc(CB, 200, 166), { x: 384, y: 360 }, 'end'),
   // up from the square's top-left corner
-  'icon-set': route(ray({ x: SQ.x0, y: SQ.y0 }, { x: SQ.x0, y: 165 }), { x: SQ.x0, y: 152 }, 'middle', 'auto'),
+  'icons': route(ray({ x: SQ.x0, y: SQ.y0 }, { x: SQ.x0, y: 165 }), { x: SQ.x0, y: 152 }, 'middle', 'auto'),
 };
 
 /** Routes for the given tool ids, in order. */

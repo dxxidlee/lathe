@@ -20,7 +20,7 @@ const orientationOf = (r: { width: number | null; height: number | null }): Orie
 };
 const shortType = (t: string | null) => (t ? t.split(/[;,/]/)[0].trim().toLowerCase().replace(/^image\//, '') : null);
 
-export function mountSubject({ defaults: d, stage, inspector, statusbar, assets, settings, emit }: MountContext, modeEl: HTMLElement): MountResult {
+export function mountSubject({ defaults: d, stage, inspector, statusbar, assets, settings, emit }: MountContext, modeEl?: HTMLElement): MountResult {
   let sources: SourceInfo[] = [];
   const disabled = new Set(settings.get<string[]>('disabledSources', []));
   const state = new Map<string, SourceState>();
@@ -124,7 +124,7 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
   const sumSec = section('Results');
   const sumStats = statList();
   sumSec.body.append(sumStats.el);
-  inspector.append(modeEl, collSec.el, srcSec.el, filtSec.el, colSec.el, sumSec.el);
+  inspector.append(...[modeEl, collSec.el, srcSec.el, filtSec.el, colSec.el, sumSec.el].filter(Boolean) as HTMLElement[]);
 
   /* ---------------- sources ---------------- */
   function renderSources() {
@@ -330,9 +330,9 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
       sourceNames: Object.fromEntries(sources.map(s => [s.id, s.name])),
       imagesPerSlide: d.imagesPerSlide as number, paletteSize: d.aggregateSize as number,
     });
-    const name = `${(query || c.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'audit'}.deck.json`;
-    const a = await assets.add(new Blob([JSON.stringify(deck)], { type: DECK_MIME }), { name, source: 'tool', origin: 'audit' });
-    emit('send', a, 'bento');
+    const name = `${(query || c.name).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'subject-audit'}.deck.json`;
+    const a = await assets.add(new Blob([JSON.stringify(deck)], { type: DECK_MIME }), { name, source: 'tool', origin: 'subject-audit' });
+    emit('send', a, 'deck');
   }
 
   /* ---------------- boot ---------------- */

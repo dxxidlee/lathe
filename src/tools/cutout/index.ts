@@ -16,7 +16,7 @@ type View = 'cutout' | 'mask' | 'original';
 export const tool: LatheTool = {
   id: 'cutout',
   name: 'Cutout',
-  group: 'Image',
+  group: 'Offcuts',
   defaults,
   accepts: ['image/png', 'image/jpeg', 'image/webp', 'image/avif', 'image/bmp', 'image/gif'],
 

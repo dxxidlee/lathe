@@ -57,6 +57,15 @@ export function App() {
       <ShellProvider>
         <Routes>
           <Route path="/" element={<Home />} />
+          {/* Redirects for renamed tools */}
+          <Route path="/t/audit" element={<Navigate to="/t/subject-audit" replace />} />
+          <Route path="/t/bento" element={<Navigate to="/t/deck" replace />} />
+          <Route path="/t/color-check" element={<Navigate to="/t/contrast" replace />} />
+          <Route path="/t/multi-export" element={<Navigate to="/t/logo-export" replace />} />
+          <Route path="/t/icon-set" element={<Navigate to="/t/icons" replace />} />
+          <Route path="/t/mood-strip" element={<Navigate to="/t/reference" replace />} />
+          <Route path="/t/mesh-gradient" element={<Navigate to="/t/gradient" replace />} />
+          <Route path="/t/color-swap" element={<Navigate to="/t/recolor" replace />} />
           <Route path="/t/:toolId" element={<ToolRoute />} />
           <Route path="/make" element={<Make />} />
           <Route path="/resize" element={<Navigate to="/t/resize" replace />} />

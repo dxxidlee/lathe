@@ -17,9 +17,9 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 const sentence = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).toLowerCase();
 
 export const tool: LatheTool = {
-  id: 'mesh-gradient',
+  id: 'gradient',
   name: 'Mesh-gradient',
-  group: 'Color',
+  group: 'Offcuts',
   defaults,
 
   mount({ defaults: d, changedDefaults, stage, inspector, statusbar, settings, emit }) {
@@ -257,7 +257,7 @@ export const tool: LatheTool = {
       engine.renderGrad(off, W, H, r >= 1 ? W : H);
       off.toBlob(b => {
         if (!b) { emit('toast', 'Could not encode the image'); return; }
-        void saveExport(b, `${S.fam}-${S.variant}-${S.ratio.replace(':', 'x')}-${S.seed}.${ext}`, 'mesh-gradient');
+        void saveExport(b, `${S.fam}-${S.variant}-${S.ratio.replace(':', 'x')}-${S.seed}.${ext}`, 'gradient');
         setStatus(`Exported ${W}×${H} .${ext}`);
       }, type, q);
       draw();
@@ -304,7 +304,7 @@ export const tool: LatheTool = {
         setStatus('Encoding GIF…');
         gif.on('progress', (p: number) => setStatus(`Encoding GIF ${Math.round(p * 100)}%`));
         gif.on('finished', (b: Blob) => {
-          void saveExport(b, `${S.fam}-${S.variant}-loop.gif`, 'mesh-gradient');
+          void saveExport(b, `${S.fam}-${S.variant}-loop.gif`, 'gradient');
           setStatus('GIF saved'); gifBtn.disabled = false;
         });
         gif.render();

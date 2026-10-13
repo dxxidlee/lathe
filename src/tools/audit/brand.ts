@@ -28,7 +28,7 @@ const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: 
   const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e;
 };
 
-export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, settings, emit }: MountContext, modeEl: HTMLElement): MountResult {
+export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, settings, emit }: MountContext, modeEl?: HTMLElement): MountResult {
   let query = settings.get('brandQuery', '');
   let cap: BrandCapture | null = null;
   let capError: string | null = null;
@@ -104,7 +104,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   // Typed only when neither Brandfetch nor the site links an Instagram account (or the one found fails).
   const igField = field({ label: 'Instagram handle', value: '', placeholder: '@handle', onChange: v => void setHandle(v) });
   capSec.body.append(capStats.el, igField.el, actions, capNote);
-  inspector.append(modeEl, capSec.el);
+  inspector.append(...[modeEl, capSec.el].filter(Boolean) as HTMLElement[]);
 
   function renderInspector() {
     const s = cap?.site;
@@ -659,7 +659,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
     let asset = map[id] ? assets.get(map[id]) : undefined;
     if (!asset) {
       const name = `${cap.domain.replace(/[^a-z0-9.-]/gi, '-')}-${key.replace(/^y/, '')}.jpg`;
-      asset = await assets.add(st.blob, { name, source: 'fetch', origin: 'audit' });
+      asset = await assets.add(st.blob, { name, source: 'fetch', origin: 'brand-audit' });
       map[id] = asset.id; settings.set('brandAssets', map);
     }
     return { src: `asset:${asset.id}`, aspect: st.w && st.h ? st.w / st.h : 1.6, credit: { title: st.credit!.title, creator: null, date: st.credit!.date, source: st.credit!.source, license: st.credit!.license, url: st.credit!.url } };
@@ -694,7 +694,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
       if (!asset) {
         const r = await fetch(url); if (!r.ok) return null;
         const blob = await trimBars(await r.blob());
-        asset = await assets.add(blob, { name: `${cap.domain.replace(/[^a-z0-9.-]/gi, '-')}-${k.replace(/[^\w]+/g, '-')}.${blob.type.split('/')[1]?.replace('jpeg', 'jpg') ?? 'jpg'}`, source: 'fetch', origin: 'audit' });
+        asset = await assets.add(blob, { name: `${cap.domain.replace(/[^a-z0-9.-]/gi, '-')}-${k.replace(/[^\w]+/g, '-')}.${blob.type.split('/')[1]?.replace('jpeg', 'jpg') ?? 'jpg'}`, source: 'fetch', origin: 'brand-audit' });
         map[url] = asset.id; settings.set('brandAssets', map);
       }
       return { src: `asset:${asset.id}`, aspect: asset.width && asset.height ? asset.width / asset.height : 16 / 9, credit };
@@ -773,8 +773,8 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
       imagesPerSlide: d.imagesPerSlide as number, paletteSize: d.aggregateSize as number,
       board, boardLogo: logo ? { logo, fill: await logoFill(logo) } : null, logoColors: logo ? await logoColors(logo) : [],
     });
-    const a = await assets.add(new Blob([JSON.stringify(deck)], { type: DECK_MIME }), { name: `${cap.domain.replace(/[^a-z0-9.-]/gi, '-')}-brand.deck.json`, source: 'tool', origin: 'audit' });
-    emit('send', a, 'bento');
+    const a = await assets.add(new Blob([JSON.stringify(deck)], { type: DECK_MIME }), { name: `${cap.domain.replace(/[^a-z0-9.-]/gi, '-')}-brand.deck.json`, source: 'tool', origin: 'brand-audit' });
+    emit('send', a, 'deck');
   }
 
   /* ---------------- boot ---------------- */

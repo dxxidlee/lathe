@@ -39,7 +39,7 @@ export function scriptFor(prompt: string): Script {
   if (/halftone|dots?\b|screen ?print|poster/.test(p)) {
     const w = words(/halftone poster|halftone|poster/i, 'halftone');
     return {
-      id: 'halftone', name: 'Halftone poster', group: 'Image',
+      id: 'halftone', name: 'Halftone poster', group: 'Offcuts',
       intent: { verb: 'turn', object: 'a photo', result: 'a halftone poster' },
       inputs: ['Photo (JPG, PNG or WebP)'], outputs: ['Poster PNG at print size', 'Halftone SVG (vector dots)'],
       defaults: [
@@ -61,7 +61,7 @@ export function scriptFor(prompt: string): Script {
   if (/grid|column|editorial|spread|layout|margin/.test(p)) {
     const cols = Number(/(\d+)\s*-?\s*col/.exec(p)?.[1] ?? 12);
     return {
-      id: 'grid', name: 'Spread grid', group: 'Layout',
+      id: 'grid', name: 'Spread grid', group: 'Drawer',
       intent: { verb: 'make', object: 'a grid', result: `a ${cols}-column editorial spread` },
       inputs: ['Format: editorial spread, 420 × 297 mm'], outputs: ['SVG overlay', 'CSS grid snippet', 'InDesign-ready guides (PDF)'],
       defaults: [
@@ -82,7 +82,7 @@ export function scriptFor(prompt: string): Script {
   }
   if (/animat|fall|letters?|motion|logo|drop/.test(p)) {
     return {
-      id: 'falling', name: 'Logo drop', group: 'Motion',
+      id: 'falling', name: 'Logo drop', group: 'Offcuts',
       intent: { verb: 'animate', object: 'logo letters', result: 'letters falling into place' },
       inputs: ['Wordmark text (or a logo’s letters)', 'Typeface'], outputs: ['GIF (loops)', 'WebM'],
       defaults: [

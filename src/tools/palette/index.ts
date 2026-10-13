@@ -19,7 +19,7 @@ type Level = 'all' | 'AA Large' | 'AA' | 'AAA';
 export const tool: LatheTool = {
   id: 'palette',
   name: 'Palette',
-  group: 'Color',
+  group: 'Workbench',
   defaults,
   accepts: ['image/*'],
 
@@ -222,7 +222,7 @@ export const tool: LatheTool = {
     async function toColorCheck() {
       const a = await hexListAsset();
       if (!a) { emit('toast', 'Extract or add colors first'); return; }
-      emit('send', a, 'color-check');
+      emit('send', a, 'contrast');
     }
 
     render();

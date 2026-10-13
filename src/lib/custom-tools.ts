@@ -46,7 +46,7 @@ function migrate(raw: any): CustomTool {
     id: `v_${Date.now().toString(36)}`,
     code: raw.code || '',
     name: raw.name || 'Custom tool',
-    group: raw.group || 'Image',
+    group: raw.group || 'Offcuts',
     description: raw.description || '',
     defaults: raw.defaults || [],
     createdAt: raw.createdAt || Date.now(),

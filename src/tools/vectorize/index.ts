@@ -18,7 +18,7 @@ const TURN: Record<string, number> = { black: 0, white: 1, left: 2, right: 3, mi
 export const tool: LatheTool = {
   id: 'vectorize',
   name: 'Vectorize',
-  group: 'Image',
+  group: 'Offcuts',
   defaults,
   accepts: ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif', 'image/bmp'],
 

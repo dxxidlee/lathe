@@ -20,7 +20,7 @@ type View = 'fit' | 'actual';
 export const tool: LatheTool = {
   id: 'dither',
   name: 'Dither',
-  group: 'Image',
+  group: 'Offcuts',
   defaults,
   accepts: ['image/*'],
 

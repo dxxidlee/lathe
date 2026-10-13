@@ -32,7 +32,7 @@ const FEATURE_SAMPLE: Record<string, string> = {
 export const tool: LatheTool = {
   id: 'specimen',
   name: 'Specimen',
-  group: 'Type',
+  group: 'Drawer',
   defaults,
   accepts: ['font/*', 'application/font-woff', 'application/x-font-ttf', 'application/x-font-otf', 'application/vnd.ms-opentype'],
 

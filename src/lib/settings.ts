@@ -2,9 +2,18 @@
    tools can read synchronously; each write persists the whole record. */
 import type { SettingsAPI } from '../tools/types';
 import { idbGet, idbSet } from './idb';
+import { REVERSE_ALIASES } from '../tools/registry';
 
 export async function loadSettings(toolId: string): Promise<SettingsAPI> {
-  const raw = await idbGet<Record<string, unknown>>('settings', toolId);
+  let raw = await idbGet<Record<string, unknown>>('settings', toolId);
+  // One-time migration: if no settings under new id, copy from old id
+  if ((!raw || Object.keys(raw).length === 0) && REVERSE_ALIASES[toolId]) {
+    const old = await idbGet<Record<string, unknown>>('settings', REVERSE_ALIASES[toolId]);
+    if (old && typeof old === 'object' && Object.keys(old).length > 0) {
+      await idbSet('settings', toolId, old);
+      raw = old;
+    }
+  }
   const data: Record<string, unknown> = raw && typeof raw === 'object' ? { ...raw } : {};
   return {
     get<T>(key: string, fallback: T): T {

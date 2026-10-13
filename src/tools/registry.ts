@@ -21,109 +21,129 @@ export interface ToolEntry {
 }
 
 export const TOOLS: ToolEntry[] = [
+  /* ---- Workbench ---- */
   {
-    id: 'audit', name: 'Audit', group: 'Research', milestone: 5,
-    blurb: 'Subject and brand audits across open archives, out as a deck.',
-    load: () => import('./audit').then(m => m.tool),
+    id: 'subject-audit', name: 'Subject Audit', group: 'Workbench', milestone: 5,
+    blurb: 'Search open archives, collect results, export as a deck.',
+    load: () => import('./subject-audit').then(m => m.tool),
   },
   {
-    id: 'color-check', name: 'Color-check', group: 'Color', milestone: 2, accepts: ['text/plain', 'font/*'],
-    blurb: 'WCAG 2.2 and APCA contrast matrix from pasted hex.',
-    load: () => import('./color-check').then(m => m.tool),
+    id: 'brand-audit', name: 'Brand Audit', group: 'Workbench', milestone: 6,
+    blurb: 'Visual audit of a company: site, screenshots, palette, timeline.',
+    load: () => import('./brand-audit').then(m => m.tool),
   },
   {
-    id: 'palette', name: 'Palette', group: 'Color', milestone: 7, accepts: ['image/*'],
-    blurb: 'Image or URL in, palette, scales and tokens out.',
-    load: () => import('./palette').then(m => m.tool),
-  },
-  {
-    id: 'color-swap', name: 'Color-swap', group: 'Color', milestone: 3, accepts: ['image/*', 'video/*'],
-    blurb: 'Recolor images and video to a target palette.',
-    load: () => import('./color-swap').then(m => m.tool),
-  },
-  {
-    id: 'mesh-gradient', name: 'Mesh-gradient', group: 'Color', milestone: 3,
-    blurb: 'Animated mesh gradients with grain, PNG and GIF out.',
-    load: () => import('./mesh-gradient').then(m => m.tool),
-  },
-  {
-    id: 'dither', name: 'Dither', group: 'Image', milestone: 7, accepts: ['image/*'],
-    blurb: 'Bayer, error diffusion and halftone.',
-    load: () => import('./dither').then(m => m.tool),
-  },
-  {
-    id: 'vectorize', name: 'Vectorize', group: 'Image', milestone: 7, accepts: ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif', 'image/bmp'],
-    blurb: 'Raster to SVG, one or many colors.',
-    load: () => import('./vectorize').then(m => m.tool),
-  },
-  {
-    id: 'cutout', name: 'Cutout', group: 'Image', milestone: 7, accepts: ['image/png', 'image/jpeg', 'image/webp', 'image/avif', 'image/bmp', 'image/gif'],
-    blurb: 'In-browser background removal.',
-    load: () => import('./cutout').then(m => m.tool),
-  },
-  {
-    id: 'specimen', name: 'Specimen', group: 'Type', milestone: 8, accepts: ['font/*', 'application/font-woff', 'application/x-font-ttf', 'application/x-font-otf', 'application/vnd.ms-opentype'],
-    blurb: 'Drop a font: glyphs, metrics, features, scale.',
-    load: () => import('./specimen').then(m => m.tool),
-  },
-  {
-    id: 'bento', name: 'Bento', group: 'Layout', milestone: 5, accepts: ['image/*', 'application/vnd.lathe.deck+json', 'application/json'],
+    id: 'deck', name: 'Deck', group: 'Workbench', milestone: 5, accepts: ['image/*', 'application/vnd.lathe.deck+json', 'application/json'],
     blurb: 'Compose assets into bento slides, out to pptx, pdf, svg.',
     load: () => import('./bento').then(m => m.tool),
   },
   {
-    id: 'grid', name: 'Grid', group: 'Layout', milestone: 8,
-    blurb: 'Columns, gutters, baseline. SVG, PNG and CSS out.',
-    load: () => import('./grid').then(m => m.tool),
+    id: 'palette', name: 'Palette', group: 'Workbench', milestone: 7, accepts: ['image/*'],
+    blurb: 'Image or URL in, palette, scales and tokens out.',
+    load: () => import('./palette').then(m => m.tool),
   },
   {
-    id: 'resize', name: 'Resize', group: 'Layout', milestone: 11, accepts: ['image/svg+xml', 'font/*', 'application/font-woff', 'application/x-font-ttf', 'application/x-font-otf', 'application/vnd.ms-opentype'],
-    blurb: 'One tagged SVG, every size: rules, live text fields, overflow flags.',
-    load: () => import('./resize').then(m => m.tool),
+    id: 'contrast', name: 'Contrast', group: 'Workbench', milestone: 2, accepts: ['text/plain', 'font/*'],
+    blurb: 'WCAG 2.2 and APCA contrast matrix from pasted hex.',
+    load: () => import('./color-check').then(m => m.tool),
   },
   {
-    id: 'kinetic-type', name: 'Kinetic-type', group: 'Motion', milestone: 8, accepts: ['font/*', 'text/plain', 'application/font-woff', 'application/x-font-ttf', 'application/x-font-otf', 'application/vnd.ms-opentype'],
-    blurb: 'Animated type presets, GIF and WebM out.',
-    load: () => import('./kinetic-type').then(m => m.tool),
-  },
-  {
-    id: 'multi-export', name: 'Multi-export', group: 'Export', milestone: 2, accepts: ['image/png', 'image/jpeg', 'image/svg+xml'],
+    id: 'logo-export', name: 'Logo Export', group: 'Workbench', milestone: 2, accepts: ['image/png', 'image/jpeg', 'image/svg+xml'],
     blurb: 'One logo to png, jpg, svg, eps in rgb and cmyk.',
     load: () => import('./multi-export').then(m => m.tool),
   },
+  /* ---- Drawer ---- */
   {
-    id: 'icon-set', name: 'Icon-set', group: 'Export', milestone: 8, accepts: ['image/svg+xml', 'image/png', 'image/jpeg', 'image/webp'],
+    id: 'icons', name: 'Icons', group: 'Drawer', milestone: 8, accepts: ['image/svg+xml', 'image/png', 'image/jpeg', 'image/webp'],
     blurb: 'One mark to a full favicon and app icon set.',
     load: () => import('./icon-set').then(m => m.tool),
   },
   {
-    id: 'mood-strip', name: 'Mood-strip', group: 'Reference', milestone: 3, accepts: ['image/*'],
+    id: 'specimen', name: 'Specimen', group: 'Drawer', milestone: 8, accepts: ['font/*', 'application/font-woff', 'application/x-font-ttf', 'application/x-font-otf', 'application/vnd.ms-opentype'],
+    blurb: 'Drop a font: glyphs, metrics, features, scale.',
+    load: () => import('./specimen').then(m => m.tool),
+  },
+  {
+    id: 'reference', name: 'Reference', group: 'Drawer', milestone: 3, accepts: ['image/*'],
     blurb: 'A floating strip of reference images.',
     load: () => import('./mood-strip').then(m => m.tool),
   },
+  /* ---- Offcuts ---- */
   {
-    id: 'sandbox', name: 'Sandbox', group: 'Reference', milestone: 1, dev: true, accepts: ['image/*'],
-    blurb: 'Contract test: load, inspect, recolor the matte, export.',
-    load: () => import('./sandbox').then(m => m.tool),
+    id: 'dither', name: 'Dither', group: 'Offcuts', milestone: 7, accepts: ['image/*'],
+    blurb: 'Bayer, error diffusion and halftone.',
+    load: () => import('./dither').then(m => m.tool),
+  },
+  {
+    id: 'gradient', name: 'Gradient', group: 'Offcuts', milestone: 3,
+    blurb: 'Animated mesh gradients with grain, PNG and GIF out.',
+    load: () => import('./mesh-gradient').then(m => m.tool),
+  },
+  {
+    id: 'kinetic-type', name: 'Kinetic Type', group: 'Offcuts', milestone: 8, accepts: ['font/*', 'text/plain', 'application/font-woff', 'application/x-font-ttf', 'application/x-font-otf', 'application/vnd.ms-opentype'],
+    blurb: 'Animated type presets, GIF and WebM out.',
+    load: () => import('./kinetic-type').then(m => m.tool),
+  },
+  {
+    id: 'recolor', name: 'Recolor', group: 'Offcuts', milestone: 3, accepts: ['image/*', 'video/*'],
+    blurb: 'Recolor images and video to a target palette.',
+    load: () => import('./color-swap').then(m => m.tool),
   },
 ];
 
-export const findTool = (id: string | undefined) => TOOLS.find(t => t.id === id) ?? customEntries.find(t => t.id === id);
+/** Old tool id -> current tool id. Lets the command palette, routes and settings migration find
+ *  renamed tools. Keys are the names that used to exist; values are what they became. */
+export const ID_ALIASES: Record<string, string> = {
+  'audit': 'subject-audit',
+  'bento': 'deck',
+  'color-check': 'contrast',
+  'multi-export': 'logo-export',
+  'icon-set': 'icons',
+  'mood-strip': 'reference',
+  'mesh-gradient': 'gradient',
+  'color-swap': 'recolor',
+};
+
+/** Reverse lookup: new id -> old id (for settings migration). */
+export const REVERSE_ALIASES: Record<string, string> = Object.fromEntries(
+  Object.entries(ID_ALIASES).map(([old, cur]) => [cur, old]),
+);
+
+/** Tools that don't appear in the rail but are reachable via Cmd+K. */
+export const HIDDEN_TOOLS: ToolEntry[] = [
+  { id: 'cutout', name: 'Cutout', group: 'Offcuts' as ToolGroup, blurb: 'In-browser background removal.', milestone: 7, accepts: ['image/png', 'image/jpeg', 'image/webp', 'image/avif', 'image/bmp', 'image/gif'], load: () => import('./cutout').then(m => m.tool) },
+  { id: 'vectorize', name: 'Vectorize', group: 'Offcuts' as ToolGroup, blurb: 'Raster to SVG.', milestone: 7, accepts: ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif', 'image/bmp'], load: () => import('./vectorize').then(m => m.tool) },
+  { id: 'grid', name: 'Grid', group: 'Drawer' as ToolGroup, blurb: 'Columns, gutters, baseline.', milestone: 8, load: () => import('./grid').then(m => m.tool) },
+  { id: 'resize', name: 'Resize', group: 'Workbench' as ToolGroup, blurb: 'One tagged SVG, every size.', milestone: 11, accepts: ['image/svg+xml', 'font/*', 'application/font-woff', 'application/x-font-ttf', 'application/x-font-otf', 'application/vnd.ms-opentype'], load: () => import('./resize').then(m => m.tool) },
+  { id: 'sandbox', name: 'Sandbox', group: 'Offcuts' as ToolGroup, blurb: 'Contract test: load, inspect, recolor the matte, export.', milestone: 1, dev: true, accepts: ['image/*'], load: () => import('./sandbox').then(m => m.tool) },
+];
+
+export const findTool = (id: string | undefined): ToolEntry | undefined => {
+  if (!id) return undefined;
+  const found = TOOLS.find(t => t.id === id)
+    ?? HIDDEN_TOOLS.find(t => t.id === id)
+    ?? customEntries.find(t => t.id === id);
+  if (found) return found;
+  const alias = ID_ALIASES[id];
+  if (alias) return TOOLS.find(t => t.id === alias) ?? HIDDEN_TOOLS.find(t => t.id === alias);
+  return undefined;
+};
+
 export const isReady = (t: ToolEntry) => !!t.load;
 
 export function toolsByGroup(): { group: ToolGroup; tools: ToolEntry[] }[] {
   const all = [...TOOLS, ...customEntries];
   const groups = [...GROUPS.map(group => ({ group, tools: all.filter(t => t.group === group) })).filter(g => g.tools.length)];
   const yours = all.filter(t => t.custom && !GROUPS.includes(t.group as ToolGroup));
-  if (yours.length) groups.push({ group: 'Reference' as ToolGroup, tools: yours });
+  if (yours.length) groups.push({ group: 'Offcuts' as ToolGroup, tools: yours });
   return groups;
 }
 
-/** Keyboard 1–9 follow rail order. */
+/** Keyboard 1–9 follow rail order (Workbench 6 + Drawer 3). */
 export const numberedTools = () => TOOLS.slice(0, 9);
 
-/** All tools including user-generated ones. */
-export const allTools = () => [...TOOLS, ...customEntries];
+/** All tools including hidden and user-generated ones. */
+export const allTools = () => [...TOOLS, ...HIDDEN_TOOLS, ...customEntries];
 
 /* ---- Custom (user-generated) tools ---- */
 const customEntries: ToolEntry[] = [];
@@ -132,12 +152,12 @@ function entryFor(t: CustomTool): ToolEntry {
   return {
     id: t.id,
     name: t.name,
-    group: (GROUPS.includes(t.group as ToolGroup) ? t.group : 'Reference') as ToolGroup,
+    group: (GROUPS.includes(t.group as ToolGroup) ? t.group : 'Offcuts') as ToolGroup,
     blurb: t.description,
     milestone: 0,
     custom: true,
     load: () => import('../lib/custom-tools').then(m => ({
-      id: t.id, name: t.name, group: (GROUPS.includes(t.group as ToolGroup) ? t.group : 'Reference') as ToolGroup,
+      id: t.id, name: t.name, group: (GROUPS.includes(t.group as ToolGroup) ? t.group : 'Offcuts') as ToolGroup,
       defaults: t.defaults as LatheTool['defaults'],
       mount: (ctx) => m.mountCustomTool(t, ctx),
     })),

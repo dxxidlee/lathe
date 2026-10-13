@@ -16,7 +16,7 @@ const token = (name: string) => getComputedStyle(document.documentElement).getPr
 export const tool: LatheTool = {
   id: 'sandbox',
   name: 'Sandbox',
-  group: 'Reference',
+  group: 'Offcuts',
   defaults,
   accepts: ['image/*'],
 

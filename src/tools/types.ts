@@ -1,7 +1,7 @@
 /* The tool contract. Every tool is a framework-agnostic module that the shell mounts
    into DOM nodes it owns. See CLAUDE.md "Tool contract". */
 
-export const GROUPS = ['Research', 'Color', 'Image', 'Type', 'Layout', 'Motion', 'Export', 'Reference'] as const;
+export const GROUPS = ['Workbench', 'Drawer', 'Offcuts'] as const;
 export type ToolGroup = (typeof GROUPS)[number];
 
 /** One starting default, shown (and later editable) in the Defaults panel. */

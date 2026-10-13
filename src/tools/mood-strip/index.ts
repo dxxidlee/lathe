@@ -140,9 +140,9 @@ type PipWindow = Window;
 declare global { interface Window { documentPictureInPicture?: { requestWindow(o: { width: number; height: number }): Promise<PipWindow>; window: PipWindow | null } } }
 
 export const tool: LatheTool = {
-  id: 'mood-strip',
+  id: 'reference',
   name: 'Mood-strip',
-  group: 'Reference',
+  group: 'Drawer',
   defaults,
   accepts: ['image/*'],
 
@@ -590,7 +590,7 @@ export const tool: LatheTool = {
     function closeFloat() { const w = floatWin; returnStrip(); try { w?.close(); } catch { /* closed */ } }
 
     /* ---- assets handed to the tool (drop on the shell, Send to, tray) ---- */
-    const off = assets.onChange(e => { if (e.type === 'load' && e.target === 'mood-strip') addAsset(e.asset); });
+    const off = assets.onChange(e => { if (e.type === 'load' && e.target === 'reference') addAsset(e.asset); });
     const onUnload = () => webPops.forEach(w => { try { w.close(); } catch { /* closed */ } });
     window.addEventListener('pagehide', onUnload);
 

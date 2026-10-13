@@ -15,9 +15,9 @@ const MONO_STACK = 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monos
 const FONT_FORMATS: Record<string, string> = { ttf: 'truetype', otf: 'opentype', woff: 'woff', woff2: 'woff2' };
 
 export const tool: LatheTool = {
-  id: 'color-check',
+  id: 'contrast',
   name: 'Color-check',
-  group: 'Color',
+  group: 'Workbench',
   defaults,
   accepts: ['text/plain', 'font/*'],
 
@@ -197,12 +197,12 @@ export const tool: LatheTool = {
       const [text, type, ext] = state.exportFormat === 'html'
         ? [buildReport(colors, state.threshold, p), 'text/html', 'html']
         : [buildSvg(colors, state.threshold, p), 'image/svg+xml', 'svg'];
-      await saveExport(new Blob([text], { type }), `color-check-${n}.${ext}`, 'color-check');
+      await saveExport(new Blob([text], { type }), `color-check-${n}.${ext}`, 'contrast');
     }
 
     /* ---- assets handed to the tool ---- */
     const off = assets.onChange(async e => {
-      if (e.type !== 'load' || e.target !== 'color-check') return;
+      if (e.type !== 'load' || e.target !== 'contrast') return;
       const a = e.asset;
       if (a.type.startsWith('font/') || /\.(ttf|otf|woff2?)$/i.test(a.name)) { await useFontAsset(a, true); return; }
       if (a.type.startsWith('text/')) {

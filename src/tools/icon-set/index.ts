@@ -29,9 +29,9 @@ export async function icoFrom(pngs: { size: number; blob: Blob }[]): Promise<Blo
 }
 
 export const tool: LatheTool = {
-  id: 'icon-set',
+  id: 'icons',
   name: 'Icon-set',
-  group: 'Export',
+  group: 'Drawer',
   defaults,
   accepts: ['image/svg+xml', 'image/png', 'image/jpeg', 'image/webp'],
 
@@ -56,7 +56,7 @@ export const tool: LatheTool = {
     /* ---------------- inspector ---------------- */
     const srcSec = section('Source');
     const stats = statList();
-    const input = imageInput({ toolId: 'icon-set', name: 'Icon-set', assets, settings, emit, onLoad: a => void load(a), accepts: t => ['image/svg+xml', 'image/png', 'image/jpeg', 'image/webp'].includes(t) });
+    const input = imageInput({ toolId: 'icons', name: 'Icons', assets, settings, emit, onLoad: a => void load(a), accepts: t => ['image/svg+xml', 'image/png', 'image/jpeg', 'image/webp'].includes(t) });
     srcSec.body.append(stats.el, input.urlEl, note('An SVG gives the sharpest small sizes and is shipped as favicon.svg too.'));
 
     const lSec = section('Look');
@@ -78,7 +78,7 @@ export const tool: LatheTool = {
 
     const oSec = section('Export');
     const zipBtn = button({ label: 'Export icon set (.zip)', primary: true, onClick: () => void exportZip() });
-    const send = sendControl({ from: 'icon-set', type: () => (rendered.length ? 'image/png' : null), get: async () => { const r = rendered.find(x => x.size === 512 && x.kind === 'png') ?? rendered[rendered.length - 1]; return r ? assets.add(r.blob, { name: r.name, source: 'export', origin: 'icon-set' }) : null; }, emit });
+    const send = sendControl({ from: 'icons', type: () => (rendered.length ? 'image/png' : null), get: async () => { const r = rendered.find(x => x.size === 512 && x.kind === 'png') ?? rendered[rendered.length - 1]; return r ? assets.add(r.blob, { name: r.name, source: 'export', origin: 'icons' }) : null; }, emit });
     oSec.body.append(zipBtn, note('PNG sizes, favicon.ico, favicon.svg, apple-touch-icon.png, a maskable icon, manifest.webmanifest and an HTML snippet.'), send.el);
     inspector.append(srcSec.el, lSec.el, oSec.el);
 
@@ -195,7 +195,7 @@ export const tool: LatheTool = {
       zip.file('README.txt', `Icon set made with Lathe from ${source?.name}.\nCopy every file to your site's root and paste icons.html into <head>.\n`);
       const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
       const base = (source?.name ?? 'icon').replace(/\.[^.]+$/, '');
-      await saveExport(blob, `${base}-icons.zip`, 'icon-set');
+      await saveExport(blob, `${base}-icons.zip`, 'icons');
       statusbar.set({ name: source?.name, state: `Exported ${Object.keys(zip.files).length} files · ${formatBytes(blob.size)}` });
     }
 

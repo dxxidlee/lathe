@@ -17,9 +17,9 @@ const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(
 const typing = (t: EventTarget | null) => { const el = t as HTMLElement | null; return !!el && (el.isContentEditable || ['INPUT', 'TEXTAREA', 'SELECT'].includes(el.tagName)); };
 
 export const tool: LatheTool = {
-  id: 'bento',
+  id: 'deck',
   name: 'Bento',
-  group: 'Layout',
+  group: 'Workbench',
   defaults,
   accepts: ['image/*', DECK_MIME, 'application/json'],
 
@@ -315,11 +315,11 @@ export const tool: LatheTool = {
       const nn = String(cur + 1).padStart(2, '0');
       status.textContent = 'Exporting…';
       try {
-        if (kind === 'pptx') await saveExport(await deckToPptx(vs.map(s => drawSlide(s, deck, cfg)), deck, xctx), `${base}.pptx`, 'bento');
-        else if (kind === 'pdf') await saveExport(await deckToPdf(vs.map(s => drawSlide(s, deck, cfg)), xctx, deck.title), `${base}.pdf`, 'bento');
-        else if (kind === 'png') await saveExport(await slideToPng(one, xctx), `${base}-slide-${nn}.png`, 'bento');
-        else if (kind === 'pngzip') await saveExport(await slidesToPngZip(vs.map(s => drawSlide(s, deck, cfg)), xctx, base), `${base}-slides.zip`, 'bento');
-        else if (kind === 'svg') await saveExport(new Blob([await slideToSvg(one, xctx)], { type: 'image/svg+xml' }), `${base}-slide-${nn}.svg`, 'bento');
+        if (kind === 'pptx') await saveExport(await deckToPptx(vs.map(s => drawSlide(s, deck, cfg)), deck, xctx), `${base}.pptx`, 'deck');
+        else if (kind === 'pdf') await saveExport(await deckToPdf(vs.map(s => drawSlide(s, deck, cfg)), xctx, deck.title), `${base}.pdf`, 'deck');
+        else if (kind === 'png') await saveExport(await slideToPng(one, xctx), `${base}-slide-${nn}.png`, 'deck');
+        else if (kind === 'pngzip') await saveExport(await slidesToPngZip(vs.map(s => drawSlide(s, deck, cfg)), xctx, base), `${base}-slides.zip`, 'deck');
+        else if (kind === 'svg') await saveExport(new Blob([await slideToSvg(one, xctx)], { type: 'image/svg+xml' }), `${base}-slide-${nn}.svg`, 'deck');
         else { await copyForFigma(one, xctx); emit('toast', 'Slide copied as SVG. Paste into Figma for editable layers.'); }
         status.textContent = kind === 'figma' ? 'Copied for Figma' : `Exported ${kind === 'pngzip' ? `${vs.length} slides` : kind === 'png' || kind === 'svg' ? `slide ${cur + 1}` : `${vs.length} slides`}`;
       } catch (err) {
@@ -347,7 +347,7 @@ export const tool: LatheTool = {
       emit('toast', `Bento takes images or decks, not ${a.type || 'this file'}`);
     }
     const off = assets.onChange(e => {
-      if (e.type === 'load' && e.target === 'bento') void load(e.asset);
+      if (e.type === 'load' && e.target === 'deck') void load(e.asset);
       if (e.type !== 'load') fillTray();
     });
 

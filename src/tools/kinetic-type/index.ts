@@ -18,7 +18,7 @@ const FONT_EXT = /\.(ttf|otf|woff2?)$/i;
 export const tool: LatheTool = {
   id: 'kinetic-type',
   name: 'Kinetic-type',
-  group: 'Motion',
+  group: 'Offcuts',
   defaults,
   accepts: ['font/*', 'text/plain', 'application/font-woff', 'application/x-font-ttf', 'application/x-font-otf', 'application/vnd.ms-opentype'],
 

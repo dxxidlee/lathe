@@ -1050,7 +1050,7 @@ UIController.prototype.runExport = function(){
       const a = $('expDownload');
       a.href = result.url;
       a.download = (self.video.fileName || 'media') + (result.still ? '-recolored.png' : '-recolored.webm');
-      self.ctx.assets.add(result.blob, { name: a.download, source: 'export', origin: 'color-swap' });
+      self.ctx.assets.add(result.blob, { name: a.download, source: 'export', origin: 'recolor' });
       a.hidden = false;
       $('expCancel').textContent = 'Close';
       $('expMime').textContent = result.mime;

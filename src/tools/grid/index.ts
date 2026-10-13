@@ -36,7 +36,7 @@ export function layout(s: State, snap: boolean) {
 export const tool: LatheTool = {
   id: 'grid',
   name: 'Grid',
-  group: 'Layout',
+  group: 'Drawer',
   defaults,
 
   mount({ defaults: d, stage, inspector, statusbar, assets, settings, emit }) {
