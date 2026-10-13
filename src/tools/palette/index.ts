@@ -10,7 +10,7 @@ import { hexToRgb as ccHex, wcagRatio } from '../color-check/engine';
 import { decodePixels, imageInput, sendControl } from '../../lib/image-input';
 import { saveExport } from '../../lib/download';
 import { formatBytes } from '../../lib/format';
-import { button, chips, field, note, section, slider, statList } from '../../ui/primitives';
+import { advancedSection, button, chips, field, note, section, slider, statList } from '../../ui/primitives';
 import './palette.css';
 
 interface Sw { name: string; hex: string; share: number | null }
@@ -55,9 +55,20 @@ export const tool: LatheTool = {
 
     const conSec = section('Contrast');
     conSec.body.append(
-      chips<Level>({ label: 'Show pairs passing', value: level, options: (['all', 'AA Large', 'AA', 'AAA'] as Level[]).map(v => ({ value: v, label: v === 'all' ? 'All' : v })),
-        onChange: v => { level = v as Level; settings.set('pairsShown', v); render(); } }).el,
       button({ label: 'Open in Color-check', onClick: () => void toColorCheck() }),
+    );
+
+    const advSec = advancedSection();
+    advSec.body.append(
+      chips<'true' | 'false'>({ label: 'Swatch replaces nearest step', value: String(d.anchorBase) as 'true' | 'false', options: [{ value: 'true', label: 'On' }, { value: 'false', label: 'Off' }],
+        onChange: v => { (d as Record<string, unknown>).anchorBase = v === 'true'; render(); } }).el,
+      chips<Level>({ label: 'Contrast pairs shown', value: level, options: (['all', 'AA Large', 'AA', 'AAA'] as Level[]).map(v => ({ value: v, label: v === 'all' ? 'All' : v })),
+        onChange: v => { level = v as Level; settings.set('pairsShown', v); render(); } }).el,
+      slider({ label: 'AA body ratio', min: 10, max: 210, step: 1, value: Math.round((d.aaRatio as number) * 10), format: v => `${(v / 10).toFixed(1)}:1`, onChange: v => { (d as Record<string, unknown>).aaRatio = v / 10; render(); } }).el,
+      slider({ label: 'AA large ratio', min: 10, max: 210, step: 1, value: Math.round((d.aaLargeRatio as number) * 10), format: v => `${(v / 10).toFixed(1)}:1`, onChange: v => { (d as Record<string, unknown>).aaLargeRatio = v / 10; render(); } }).el,
+      slider({ label: 'AAA body ratio', min: 10, max: 210, step: 1, value: Math.round((d.aaaRatio as number) * 10), format: v => `${(v / 10).toFixed(1)}:1`, onChange: v => { (d as Record<string, unknown>).aaaRatio = v / 10; render(); } }).el,
+      chips<'true' | 'false'>({ label: 'Include black and white', value: String(d.includeBlackWhite) as 'true' | 'false', options: [{ value: 'true', label: 'On' }, { value: 'false', label: 'Off' }],
+        onChange: v => { (d as Record<string, unknown>).includeBlackWhite = v === 'true'; render(); } }).el,
     );
 
     const outSec = section('Export');
@@ -77,7 +88,7 @@ export const tool: LatheTool = {
         emit('toast', 'Saved to Library');
       }}),
       note(`CSS uses ${d.cssFormat} values${d.exportScales ? ' and includes each scale' : ''}; change both in Defaults. Figma variables is the REST API's variables payload. Tailwind is a v3 config (v4: load it with @config).`), send.el);
-    inspector.append(srcSec.el, exSec.el, swSec.el, conSec.el, outSec.el);
+    inspector.append(srcSec.el, exSec.el, swSec.el, conSec.el, advSec.el, outSec.el);
 
     /* ---------------- extraction ---------------- */
     let pixels: Lab[] = [];

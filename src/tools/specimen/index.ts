@@ -9,7 +9,7 @@ import type { PathCommand } from 'opentype.js';
 import { imageInput, sendControl } from '../../lib/image-input';
 import { saveExport } from '../../lib/download';
 import { formatBytes } from '../../lib/format';
-import { button, chips, field, note, section, select, slider, statList } from '../../ui/primitives';
+import { advancedSection, button, chips, field, note, section, select, slider, statList } from '../../ui/primitives';
 import './specimen.css';
 
 type View = 'overview' | 'glyphs' | 'waterfall' | 'features' | 'scale';
@@ -83,7 +83,14 @@ export const tool: LatheTool = {
     oRow.append(button({ label: 'Specimen PDF', primary: true, onClick: () => void exportPdf() }), button({ label: 'CSS scale tokens', onClick: () => void exportCss() }));
     const send = sendControl({ from: 'specimen', type: () => (source ? source.type || 'font/ttf' : null), get: async () => source ?? null, emit });
     oSec.body.append(oRow, note('The PDF draws every glyph from the font’s own outlines, so it needs no font installed to print.'), send.el);
-    inspector.append(srcSec.el, tSec.el, fSec.el, sSec.el, gSec.el, oSec.el);
+    const advSec = advancedSection();
+    advSec.body.append(
+      field({ label: 'Pangram', value: d.pangram as string, onChange: v => { (d as Record<string, unknown>).pangram = v || d.pangram; render(); } }).el,
+      slider({ label: 'Glyph cell', min: 32, max: 160, value: d.glyphCell as number, unit: ' px', onChange: v => { (d as Record<string, unknown>).glyphCell = v; render(); } }).el,
+      slider({ label: 'Max glyphs shown', min: 50, max: 10000, step: 50, value: d.maxGlyphs as number, onChange: v => { (d as Record<string, unknown>).maxGlyphs = v; render(); } }).el,
+      select<string>({ label: 'PDF page', value: d.pdfPage as string, options: ['A4 landscape', 'A4 portrait', 'Letter landscape', 'Letter portrait'].map(v => ({ value: v, label: v })), onChange: v => { (d as Record<string, unknown>).pdfPage = v; } }).el,
+    );
+    inspector.append(srcSec.el, tSec.el, fSec.el, sSec.el, gSec.el, advSec.el, oSec.el);
 
     /* ---------------- load ---------------- */
     async function load(a: Asset) {

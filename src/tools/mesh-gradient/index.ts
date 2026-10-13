@@ -9,7 +9,7 @@ import {
   ELEMENTAL, FAMILIES, RATIOS, cl, clone, createEngine, mkStops, ratioN,
   type Controls, type FamKey, type MeshState, type Phase, type Stop,
 } from './engine';
-import { button, chips, note, section, select, slider } from '../../ui/primitives';
+import { advancedSection, button, chips, note, section, select, slider } from '../../ui/primitives';
 import { saveExport } from '../../lib/download';
 import './mesh-gradient.css';
 
@@ -24,7 +24,7 @@ export const tool: LatheTool = {
 
   mount({ defaults: d, changedDefaults, stage, inspector, statusbar, settings, emit, onActivate }) {
     const PALETTES = d.palettes as Record<string, string[]>;
-    const LOOP_S = d.loopSeconds as number;
+    let LOOP_S = d.loopSeconds as number;
     if (!(d.palette as string in PALETTES)) d.palette = Object.keys(PALETTES)[0];
 
     /* ---------- state (persisted) ---------- */
@@ -84,11 +84,11 @@ export const tool: LatheTool = {
         S.fam = v as FamKey; S.variant = FAMILIES[S.fam].vars[0]; S.selEl = null; S.elems = {};
         buildVars(); syncStops(); draw(); persist();
       } });
-    const varSel = select<string>({ label: 'Variant', value: S.variant, options: [],
-      onChange: v => { S.variant = v; S.selEl = null; S.elems = {}; syncStops(); draw(); persist(); } });
     const ratioChips = chips<string>({ label: 'Ratio', value: S.ratio, options: RATIOS.map(r => ({ value: r, label: r })),
       onChange: v => { S.ratio = v as string; draw(); persist(); } });
-    setup.body.append(famChips.el, varSel.el, ratioChips.el);
+    setup.body.append(famChips.el, ratioChips.el, button({ label: 'Shuffle seed', onClick: () => { S.seed = Math.floor(Math.random() * 999); draw(); persist(); } }));
+    const varSel = select<string>({ label: 'Variant', value: S.variant, options: [],
+      onChange: v => { S.variant = v; S.selEl = null; S.elems = {}; syncStops(); draw(); persist(); } });
 
     const pal = section('Palette');
     const palSel = select<string>({ label: 'Palette', value: S.palette,
@@ -103,8 +103,8 @@ export const tool: LatheTool = {
     const stopsNote = note('');
     pal.body.append(palSel.el, stops, stopsNote);
 
-    const mkSlider = (label: string, key: keyof Controls, min: number, max: number, step = 1) => slider({
-      label, min, max, step, value: ctl[key],
+    const mkSlider = (lbl: string, key: keyof Controls, min: number, max: number, step = 1) => slider({
+      label: lbl, min, max, step, value: ctl[key],
       onChange: v => { ctl[key] = v; if (!PH.on) draw(); persist(); },
     });
     const sliders = {
@@ -112,13 +112,18 @@ export const tool: LatheTool = {
       soft: mkSlider('Blur', 'soft', 0, 100), grain: mkSlider('Grain', 'grain', 0, 100),
       drift: mkSlider('Drift', 'drift', 0, 100), cyc: mkSlider('Cycle', 'cyc', 0, 3),
     };
-    const form = section('Form');
-    form.body.append(sliders.den.el, sliders.ang.el);
-    const finish = section('Finish');
-    finish.body.append(sliders.soft.el, sliders.grain.el);
     const motion = section('Motion');
     const playBtn = button({ label: 'Play', onClick: () => togglePlay() });
-    motion.body.append(sliders.drift.el, sliders.cyc.el, playBtn);
+    motion.body.append(playBtn);
+
+    const advSec = advancedSection();
+    advSec.body.append(
+      varSel.el,
+      sliders.den.el, sliders.ang.el,
+      sliders.soft.el, sliders.grain.el,
+      sliders.drift.el, sliders.cyc.el,
+      slider({ label: 'Loop length', min: 5, max: 100, step: 5, value: Math.round(LOOP_S * 10), format: v => `${(v / 10).toFixed(1)} s`, onChange: v => { LOOP_S = v / 10; (d as Record<string, unknown>).loopSeconds = LOOP_S; } }).el,
+    );
 
     const out = section('Export');
     const row = document.createElement('div'); row.className = 'l-row';
@@ -131,7 +136,7 @@ export const tool: LatheTool = {
     );
     const status = note(''); status.setAttribute('role', 'status');
     out.body.append(row, status);
-    inspector.append(setup.el, pal.el, form.el, finish.el, motion.el, out.el);
+    inspector.append(setup.el, pal.el, motion.el, advSec.el, out.el);
 
     const setStatus = (s: string) => { status.textContent = s; updateStatusbar(s); };
     function exportSize() {

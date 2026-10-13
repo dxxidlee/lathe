@@ -7,7 +7,7 @@ import { ApiError, captureBrand, downscale, fetchInstagram, fetchRendered, fetch
 import { buildBrandDeck, type DeckImage } from './brand-deck';
 import { DECK_MIME } from '../bento/model';
 import { deltaE, hexToOklab, kmeans, rgbToOklab, type Lab, type Swatch } from '../../lib/color';
-import { button, field, note, section, statList } from '../../ui/primitives';
+import { button, chips, field, note, section, select, slider, statList } from '../../ui/primitives';
 import { cacheGet, cacheSet } from '../../lib/idb';
 
 type SiteImage = SiteCapture['images'][number];
@@ -106,6 +106,8 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   const capSec = section('Capture');
   const capStats = statList();
   const capNote = note('');
+  const deckRow = el('div', 'l-row');
+  deckRow.append(chips<'dark' | 'light'>({ label: 'Deck theme', value: d.deckTheme as 'dark' | 'light', options: [{ value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }], onChange: v => { (d as Record<string, unknown>).deckTheme = v; } }).el);
   const actions = el('div', 'l-row');
   const deckBtn = button({ label: 'Build deck', onClick: () => void buildDeckNow() });
   const saveLibBtn = button({ label: 'Save to Library', onClick: async () => {
@@ -122,8 +124,20 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   actions.append(deckBtn, saveLibBtn, obsBtn);
   // Typed only when neither Brandfetch nor the site links an Instagram account (or the one found fails).
   const igField = field({ label: 'Instagram handle', value: '', placeholder: '@handle', onChange: v => void setHandle(v) });
-  capSec.body.append(capStats.el, igField.el, actions, capNote);
-  inspector.append(...[modeEl, capSec.el].filter(Boolean) as HTMLElement[]);
+  capSec.body.append(capStats.el, igField.el, deckRow, actions, capNote);
+
+  const advSec = section('Advanced');
+  advSec.el.classList.add('l-section--advanced');
+  advSec.el.querySelector('.l-section__title')!.addEventListener('click', () => advSec.el.classList.toggle('is-open'));
+  const screenshotPreset = select<'both' | 'desktop'>({ label: 'Screenshots', value: (d.mobileWidth as number) > 0 ? 'both' : 'desktop', options: [{ value: 'both', label: 'Desktop + Mobile' }, { value: 'desktop', label: 'Desktop only' }], onChange: v => { (d as Record<string, unknown>).mobileWidth = v === 'both' ? 390 : 0; } });
+  advSec.body.append(
+    screenshotPreset.el,
+    slider({ label: 'Timeline snapshots', min: 1, max: 16, value: d.timelineSnapshots as number, onChange: v => { (d as Record<string, unknown>).timelineSnapshots = v; } }).el,
+    slider({ label: 'Timeline span', min: 1, max: 30, value: d.timelineSpan as number, unit: ' years', onChange: v => { (d as Record<string, unknown>).timelineSpan = v; } }).el,
+    slider({ label: 'YouTube videos', min: 1, max: 12, value: d.boardVideos as number, onChange: v => { (d as Record<string, unknown>).boardVideos = v; } }).el,
+  );
+
+  inspector.append(...[modeEl, capSec.el, advSec.el].filter(Boolean) as HTMLElement[]);
 
   function renderInspector() {
     const s = cap?.site;
