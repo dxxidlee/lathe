@@ -1,7 +1,7 @@
 import {
   Search, Globe, LayoutGrid, Pipette, Contrast, Download,
   Image, Type, Bookmark, Grid3X3, Waves, Play, Paintbrush,
-  Folder, Wrench, Plus, Scissors, Pen,
+  Folder, Scissors, Pen,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
