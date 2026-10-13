@@ -8,7 +8,10 @@ import { ToolHost, PlannedTool, useStageDrop } from './shell/ToolHost';
 import { CommandPalette } from './shell/CommandPalette';
 import { ShortcutSheet } from './shell/ShortcutSheet';
 import { Keyboard } from './shell/Keyboard';
+import { MobileMenu } from './shell/MobileMenu';
+import { MobileTabSwitcher } from './shell/MobileTabSwitcher';
 import { findTool, loadCustomEntries } from './tools/registry';
+import { toolIcon } from './shell/icons';
 import { Home } from './routes/Home';
 import { Make } from './routes/Make';
 import { Library } from './routes/Library';
@@ -34,19 +37,24 @@ function ToolView() {
 
   const activeEntry = shell.activeTabId === 'make' || shell.activeTabId === 'library' ? undefined : findTool(shell.activeTabId);
   const drop = useStageDrop(activeEntry);
+  const mobileMode = shell.isMobile ? (activeEntry?.mobile ?? 'full') : null;
 
   useEffect(() => {
     document.title = activeEntry ? `${activeEntry.name} \u00b7 Lathe` : shell.activeTabId === 'library' ? 'Library \u00b7 Lathe' : 'Make a tool \u00b7 Lathe';
   }, [activeEntry, shell.activeTabId]);
 
   return (
-    <div className={`shell${shell.trayOpen ? ' tray-open' : ''}`} {...drop.handlers}>
+    <div className={`shell${shell.trayOpen ? ' tray-open' : ''}${mobileMode === 'view' ? ' shell--view' : ''}${mobileMode === 'desktop' ? ' shell--desktop' : ''}`} {...drop.handlers}>
       <TopBar />
       <NavRail />
+      {shell.isMobile && shell.menuOpen && <MobileMenu />}
+      {shell.isMobile && shell.tabSwitcherOpen && <MobileTabSwitcher />}
       <div className="shell__panes">
         {shell.tabs.map(tab => {
           const isActive = tab.id === shell.activeTabId;
           const entry = tab.id === 'make' || tab.id === 'library' ? undefined : findTool(tab.id);
+          const isDesktopOnly = shell.isMobile && entry && (entry.mobile === 'desktop');
+          const Icon = entry ? toolIcon(entry.id) : null;
           return (
             <div key={tab.id} className="shell__pane" data-active-tab={isActive || undefined}
               style={{ display: isActive ? 'contents' : 'none' }}>
@@ -54,6 +62,15 @@ function ToolView() {
                 <Library />
               ) : tab.id === 'make' ? (
                 <Make />
+              ) : isDesktopOnly ? (
+                <section className="stage">
+                  <div className="desktop-only">
+                    {Icon && <Icon size={48} strokeWidth={1} className="desktop-only__icon" />}
+                    <h2 className="desktop-only__name">{entry.name}</h2>
+                    <p className="desktop-only__blurb">{entry.blurb}</p>
+                    <p className="desktop-only__label">Best on desktop</p>
+                  </div>
+                </section>
               ) : entry?.load ? (
                 <ToolHost entry={entry} active={isActive} />
               ) : entry ? (

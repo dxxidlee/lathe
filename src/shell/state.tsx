@@ -3,6 +3,7 @@ import type { StatusInfo } from '../tools/types';
 import { loadShellPrefs, saveShellPrefs } from '../lib/settings';
 import { getUser, onAuthChange, type AuthUser } from '../lib/auth';
 import { setAuthUser } from '../lib/custom-tools';
+import { MOBILE_QUERY } from '../lib/mobile';
 
 interface Toast { id: number; message: string }
 
@@ -33,6 +34,13 @@ interface ShellState {
   /** Set by the mounted tool host: forget this tool's settings and reopen it fresh. */
   resetToolRef: React.MutableRefObject<(() => void) | null>;
   runExport: () => void;
+  isMobile: boolean;
+  menuOpen: boolean;
+  toggleMenu: () => void;
+  tabSwitcherOpen: boolean;
+  setTabSwitcherOpen: (v: boolean) => void;
+  inspectorExpanded: boolean;
+  setInspectorExpanded: (v: boolean) => void;
   tabs: Tab[];
   activeTabId: string;
   openTab: (toolId: string) => void;
@@ -55,6 +63,10 @@ export function ShellProvider({ children }: { children: ReactNode }) {
   const [tabs, setTabs] = useState<Tab[]>([{ id: 'make', pinned: true }]);
   const [activeTabId, setActiveTabId] = useState('make');
   const [user, setUser] = useState<AuthUser>(null);
+  const [isMobile, setIsMobile] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [tabSwitcherOpen, setTabSwitcherOpen] = useState(false);
+  const [inspectorExpanded, setInspectorExpanded] = useState(false);
   const exportRef = useRef<(() => void) | null>(null);
   const resetToolRef = useRef<(() => void) | null>(null);
   const prefsLoaded = useRef(false);
@@ -72,6 +84,14 @@ export function ShellProvider({ children }: { children: ReactNode }) {
     });
     getUser().then(u => { setUser(u); setAuthUser(u?.id ?? null); });
     return onAuthChange(u => { setUser(u); setAuthUser(u?.id ?? null); });
+  }, []);
+
+  useEffect(() => {
+    const mql = window.matchMedia(MOBILE_QUERY);
+    setIsMobile(mql.matches);
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mql.addEventListener('change', onChange);
+    return () => mql.removeEventListener('change', onChange);
   }, []);
 
   useEffect(() => {
@@ -166,6 +186,7 @@ export function ShellProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toggleRail = useCallback(() => setRailOpen(v => !v), []);
+  const toggleMenu = useCallback(() => setMenuOpen(v => !v), []);
 
   const value = useMemo<ShellState>(() => ({
     railOpen, toggleRail,
@@ -174,9 +195,12 @@ export function ShellProvider({ children }: { children: ReactNode }) {
     trayOpen, toggleTray: (open?: boolean) => setTrayOpen(v => (open === undefined ? !v : open)),
     paletteOpen, setPaletteOpen, sheetOpen, setSheetOpen,
     status, setStatus, toasts, toast, exportRef, resetToolRef, runExport,
+    isMobile, menuOpen, toggleMenu, tabSwitcherOpen, setTabSwitcherOpen,
+    inspectorExpanded, setInspectorExpanded,
     tabs, activeTabId, openTab, closeTab, reorderTabs, nextTab, prevTab,
     user,
   }), [railOpen, toggleRail, trayOpen, paletteOpen, sheetOpen, status, toasts, toast, runExport,
+       isMobile, menuOpen, toggleMenu, tabSwitcherOpen, inspectorExpanded,
        tabs, activeTabId, openTab, closeTab, reorderTabs, nextTab, prevTab, user]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;

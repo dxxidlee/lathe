@@ -138,6 +138,7 @@ export function Make() {
       setTool(newTool);
       setChat(newTool.chat);
       mountInSandbox(v.code, Object.fromEntries(v.defaults.map(d => [d.key, d.value])));
+      if (shell.isMobile) setMobilePanel('preview');
     } catch (e) {
       if ((e as Error).name === 'AbortError') return;
       const msg = e instanceof Error ? e.message : String(e);
@@ -164,6 +165,7 @@ export function Make() {
       setTool(next);
       setChat(next.chat);
       mountInSandbox(v.code, Object.fromEntries(v.defaults.map(d => [d.key, d.value])));
+      if (shell.isMobile) setMobilePanel('preview');
     } catch (e) {
       if ((e as Error).name === 'AbortError') return;
       const msg = e instanceof Error ? e.message : String(e);
@@ -233,6 +235,7 @@ export function Make() {
     } catch (e) { shell.toast(`Import failed: ${e instanceof Error ? e.message : String(e)}`); }
   }
 
+  const [mobilePanel, setMobilePanel] = useState<'chat' | 'preview'>('chat');
   const hasSession = tool || chat.length > 0;
 
   if (!shell.user) {
@@ -288,7 +291,13 @@ export function Make() {
     <>
       <section className="stage" aria-label="Make a tool">
         <div className="mk mk--split">
-          <div className="mk__chat">
+          {shell.isMobile && (
+            <div className="mk__mobile-toggle">
+              <button type="button" className={mobilePanel === 'chat' ? 'is-active' : ''} onClick={() => setMobilePanel('chat')}>Chat</button>
+              <button type="button" className={mobilePanel === 'preview' ? 'is-active' : ''} onClick={() => setMobilePanel('preview')}>Preview</button>
+            </div>
+          )}
+          <div className={`mk__chat${shell.isMobile && mobilePanel === 'chat' ? ' is-active-panel' : ''}`}>
             <div className="mk__thread">
               {chat.map((msg, i) => (
                 <div key={i} className={`mk__msg mk__msg--${msg.role}`}>
@@ -311,7 +320,7 @@ export function Make() {
               <button type="submit" className="l-btn l-btn--primary" disabled={sending || !prompt.trim()}>Send</button>
             </form>
           </div>
-          <div className="mk__preview">
+          <div className={`mk__preview${shell.isMobile && mobilePanel === 'preview' ? ' is-active-panel' : ''}`}>
             {tool && (
               <div className="mk__preview-head">
                 <span className="mk__preview-name">{tool.name}</span>
