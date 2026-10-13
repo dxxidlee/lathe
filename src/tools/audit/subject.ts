@@ -321,7 +321,8 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
 
   function card(it: Item): HTMLElement | null {
     if (failed.has(it.id)) return null;
-    if (!verified.has(it.id)) { preloadImage(it); return null; }
+    // Board items were already verified when added; skip preload check for them
+    if (!verified.has(it.id) && tab !== 'board') { preloadImage(it); return null; }
     let el = cards.get(it.id);
     if (!el) {
       el = document.createElement('article');
@@ -554,7 +555,10 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, assets,
     addBtn.textContent = inBoard(it.id) ? 'Added' : 'Add to board';
     addBtn.addEventListener('click', () => { toggle(it.id); addBtn.textContent = inBoard(it.id) ? 'Added' : 'Add to board'; addBtn.className = inBoard(it.id) ? 'l-btn l-btn--primary' : 'l-btn'; });
 
-    detail.append(back, img, meta, addBtn);
+    const actions = document.createElement('div');
+    actions.className = 'au-detail__actions';
+    actions.append(addBtn);
+    detail.append(back, img, meta, actions);
     scroller.replaceChildren(detail);
     scroller.scrollTop = 0;
 
