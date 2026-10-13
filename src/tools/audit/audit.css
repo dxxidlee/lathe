@@ -23,7 +23,7 @@
   position: relative; break-inside: avoid; margin-bottom: var(--space-4);
   border: 1px solid var(--border); border-radius: var(--radius-control); overflow: hidden;
 }
-.au-card.is-selected { border-color: var(--accent); outline: 1px solid var(--accent); }
+.au-card.is-selected { border-color: var(--accent); }
 .au-card__img { display: block; width: 100%; height: auto; min-height: var(--space-8); background: var(--fill-1); cursor: pointer; }
 .au-card__pick {
   position: absolute; top: var(--space-2); right: var(--space-2); z-index: 1;
@@ -46,7 +46,7 @@
 .au-card__lic { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Minimal cards */
-.au-card--minimal { position: relative; break-inside: avoid; margin-bottom: var(--space-3); }
+.au-card--minimal { position: relative; break-inside: avoid; margin-bottom: var(--space-3); border: none; outline: none; overflow: visible; }
 .au-card--minimal .au-card__img { display: block; width: 100%; height: auto; border-radius: var(--radius-control); cursor: pointer; }
 .au-card__add { position: absolute; top: var(--space-2); right: var(--space-2); padding: var(--space-1) var(--space-2); background: rgba(0,0,0,0.7); color: var(--text-1); border: none; border-radius: var(--radius-control); font-size: var(--text-meta); cursor: pointer; opacity: 0; transition: opacity 150ms; }
 .au-card--minimal:hover .au-card__add, .au-card__add:focus { opacity: 1; }
