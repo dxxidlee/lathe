@@ -74,6 +74,16 @@ export function ShellProvider({ children }: { children: ReactNode }) {
     return onAuthChange(u => { setUser(u); setAuthUser(u?.id ?? null); });
   }, []);
 
+  useEffect(() => {
+    if (prefsLoaded.current) saveShellPrefs({ railOpen, trayOpen, tabs, activeTabId });
+  }, [railOpen, trayOpen, tabs, activeTabId]);
+
+  const toast = useCallback((message: string) => {
+    const id = Date.now() + Math.random();
+    setToasts(t => [...t.slice(-2), { id, message }]);
+    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 2400);
+  }, []);
+
   // Offer to migrate local IDB tools to the cloud on first sign-in
   useEffect(() => {
     if (!user || migrationChecked.current) return;
@@ -92,15 +102,6 @@ export function ShellProvider({ children }: { children: ReactNode }) {
       await idbSet('settings', `__migrated:${user.id}`, true);
     })().catch(e => console.warn('[lathe] migration check failed', e));
   }, [user, toast]);
-  useEffect(() => {
-    if (prefsLoaded.current) saveShellPrefs({ railOpen, trayOpen, tabs, activeTabId });
-  }, [railOpen, trayOpen, tabs, activeTabId]);
-
-  const toast = useCallback((message: string) => {
-    const id = Date.now() + Math.random();
-    setToasts(t => [...t.slice(-2), { id, message }]);
-    setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 2400);
-  }, []);
 
   const runExport = useCallback(() => {
     if (exportRef.current) exportRef.current();
