@@ -3,6 +3,7 @@ import type { StatusInfo } from '../tools/types';
 import { loadShellPrefs, saveShellPrefs } from '../lib/settings';
 import { getUser, onAuthChange, type AuthUser } from '../lib/auth';
 import { setAuthUser } from '../lib/custom-tools';
+import { setBoardUser } from '../lib/boards';
 import { MOBILE_QUERY } from '../lib/mobile';
 
 interface Toast { id: number; message: string }
@@ -90,8 +91,8 @@ export function ShellProvider({ children }: { children: ReactNode }) {
       if (typeof p.activeTabId === 'string') setActiveTabId(p.activeTabId as string);
       prefsLoaded.current = true;
     });
-    getUser().then(u => { setUser(u); setAuthUser(u?.id ?? null); });
-    return onAuthChange(u => { setUser(u); setAuthUser(u?.id ?? null); });
+    getUser().then(u => { setUser(u); setAuthUser(u?.id ?? null); setBoardUser(u?.id ?? null); });
+    return onAuthChange(u => { setUser(u); setAuthUser(u?.id ?? null); setBoardUser(u?.id ?? null); });
   }, []);
 
   useEffect(() => {

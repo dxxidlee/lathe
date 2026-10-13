@@ -15,6 +15,7 @@ import { toolIcon } from './shell/icons';
 import { Home } from './routes/Home';
 import { Make } from './routes/Make';
 import { Library } from './routes/Library';
+import { SharedBoard } from './routes/SharedBoard';
 import { useEffect, useState } from 'react';
 
 function ToolView() {
@@ -126,6 +127,7 @@ export function App() {
           <Route path="/t/mood-strip" element={<Navigate to="/t/reference" replace />} />
           <Route path="/t/mesh-gradient" element={<Navigate to="/t/gradient" replace />} />
           <Route path="/t/color-swap" element={<Navigate to="/t/recolor" replace />} />
+          <Route path="/b/:slug" element={<SharedBoard />} />
           <Route path="/t/:toolId" element={<ToolView />} />
           <Route path="/make" element={<Navigate to="/t/make" replace />} />
           <Route path="/resize" element={<Navigate to="/t/resize" replace />} />
