@@ -383,7 +383,7 @@ export const tool: LatheTool = {
             chips<'cover' | 'contain'>({ label: 'Fit', value: slotData.fit, options: [{ value: 'cover', label: 'Fill' }, { value: 'contain', label: 'Fit' }], onChange: v => { slotData.fit = v as 'cover' | 'contain'; commit(); } }).el,
             button({ label: 'Remove image', onClick: () => { slotData.assetUrl = null; slotData.assetThumbUrl = null; commit(); } }),
           );
-          tileBody.append(note('Double-click tile to crop; scroll to zoom.'));
+          tileBody.append(button({ label: 'Crop', onClick: () => { if (sel) enterCrop(sel); } }));
         } else {
           tileBody.append(note('Empty slot — drop an image.'));
         }
@@ -639,8 +639,11 @@ export const tool: LatheTool = {
       }
       if (typing(e.target) || !sel || isCredits(cur) || e.metaKey || e.ctrlKey) return;
       if (e.key === 'Escape') {
-        if (cropSlot) return; // let escCrop handle it
+        if (cropSlot) return;
         sel = null; render(); return;
+      }
+      if (e.key === 'Enter' && deck.slides[cur]?.brand && sel && !cropSlot) {
+        enterCrop(sel); e.preventDefault(); return;
       }
       // Brand tiles: no grid movement
       if (deck.slides[cur]?.brand) return;
@@ -657,35 +660,85 @@ export const tool: LatheTool = {
     };
     document.addEventListener('keydown', onKey);
 
-    /* ---------------- brand tile: dblclick crop + wheel zoom ---------------- */
+    /* ---------------- brand tile: crop mode ---------------- */
     let cropSlot: string | null = null;
     let cropCleanup: (() => void) | null = null;
-    overlay.addEventListener('dblclick', e => {
-      const el = (e.target as HTMLElement).closest<HTMLElement>('.bt__tile');
-      if (!el || !deck.slides[cur]?.brand) return;
-      const brand = deck.slides[cur].brand!;
-      const slotData = brand.slots.find(s => s.name === el.dataset.id);
+    let cropBar: HTMLElement | null = null;
+    let cropOrig: { focalX: number; focalY: number; cropZoom: number } | null = null;
+
+    function enterCrop(slotName: string) {
+      const brand = deck.slides[cur]?.brand;
+      if (!brand) return;
+      const slotData = brand.slots.find(s => s.name === slotName);
       if (!slotData?.assetUrl) return;
-      cropSlot = slotData.name;
-      el.classList.add('is-cropping');
+
+      cropSlot = slotName;
+      cropOrig = { focalX: slotData.focalX, focalY: slotData.focalY, cropZoom: slotData.cropZoom };
+      const tileEl = overlay.querySelector<HTMLElement>(`.bt__tile[data-id="${slotName}"]`);
+      if (tileEl) tileEl.classList.add('is-cropping');
+
+      // Floating toolbar
+      cropBar = document.createElement('div');
+      cropBar.className = 'bt__crop-bar';
+      cropBar.innerHTML = `<span class="bt__crop-label">Crop</span>`;
+      const zoomSlider = document.createElement('input');
+      Object.assign(zoomSlider, { type: 'range', min: '50', max: '300', step: '5', value: String(Math.round((slotData.cropZoom ?? 1) * 100)) });
+      zoomSlider.className = 'bt__crop-zoom';
+      zoomSlider.addEventListener('input', () => {
+        slotData.cropZoom = Number(zoomSlider.value) / 100;
+        updateBrandTileCSS(slotData);
+      });
+      cropBar.appendChild(zoomSlider);
+      const cancelBtn = document.createElement('button'); cancelBtn.type = 'button';
+      cancelBtn.className = 'bt__crop-btn'; cancelBtn.textContent = 'Cancel';
+      cancelBtn.addEventListener('click', () => cancelCrop());
+      cropBar.appendChild(cancelBtn);
+      const confirmBtn = document.createElement('button'); confirmBtn.type = 'button';
+      confirmBtn.className = 'bt__crop-btn bt__crop-btn--confirm'; confirmBtn.textContent = '✓';
+      confirmBtn.addEventListener('click', () => confirmCrop());
+      cropBar.appendChild(confirmBtn);
+      slideEl.appendChild(cropBar);
+
       const onCropMove = (ev: PointerEvent) => {
+        if (ev.buttons === 0) return;
         slotData.focalX = Math.max(0, Math.min(1, slotData.focalX - ev.movementX * 0.002));
         slotData.focalY = Math.max(0, Math.min(1, slotData.focalY - ev.movementY * 0.002));
         updateBrandTileCSS(slotData);
       };
-      const endCrop = () => {
-        document.removeEventListener('pointermove', onCropMove);
-        document.removeEventListener('pointerup', endCrop);
-        window.removeEventListener('keydown', escCrop);
-        el.classList.remove('is-cropping');
-        cropSlot = null;
-        commit();
+      const onCropKey = (ev: KeyboardEvent) => {
+        if (ev.key === 'Escape') { cancelCrop(); ev.preventDefault(); }
+        if (ev.key === 'Enter') { confirmCrop(); ev.preventDefault(); }
       };
-      const escCrop = (ev: KeyboardEvent) => { if (ev.key === 'Escape') endCrop(); };
-      cropCleanup = endCrop;
       document.addEventListener('pointermove', onCropMove);
-      document.addEventListener('pointerup', endCrop);
-      window.addEventListener('keydown', escCrop);
+      window.addEventListener('keydown', onCropKey);
+
+      const cleanup = () => {
+        document.removeEventListener('pointermove', onCropMove);
+        window.removeEventListener('keydown', onCropKey);
+        if (tileEl) tileEl.classList.remove('is-cropping');
+        if (cropBar) { cropBar.remove(); cropBar = null; }
+        cropSlot = null; cropOrig = null; cropCleanup = null;
+      };
+      cropCleanup = cleanup;
+    }
+    function confirmCrop() {
+      cropCleanup?.();
+      commit();
+    }
+    function cancelCrop() {
+      const brand = deck.slides[cur]?.brand;
+      if (brand && cropOrig && cropSlot) {
+        const sd = brand.slots.find(s => s.name === cropSlot);
+        if (sd) { sd.focalX = cropOrig.focalX; sd.focalY = cropOrig.focalY; sd.cropZoom = cropOrig.cropZoom; }
+      }
+      cropCleanup?.();
+      render();
+    }
+
+    overlay.addEventListener('dblclick', e => {
+      const el = (e.target as HTMLElement).closest<HTMLElement>('.bt__tile');
+      if (!el || !deck.slides[cur]?.brand) return;
+      enterCrop(el.dataset.id!);
     });
     overlay.addEventListener('wheel', e => {
       if (!cropSlot || !deck.slides[cur]?.brand) return;
@@ -694,6 +747,7 @@ export const tool: LatheTool = {
       if (!slotData) return;
       slotData.cropZoom = Math.max(0.5, Math.min(3, (slotData.cropZoom ?? 1) + (e.deltaY > 0 ? -0.1 : 0.1)));
       updateBrandTileCSS(slotData);
+      if (cropBar) { const z = cropBar.querySelector<HTMLInputElement>('.bt__crop-zoom'); if (z) z.value = String(Math.round(slotData.cropZoom * 100)); }
     }, { passive: false });
 
     /* ---------------- exports ---------------- */

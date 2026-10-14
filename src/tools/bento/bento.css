@@ -44,7 +44,23 @@
 .bt__thumb svg { width: 100%; height: 100%; display: block; }
 .bt__thumb.is-active { outline: calc(1px * 2) solid var(--accent); }
 .bt__num { position: absolute; left: var(--space-1); bottom: var(--space-1); padding: 0 var(--space-1); background: rgba(0,0,0,0.64); color: var(--text-1); font-size: var(--text-meta); font-variant-numeric: tabular-nums; border-radius: var(--radius-control); }
-.bt__tile.is-cropping { outline: 2px solid var(--accent) !important; cursor: grab !important; }
+.bt__tile.is-cropping { outline: 2px solid var(--accent) !important; cursor: grab !important; z-index: 3; }
+.bt__crop-bar {
+  position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
+  display: flex; align-items: center; gap: 8px; padding: 4px 8px;
+  background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+  font: 400 var(--text-meta) var(--font); color: var(--text-1); z-index: 10;
+  white-space: nowrap;
+}
+.bt__crop-label { color: var(--text-2); }
+.bt__crop-zoom { width: 80px; accent-color: var(--accent); }
+.bt__crop-btn {
+  padding: 2px 8px; border: 1px solid var(--border); border-radius: 4px;
+  background: transparent; color: var(--text-1); font: inherit; cursor: pointer;
+}
+.bt__crop-btn:hover { background: var(--fill-2); }
+.bt__crop-btn--confirm { background: var(--accent); color: var(--accent-text); border-color: var(--accent); font-weight: 500; }
+.bt__crop-btn--confirm:hover { opacity: 0.85; }
 .bt__guides { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
 .bt__guide { position: absolute; background: var(--accent); }
 .bt__guide--v { top: 0; bottom: 0; width: 1px; }
