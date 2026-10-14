@@ -340,29 +340,52 @@ export const tool: LatheTool = {
         const template = getBrandTemplate(brand.variant);
         const slotDef = template.find(s => s.name === sel);
         if (!slotDef) { tileBody.append(note('Select a tile.')); return; }
+        const slotData = brand.slots.find(s => s.name === sel);
+        const r = resolveSlotRect(slotDef, slotData?.rect);
+        // Position fields (W/H editable)
+        const posRow = document.createElement('div'); posRow.className = 'bt__span';
+        const mkPosField = (lbl: string, val: number, editable: boolean, onChange?: (v: number) => void) => {
+          const f = field({ label: lbl, type: 'number', value: String(Math.round(val)), onChange: v => {
+            if (!editable || !onChange) return;
+            const n = Number(v); if (!Number.isFinite(n) || n < 1) return;
+            onChange(n);
+          }});
+          if (!editable) f.input.readOnly = true;
+          return f.el;
+        };
+        posRow.append(
+          mkPosField('X', r.x, false),
+          mkPosField('Y', r.y, false),
+          mkPosField('W', r.w, true, w => {
+            const sd = slotData ?? brand.slots[brand.slots.push({ name: sel!, assetUrl: null, assetThumbUrl: null, fit: 'cover', cropX: 0.5, cropY: 0.3, cropZoom: 1, removedBg: false, focalX: 0.5, focalY: 0.3 }) - 1];
+            sd.rect = { x: r.x / B_SW, y: r.y / B_SH, w: w / B_SW, h: r.h / B_SH };
+            commit();
+          }),
+          mkPosField('H', r.h, true, h => {
+            const sd = slotData ?? brand.slots[brand.slots.push({ name: sel!, assetUrl: null, assetThumbUrl: null, fit: 'cover', cropX: 0.5, cropY: 0.3, cropZoom: 1, removedBg: false, focalX: 0.5, focalY: 0.3 }) - 1];
+            sd.rect = { x: r.x / B_SW, y: r.y / B_SH, w: r.w / B_SW, h: h / B_SH };
+            commit();
+          }),
+        );
+        tileBody.append(posRow);
         if (slotDef.role === 'logo') {
-          tileBody.append(note('Logo tile'));
           tileBody.append(field({ label: 'Background', value: brand.logo.bgColor, onChange: v => {
-            if (/^#[0-9a-f]{3,6}$/i.test(v)) { brand.logo.bgColor = v.length === 4 ? '#' + v[1]+v[1]+v[2]+v[2]+v[3]+v[3] : v; commit(); }
+            if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)) { brand.logo.bgColor = v.length === 4 ? '#' + v[1]+v[1]+v[2]+v[2]+v[3]+v[3] : v; commit(); }
           }}).el);
           return;
         }
         if (slotDef.role === 'palette') {
-          tileBody.append(note('Palette tile'), note(brand.palette.join(', ')));
+          tileBody.append(note(brand.palette.join(', ')));
           return;
         }
-        // Image / cutout slot
-        const slotData = brand.slots.find(s => s.name === sel);
-        if (!slotData) { tileBody.append(note('Empty slot')); return; }
-        if (slotData.assetUrl) {
-          tileBody.append(note(`Image: ${slotData.name}`));
+        if (slotData?.assetUrl) {
           tileBody.append(
             chips<'cover' | 'contain'>({ label: 'Fit', value: slotData.fit, options: [{ value: 'cover', label: 'Fill' }, { value: 'contain', label: 'Fit' }], onChange: v => { slotData.fit = v as 'cover' | 'contain'; commit(); } }).el,
             button({ label: 'Remove image', onClick: () => { slotData.assetUrl = null; slotData.assetThumbUrl = null; commit(); } }),
           );
           tileBody.append(note('Double-click tile to crop; scroll to zoom.'));
         } else {
-          tileBody.append(note('Empty slot — drop an image from the tray or file system.'));
+          tileBody.append(note('Empty slot — drop an image.'));
         }
         return;
       }
