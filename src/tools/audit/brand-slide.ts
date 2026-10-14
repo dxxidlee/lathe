@@ -116,11 +116,51 @@ const VARIANT_4: SlotRect[] = [
   { name: 'bot_5',       x: 1443, y: 731, w: 453, h: 325, ar: 1.39, hasTileBg: true,  role: 'image' },
 ];
 
-const VARIANTS = [BASE_SLOTS, VARIANT_2, VARIANT_3, VARIANT_4];
+// Variant L: mid-left split into two tiles — tile, tile, LOGO, tile
+const VARIANT_L: SlotRect[] = [
+  { name: 'top_1',       x: 24,   y: 24,  w: 563, h: 325, ar: 1.73, hasTileBg: true,  role: 'image' },
+  { name: 'top_2',       x: 598,  y: 24,  w: 370, h: 325, ar: 1.14, hasTileBg: true,  role: 'image' },
+  { name: 'top_3',       x: 979,  y: 24,  w: 526, h: 325, ar: 1.62, hasTileBg: true,  role: 'image' },
+  { name: 'palette',     x: 1516, y: 24,  w: 380, h: 325, ar: 1.17, hasTileBg: true,  role: 'palette' },
+  { name: 'mid_left',    x: 24,   y: 360, w: 337, h: 360, ar: 0.94, hasTileBg: true,  role: 'image' },
+  { name: 'mid_left_b',  x: 372,  y: 360, w: 337, h: 360, ar: 0.94, hasTileBg: true,  role: 'image' },
+  { name: 'logo',        x: 720,  y: 360, w: 480, h: 360, ar: 1.33, hasTileBg: true,  role: 'logo' },
+  { name: 'mid_right',   x: 1211, y: 360, w: 685, h: 360, ar: 1.90, hasTileBg: true,  role: 'image' },
+  { name: 'bot_1',       x: 24,   y: 731, w: 281, h: 325, ar: 0.86, hasTileBg: true,  role: 'image' },
+  { name: 'bot_2',       x: 316,  y: 731, w: 262, h: 325, ar: 0.81, hasTileBg: true,  role: 'image' },
+  { name: 'bot_3a',      x: 589,  y: 731, w: 262, h: 157, ar: 1.67, hasTileBg: true,  role: 'image' },
+  { name: 'bot_3b',      x: 589,  y: 899, w: 262, h: 157, ar: 1.67, hasTileBg: true,  role: 'image' },
+  { name: 'bot_4',       x: 862,  y: 731, w: 562, h: 325, ar: 1.73, hasTileBg: true,  role: 'image' },
+  { name: 'bot_5',       x: 1435, y: 731, w: 262, h: 325, ar: 0.81, hasTileBg: true,  role: 'image' },
+  { name: 'bot_6',       x: 1708, y: 731, w: 188, h: 325, ar: 0.58, hasTileBg: true,  role: 'image' },
+];
+
+// Variant R: mid-right split into two tiles — tile, LOGO, tile, tile
+const VARIANT_R: SlotRect[] = [
+  { name: 'top_1',       x: 24,   y: 24,  w: 563, h: 325, ar: 1.73, hasTileBg: true,  role: 'image' },
+  { name: 'top_2',       x: 598,  y: 24,  w: 370, h: 325, ar: 1.14, hasTileBg: true,  role: 'image' },
+  { name: 'top_3',       x: 979,  y: 24,  w: 526, h: 325, ar: 1.62, hasTileBg: true,  role: 'image' },
+  { name: 'palette',     x: 1516, y: 24,  w: 380, h: 325, ar: 1.17, hasTileBg: true,  role: 'palette' },
+  { name: 'mid_left',    x: 24,   y: 360, w: 685, h: 360, ar: 1.90, hasTileBg: true,  role: 'image' },
+  { name: 'logo',        x: 720,  y: 360, w: 480, h: 360, ar: 1.33, hasTileBg: true,  role: 'logo' },
+  { name: 'mid_right',   x: 1211, y: 360, w: 337, h: 360, ar: 0.94, hasTileBg: true,  role: 'image' },
+  { name: 'mid_right_b', x: 1559, y: 360, w: 337, h: 360, ar: 0.94, hasTileBg: true,  role: 'image' },
+  { name: 'bot_1',       x: 24,   y: 731, w: 281, h: 325, ar: 0.86, hasTileBg: true,  role: 'image' },
+  { name: 'bot_2',       x: 316,  y: 731, w: 262, h: 325, ar: 0.81, hasTileBg: true,  role: 'image' },
+  { name: 'bot_3a',      x: 589,  y: 731, w: 262, h: 157, ar: 1.67, hasTileBg: true,  role: 'image' },
+  { name: 'bot_3b',      x: 589,  y: 899, w: 262, h: 157, ar: 1.67, hasTileBg: true,  role: 'image' },
+  { name: 'bot_4',       x: 862,  y: 731, w: 562, h: 325, ar: 1.73, hasTileBg: true,  role: 'image' },
+  { name: 'bot_5',       x: 1435, y: 731, w: 262, h: 325, ar: 0.81, hasTileBg: true,  role: 'image' },
+  { name: 'bot_6',       x: 1708, y: 731, w: 188, h: 325, ar: 0.58, hasTileBg: true,  role: 'image' },
+];
+
+const VARIANTS = [BASE_SLOTS, VARIANT_2, VARIANT_3, VARIANT_4, VARIANT_L, VARIANT_R];
 
 export function getTemplate(variant: number): SlotRect[] {
   return VARIANTS[variant % VARIANTS.length];
 }
+
+export const VARIANT_COUNT = VARIANTS.length;
 
 /** Resolve slot positions: use slot.rect (fractional) override when present, else template pixels. */
 export function resolveSlotRect(
