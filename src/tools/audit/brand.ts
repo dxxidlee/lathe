@@ -77,10 +77,14 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   const contentVideoObserver = new IntersectionObserver(entries => {
     for (const e of entries) {
       const v = e.target as HTMLVideoElement;
-      if (e.isIntersecting) void v.play().catch(() => {});
-      else v.pause();
+      if (e.isIntersecting) {
+        if (!v.src && v.dataset.src) v.src = v.dataset.src;
+        void v.play().catch(() => {});
+      } else {
+        v.pause();
+      }
     }
-  }, { rootMargin: '50px' });
+  }, { rootMargin: '100px' });
   let igTabActive = true;
   const offActivate = onActivate(active => {
     igTabActive = active;
@@ -283,12 +287,16 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
       // Video autoplay (muted, looped, play only when visible)
       if (item.isVideo && item.videoUrl) {
         const video = document.createElement('video');
-        video.src = item.source === 'instagram' ? igSrc(item.videoUrl) : proxied(item.videoUrl);
+        const videoSrc = item.source === 'instagram' ? igSrc(item.videoUrl) : proxied(item.videoUrl);
+        const posterSrc = item.source === 'instagram' ? igSrc(item.thumbUrl) : proxied(item.thumbUrl);
         video.muted = true;
         video.loop = true;
         video.playsInline = true;
+        video.preload = 'metadata';
         video.className = 'ab__content-video';
-        video.poster = item.thumbUrl;
+        video.poster = posterSrc;
+        // Set src after appending to DOM so IntersectionObserver can control playback
+        video.dataset.src = videoSrc;
         card.append(video, selBtn);
         contentVideoObserver.observe(video);
       } else {
