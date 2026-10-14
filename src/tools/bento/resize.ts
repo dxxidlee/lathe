@@ -252,3 +252,82 @@ export function boundaryAtPoint(
   }
   return null;
 }
+
+/**
+ * Find the best neighbor to fill the space left by removing a tile.
+ * A neighbor qualifies if its shared edge fully spans the removed area's edge.
+ * Priority: same-row left, same-row right, above, below.
+ * Returns the neighbor name or null if no single neighbor matches the full edge.
+ */
+export function fillNeighbor(
+  removed: TileRect,
+  tiles: TileRect[],
+  gutterX: number,
+  gutterY: number,
+): string | null {
+  const others = tiles.filter(t => t.name !== removed.name);
+  type Dir = 'left' | 'right' | 'above' | 'below';
+  const candidates: { name: string; dir: Dir }[] = [];
+
+  for (const t of others) {
+    // Left neighbor: t's right edge + gutter = removed's left edge, same vertical span
+    if (Math.abs(t.x + t.w + gutterX - removed.x) < TOL &&
+        Math.abs(t.y - removed.y) < TOL && Math.abs(t.h - removed.h) < TOL) {
+      candidates.push({ name: t.name, dir: 'left' });
+    }
+    // Right neighbor
+    if (Math.abs(removed.x + removed.w + gutterX - t.x) < TOL &&
+        Math.abs(t.y - removed.y) < TOL && Math.abs(t.h - removed.h) < TOL) {
+      candidates.push({ name: t.name, dir: 'right' });
+    }
+    // Above
+    if (Math.abs(t.y + t.h + gutterY - removed.y) < TOL &&
+        Math.abs(t.x - removed.x) < TOL && Math.abs(t.w - removed.w) < TOL) {
+      candidates.push({ name: t.name, dir: 'above' });
+    }
+    // Below
+    if (Math.abs(removed.y + removed.h + gutterY - t.y) < TOL &&
+        Math.abs(t.x - removed.x) < TOL && Math.abs(t.w - removed.w) < TOL) {
+      candidates.push({ name: t.name, dir: 'below' });
+    }
+  }
+
+  const priority: Dir[] = ['left', 'right', 'above', 'below'];
+  for (const dir of priority) {
+    const c = candidates.find(x => x.dir === dir);
+    if (c) return c.name;
+  }
+  return null;
+}
+
+/** Apply a tile removal: extend the filling neighbor into the removed tile's space including gutter. */
+export function applyRemoval(
+  tiles: Map<string, TileRect>,
+  removedName: string,
+  fillerName: string,
+  gutterX: number,
+  gutterY: number,
+): void {
+  const removed = tiles.get(removedName)!;
+  const filler = tiles.get(fillerName)!;
+  if (Math.abs(filler.y - removed.y) < TOL && Math.abs(filler.h - removed.h) < TOL) {
+    // Same row: extend horizontally
+    if (filler.x + filler.w + gutterX - removed.x < TOL) {
+      // Filler is on the left
+      filler.w += gutterX + removed.w;
+    } else {
+      // Filler is on the right
+      filler.x = removed.x;
+      filler.w += gutterX + removed.w;
+    }
+  } else {
+    // Same column: extend vertically
+    if (filler.y + filler.h + gutterY - removed.y < TOL) {
+      filler.h += gutterY + removed.h;
+    } else {
+      filler.y = removed.y;
+      filler.h += gutterY + removed.h;
+    }
+  }
+  tiles.delete(removedName);
+}

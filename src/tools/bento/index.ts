@@ -12,7 +12,7 @@ import { proxied } from './images';
 import { advancedSection, button, chips, field, note, section, select, slider, textarea } from '../../ui/primitives';
 import { assetUrl } from '../../lib/assets';
 import { saveExport } from '../../lib/download';
-import { buildBoundaries, boundariesForHandle, computeResize, applyResize, boundaryAtPoint, type TileRect, type Boundary, type HandleDir } from './resize';
+import { buildBoundaries, boundariesForHandle, computeResize, applyResize, boundaryAtPoint, fillNeighbor, applyRemoval, type TileRect, type Boundary, type HandleDir } from './resize';
 import './bento.css';
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || 'deck';
@@ -221,13 +221,7 @@ export const tool: LatheTool = {
           el.style.height = `${r.h / B_SH * 100}%`;
           el.style.position = 'absolute';
           el.setAttribute('aria-label', `${slot.role} tile: ${slot.name}`);
-          if (slot.role === 'logo' || slot.role === 'palette') {
-            const lk = document.createElement('span');
-            lk.className = 'bt__lock';
-            lk.textContent = slot.role === 'logo' ? 'Logo' : 'Palette';
-            el.appendChild(lk);
-          }
-          if (sel === slot.name) addSelectionChrome(el, Math.round(r.w), Math.round(r.h));
+          if (sel === slot.name && !cropSlot) addSelectionChrome(el, Math.round(r.w), Math.round(r.h));
           return el;
         }));
         emptyEl.hidden = true;
@@ -313,6 +307,35 @@ export const tool: LatheTool = {
       applyCommit();
     }
 
+    function removeBrandTile(slotName: string) {
+      const brand = deck.slides[cur]?.brand;
+      if (!brand) return;
+      const template = getBrandTemplate(brand.variant);
+      const slotDef = template.find(s => s.name === slotName);
+      if (!slotDef || slotDef.role === 'logo' || slotDef.role === 'palette') return;
+      const rects = brandTileRects(brand);
+      const removed = rects.find(t => t.name === slotName);
+      if (!removed) return;
+      const neighbor = fillNeighbor(removed, rects, GUTTER_FX, GUTTER_FY);
+      if (neighbor) {
+        const tileMap = new Map(rects.map(t => [t.name, { ...t }]));
+        applyRemoval(tileMap, slotName, neighbor, GUTTER_FX, GUTTER_FY);
+        for (const [name, rect] of tileMap) {
+          const sd = brand.slots.find(s => s.name === name);
+          if (sd) sd.rect = { x: rect.x, y: rect.y, w: rect.w, h: rect.h };
+          else brand.slots.push({ name, assetUrl: null, assetThumbUrl: null, fit: 'cover', cropX: 0.5, cropY: 0.3, cropZoom: 1, removedBg: false, focalX: 0.5, focalY: 0.3, rect: { x: rect.x, y: rect.y, w: rect.w, h: rect.h } });
+        }
+        const sd = brand.slots.find(s => s.name === slotName);
+        if (sd) { sd.assetUrl = null; sd.assetThumbUrl = null; delete sd.rect; }
+        brand.slots = brand.slots.filter(s => s.name !== slotName);
+      } else {
+        const sd = brand.slots.find(s => s.name === slotName);
+        if (sd) { sd.assetUrl = null; sd.assetThumbUrl = null; }
+      }
+      sel = null;
+      commit();
+    }
+
     function moveSlide(dir: number) {
       const j = cur + dir;
       if (isCredits(cur) || j < 0 || j >= deck.slides.length) return;
@@ -382,11 +405,12 @@ export const tool: LatheTool = {
           tileBody.append(
             chips<'cover' | 'contain'>({ label: 'Fit', value: slotData.fit, options: [{ value: 'cover', label: 'Fill' }, { value: 'contain', label: 'Fit' }], onChange: v => { slotData.fit = v as 'cover' | 'contain'; commit(); } }).el,
             button({ label: 'Remove image', onClick: () => { slotData.assetUrl = null; slotData.assetThumbUrl = null; commit(); } }),
+            button({ label: 'Crop', onClick: () => { if (sel) enterCrop(sel); } }),
           );
-          tileBody.append(button({ label: 'Crop', onClick: () => { if (sel) enterCrop(sel); } }));
         } else {
           tileBody.append(note('Empty slot — drop an image.'));
         }
+        tileBody.append(button({ label: 'Remove tile', onClick: () => { if (sel) removeBrandTile(sel); } }));
         return;
       }
       if (!t || !slide) { tileBody.append(note('Select a tile to edit it. Drag a tile onto another to swap them; drag the corner to resize.')); return; }
@@ -680,8 +704,11 @@ export const tool: LatheTool = {
       if (e.key === 'Enter' && deck.slides[cur]?.brand && sel && !cropSlot) {
         enterCrop(sel); e.preventDefault(); return;
       }
-      // Brand tiles: no grid movement
-      if (deck.slides[cur]?.brand) return;
+      // Brand tiles: delete or no-op
+      if (deck.slides[cur]?.brand) {
+        if ((e.key === 'Delete' || e.key === 'Backspace') && sel) { e.preventDefault(); removeBrandTile(sel); }
+        return;
+      }
       const slide = deck.slides[cur], t = slide.tiles.find(x => x.id === sel); if (!t?.rect) return;
       const r = { ...t.rect };
       const k = e.key;
@@ -702,6 +729,7 @@ export const tool: LatheTool = {
     let cropOrig: { focalX: number; focalY: number; cropZoom: number } | null = null;
 
     function enterCrop(slotName: string) {
+      if (cropSlot) confirmCrop();
       const brand = deck.slides[cur]?.brand;
       if (!brand) return;
       const slotData = brand.slots.find(s => s.name === slotName);
@@ -709,6 +737,9 @@ export const tool: LatheTool = {
 
       cropSlot = slotName;
       cropOrig = { focalX: slotData.focalX, focalY: slotData.focalY, cropZoom: slotData.cropZoom };
+      // Dim non-cropped tiles
+      overlay.classList.add('is-crop-active');
+      slideEl.classList.add('is-crop-active');
       const tileEl = overlay.querySelector<HTMLElement>(`.bt__tile[data-id="${slotName}"]`);
       if (tileEl) tileEl.classList.add('is-cropping');
 
@@ -752,6 +783,8 @@ export const tool: LatheTool = {
         window.removeEventListener('keydown', onCropKey);
         if (tileEl) tileEl.classList.remove('is-cropping');
         if (cropBar) { cropBar.remove(); cropBar = null; }
+        overlay.classList.remove('is-crop-active');
+        slideEl.classList.remove('is-crop-active');
         cropSlot = null; cropOrig = null; cropCleanup = null;
       };
       cropCleanup = cleanup;
@@ -773,6 +806,7 @@ export const tool: LatheTool = {
     overlay.addEventListener('dblclick', e => {
       const el = (e.target as HTMLElement).closest<HTMLElement>('.bt__tile');
       if (!el || !deck.slides[cur]?.brand) return;
+      if (cropSlot === el.dataset.id) return;
       enterCrop(el.dataset.id!);
     });
     overlay.addEventListener('wheel', e => {

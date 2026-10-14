@@ -44,7 +44,13 @@
 .bt__thumb svg { width: 100%; height: 100%; display: block; }
 .bt__thumb.is-active { outline: calc(1px * 2) solid var(--accent); }
 .bt__num { position: absolute; left: var(--space-1); bottom: var(--space-1); padding: 0 var(--space-1); background: rgba(0,0,0,0.64); color: var(--text-1); font-size: var(--text-meta); font-variant-numeric: tabular-nums; border-radius: var(--radius-control); }
-.bt__tile.is-cropping { outline: 2px solid var(--accent) !important; cursor: grab !important; z-index: 3; }
+/* Crop mode: dashed accent frame, dim others, move cursor */
+.bt__tile.is-cropping {
+  outline: 2px dashed var(--accent) !important; outline-offset: -1px;
+  cursor: move !important; z-index: 3;
+}
+.is-crop-active .bt__tile:not(.is-cropping) { opacity: 0.4; pointer-events: none; }
+
 .bt__crop-bar {
   position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%);
   display: flex; align-items: center; gap: 8px; padding: 4px 8px;
