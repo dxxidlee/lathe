@@ -168,11 +168,15 @@ export const tool: LatheTool = {
       if (brandDomEl) { brandDomEl.remove(); brandDomEl = null; }
 
       if (isBrand) {
-        // Render brand slide via its own pixel-precise DOM renderer
+        // Render brand slide via its own pixel-precise DOM renderer, scaled to fit
         import('../audit/brand-slide-render').then(({ renderSlideDOM }) => {
+          const SW = 1920, SH = 1080;
           svgHost.innerHTML = '';
           brandDomEl = renderSlideDOM(slide.brand!);
-          brandDomEl.style.cssText += 'width:100%;height:100%;';
+          const containerW = svgHost.clientWidth || slideEl.clientWidth || 800;
+          const containerH = svgHost.clientHeight || slideEl.clientHeight || 450;
+          const scale = Math.min(containerW / SW, containerH / SH);
+          brandDomEl.style.cssText += `transform-origin:top left;transform:scale(${scale});`;
           svgHost.appendChild(brandDomEl);
         });
         overlay.replaceChildren();
