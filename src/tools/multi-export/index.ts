@@ -87,7 +87,16 @@ export const tool: LatheTool = {
     const status = note('');
     status.setAttribute('role', 'status');
     status.setAttribute('aria-live', 'polite');
-    out.body.append(zipBtn, status);
+    out.body.append(zipBtn, status, button({ label: 'Save to Library', onClick: async () => {
+      if (!src) { emit('toast', 'Load a logo first'); return; }
+      const { supabase } = await import('../../lib/supabase');
+      if (!supabase) { emit('toast', 'Sign in to save'); return; }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { emit('toast', 'Sign in to save'); return; }
+      const { cloudSaveItem } = await import('../../lib/cloud-library');
+      await cloudSaveItem(user.id, { type: 'image', name: src.name || 'Logo export', toolId: 'logo-export', data: { name: src.name } });
+      emit('toast', 'Saved to Library');
+    }}));
     const advSec = advancedSection();
     advSec.body.append(
       slider({ label: 'JPEG quality', min: 1, max: 100, value: d.jpegQuality as number, unit: '%', onChange: v => { (d as Record<string, unknown>).jpegQuality = v; } }).el,

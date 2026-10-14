@@ -416,6 +416,7 @@ export const tool: LatheTool = {
       }
       const lab = doc.createElement('label'); lab.textContent = 'Opacity';
       const rng = doc.createElement('input'); rng.type = 'range'; rng.min = '15'; rng.max = '100'; rng.value = '100';
+      rng.className = 'l-slider__input'; rng.style.accentColor = 'var(--accent)';
       const pct = doc.createElement('div'); pct.className = 'ms-float-pct'; pct.textContent = '100%';
       rng.addEventListener('input', () => { body.style.opacity = String(Number(rng.value) / 100); pct.textContent = rng.value + '%'; });
       foot.append(lab, rng, pct);
@@ -453,7 +454,7 @@ export const tool: LatheTool = {
       foot.appendChild(dims);
       const lab = document.createElement('label'); lab.textContent = 'Opacity';
       const id = 'op-' + Math.random().toString(36).slice(2, 8); lab.htmlFor = id;
-      const rng = document.createElement('input'); rng.type = 'range'; rng.min = '15'; rng.max = '100'; rng.value = '100'; rng.id = id;
+      const rng = document.createElement('input'); rng.type = 'range'; rng.min = '15'; rng.max = '100'; rng.value = '100'; rng.id = id; rng.className = 'l-slider__input'; rng.style.accentColor = 'var(--accent)';
       const pct = document.createElement('div'); pct.className = 'ms-float-pct'; pct.textContent = '100%';
       rng.addEventListener('input', () => { win.style.opacity = String(Number(rng.value) / 100); pct.textContent = rng.value + '%'; });
       foot.append(lab, rng, pct); win.appendChild(foot);

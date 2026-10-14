@@ -110,6 +110,16 @@ export const tool: LatheTool = {
     advSec.body.append(
       slider({ label: 'Below-threshold opacity', min: 0, max: 100, value: Math.round((d.dimOpacity as number) * 100), format: v => (v / 100).toFixed(2), onChange: v => { (d as Record<string, unknown>).dimOpacity = v / 100; render(); } }).el,
     );
+    out.body.append(button({ label: 'Save to Library', onClick: async () => {
+      const { supabase } = await import('../../lib/supabase');
+      if (!supabase) { emit('toast', 'Sign in to save'); return; }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { emit('toast', 'Sign in to save'); return; }
+      const { cloudSaveItem } = await import('../../lib/cloud-library');
+      const colors = parseColors(state.input);
+      await cloudSaveItem(user.id, { type: 'palette', name: `Contrast · ${colors.length} colors`, toolId: 'contrast', data: { colors } });
+      emit('toast', 'Saved to Library');
+    }}));
     inspector.append(pal.el, std.el, res.el, advSec.el, fontSec.el, out.el);
 
     /* ---- render ---- */

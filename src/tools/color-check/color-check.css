@@ -1,5 +1,5 @@
 .cc { position: absolute; inset: 0; overflow: auto; padding: var(--space-6); }
-.cc__matrix { min-height: 100%; display: flex; }
+.cc__matrix { min-height: 100%; display: flex; overflow-x: auto; }
 .cc__empty { margin: auto; color: var(--text-3); font-size: var(--text-body); }
 
 .cc table.matrix { border-collapse: collapse; width: 100%; align-self: flex-start; }
