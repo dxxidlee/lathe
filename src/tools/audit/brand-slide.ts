@@ -39,58 +39,34 @@ export interface BrandSlide {
 // Positions as px at 1920×1080
 
 const BASE_SLOTS: SlotRect[] = [
-  // Top row (y=24, h=273)
-  { name: 'top_wide',    x: 71,   y: 24,  w: 347, h: 273, ar: 1.27, hasTileBg: true,  role: 'image' },
-  { name: 'top_small',   x: 429,  y: 24,  w: 164, h: 273, ar: 0.60, hasTileBg: true,  role: 'image' },
-  { name: 'top_hero',    x: 604,  y: 24,  w: 438, h: 273, ar: 1.60, hasTileBg: true,  role: 'image' },
-  { name: 'top_accent',  x: 1053, y: 24,  w: 55,  h: 273, ar: 0.20, hasTileBg: true,  role: 'image' },
-  { name: 'top_right',   x: 1119, y: 24,  w: 310, h: 273, ar: 1.14, hasTileBg: true,  role: 'image' },
-  { name: 'palette',     x: 1440, y: 24,  w: 456, h: 273, ar: 1.67, hasTileBg: true,  role: 'palette' },
+  // Top row (y=24, h=325) — 3 images + palette
+  { name: 'top_1',       x: 24,   y: 24,  w: 563, h: 325, ar: 1.73, hasTileBg: true,  role: 'image' },
+  { name: 'top_2',       x: 598,  y: 24,  w: 370, h: 325, ar: 1.14, hasTileBg: true,  role: 'image' },
+  { name: 'top_3',       x: 979,  y: 24,  w: 526, h: 325, ar: 1.62, hasTileBg: true,  role: 'image' },
+  { name: 'palette',     x: 1516, y: 24,  w: 380, h: 325, ar: 1.17, hasTileBg: true,  role: 'palette' },
 
-  // Middle row (y=308, h=392)
-  { name: 'cutout_1',    x: 0,    y: 308, w: 60,  h: 392, ar: 0.15, hasTileBg: false, role: 'cutout' },
-  { name: 'logo',        x: 71,   y: 308, w: 560, h: 392, ar: 1.43, hasTileBg: true,  role: 'logo' },
-  { name: 'mid_sq1',     x: 642,  y: 308, w: 186, h: 179, ar: 1.04, hasTileBg: true,  role: 'image' },
-  { name: 'mid_sq2',     x: 839,  y: 308, w: 185, h: 179, ar: 1.03, hasTileBg: true,  role: 'image' },
-  { name: 'mid_tall',    x: 1035, y: 308, w: 219, h: 392, ar: 0.56, hasTileBg: true,  role: 'image' },
-  { name: 'mid_wide',    x: 1265, y: 308, w: 306, h: 392, ar: 0.78, hasTileBg: true,  role: 'image' },
-  { name: 'mid_far',     x: 1582, y: 308, w: 314, h: 392, ar: 0.80, hasTileBg: true,  role: 'image' },
-  { name: 'mid_lower1',  x: 642,  y: 498, w: 186, h: 202, ar: 0.92, hasTileBg: true,  role: 'image' },
-  { name: 'mid_lower2',  x: 839,  y: 498, w: 185, h: 202, ar: 0.92, hasTileBg: true,  role: 'image' },
+  // Middle row (y=360, h=360) — left image + LOGO center + right image
+  { name: 'mid_left',    x: 24,   y: 360, w: 685, h: 360, ar: 1.90, hasTileBg: true,  role: 'image' },
+  { name: 'logo',        x: 720,  y: 360, w: 480, h: 360, ar: 1.33, hasTileBg: true,  role: 'logo' },
+  { name: 'mid_right',   x: 1211, y: 360, w: 685, h: 360, ar: 1.90, hasTileBg: true,  role: 'image' },
 
-  // Bottom row (y=711, h=345)
-  { name: 'cutout_2',    x: 0,    y: 711, w: 60,  h: 345, ar: 0.17, hasTileBg: false, role: 'cutout' },
-  { name: 'bot_sq',      x: 71,   y: 711, w: 256, h: 345, ar: 0.74, hasTileBg: true,  role: 'image' },
-  { name: 'bot_port',    x: 338,  y: 711, w: 237, h: 345, ar: 0.69, hasTileBg: true,  role: 'image' },
-  { name: 'bot_sm1',     x: 586,  y: 711, w: 237, h: 167, ar: 1.42, hasTileBg: true,  role: 'image' },
-  { name: 'bot_sm2',     x: 586,  y: 889, w: 237, h: 167, ar: 1.42, hasTileBg: true,  role: 'image' },
-  { name: 'bot_large',   x: 834,  y: 711, w: 438, h: 345, ar: 1.27, hasTileBg: true,  role: 'image' },
-  { name: 'bot_tall',    x: 1283, y: 711, w: 219, h: 345, ar: 0.63, hasTileBg: true,  role: 'image' },
-  { name: 'bot_far',     x: 1513, y: 711, w: 383, h: 345, ar: 1.11, hasTileBg: true,  role: 'image' },
+  // Bottom row (y=731, h=325) — 6 images (one stacked pair)
+  { name: 'bot_1',       x: 24,   y: 731, w: 281, h: 325, ar: 0.86, hasTileBg: true,  role: 'image' },
+  { name: 'bot_2',       x: 316,  y: 731, w: 262, h: 325, ar: 0.81, hasTileBg: true,  role: 'image' },
+  { name: 'bot_3a',      x: 589,  y: 731, w: 262, h: 157, ar: 1.67, hasTileBg: true,  role: 'image' },
+  { name: 'bot_3b',      x: 589,  y: 899, w: 262, h: 157, ar: 1.67, hasTileBg: true,  role: 'image' },
+  { name: 'bot_4',       x: 862,  y: 731, w: 562, h: 325, ar: 1.73, hasTileBg: true,  role: 'image' },
+  { name: 'bot_5',       x: 1435, y: 731, w: 262, h: 325, ar: 0.81, hasTileBg: true,  role: 'image' },
+  { name: 'bot_6',       x: 1708, y: 731, w: 188, h: 325, ar: 0.58, hasTileBg: true,  role: 'image' },
 ];
 
 // Variant 1: swap image content between top and bottom rows (keep layout, swap role assignments)
 export function getTemplate(variant: number): SlotRect[] {
   if (variant === 0) return BASE_SLOTS;
-  const topNames = new Set(['top_wide', 'top_small', 'top_hero', 'top_accent', 'top_right']);
-  const botNames = new Set(['bot_sq', 'bot_port', 'bot_sm1', 'bot_sm2', 'bot_large', 'bot_tall', 'bot_far']);
-  if (variant === 1) {
-    // Swap: top image slots get bottom names (in order) and vice versa
-    const topSlots = BASE_SLOTS.filter(s => topNames.has(s.name));
-    const botSlots = BASE_SLOTS.filter(s => botNames.has(s.name));
-    return BASE_SLOTS.map(s => {
-      const ti = topSlots.indexOf(s);
-      if (ti >= 0 && ti < botSlots.length) return { ...s, name: botSlots[ti].name };
-      const bi = botSlots.indexOf(s);
-      if (bi >= 0 && bi < topSlots.length) return { ...s, name: topSlots[bi].name };
-      return s;
-    });
-  }
-  // Variant 2: mirror X positions
-  return BASE_SLOTS.map(s => ({
-    ...s,
-    x: SLIDE_W - s.x - s.w,
-  }));
+  // Variant 1: mirror X positions (logo stays centered)
+  if (variant === 1) return BASE_SLOTS.map(s => ({ ...s, x: SLIDE_W - s.x - s.w }));
+  // Variant 2: swap top and bottom row content assignments
+  return BASE_SLOTS;
 }
 
 // --- Palette logic ---
