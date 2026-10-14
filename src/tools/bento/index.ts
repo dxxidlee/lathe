@@ -156,7 +156,17 @@ export const tool: LatheTool = {
     inspector.append(deckSec.el, slideSec.el, addSec.el, tileSec.el, advSec.el, outSec.el);
 
     /* ---------------- render ---------------- */
-    let brandDomEl: HTMLElement | null = null; // cached brand slide DOM for the current slide
+    let brandDomEl: HTMLElement | null = null;
+    const updateBrandTileCSS = (sd: { name: string; focalX: number; focalY: number; cropZoom: number; fit: string }) => {
+      if (!brandDomEl) return;
+      const img = brandDomEl.querySelector<HTMLImageElement>(`[data-slot="${sd.name}"] img`);
+      if (!img) return;
+      const z = sd.cropZoom ?? 1;
+      img.style.objectPosition = `${sd.focalX * 100}% ${sd.focalY * 100}%`;
+      img.style.objectFit = sd.fit;
+      img.style.transform = z !== 1 ? `scale(${z})` : '';
+      img.style.transformOrigin = z !== 1 ? `${sd.focalX * 100}% ${sd.focalY * 100}%` : '';
+    };
     function render() {
       const vs = views();
       if (cur >= vs.length) cur = vs.length - 1;
@@ -182,7 +192,7 @@ export const tool: LatheTool = {
         const template = getBrandTemplate(slide.brand!.variant);
         overlay.replaceChildren(...template.map(slot => {
           const el = document.createElement('div');
-          el.className = `bt__tile${sel === slot.name ? ' is-selected' : ''}`;
+          el.className = `bt__tile${sel === slot.name ? ' is-selected' : ''}${cropSlot === slot.name ? ' is-cropping' : ''}`;
           el.dataset.id = slot.name;
           el.style.left = `${slot.x / B_SW * 100}%`;
           el.style.top = `${slot.y / B_SH * 100}%`;
@@ -225,8 +235,11 @@ export const tool: LatheTool = {
           // Brand slide thumbnail: render DOM at small scale
           import('../audit/brand-slide-render').then(({ renderSlideDOM }) => {
             const dom = renderSlideDOM(s.brand!);
-            dom.style.cssText += 'width:100%;height:100%;';
             b.insertBefore(dom, b.firstChild);
+            requestAnimationFrame(() => {
+              const scale = (b.clientWidth || 144) / B_SW;
+              dom.style.cssText += `transform-origin:top left;transform:scale(${scale});`;
+            });
           });
         } else {
           b.innerHTML = slideSvg(drawSlide(s, deck, cfg), cfg, p => href(p.src, p.thumb), { idPrefix: `t${i}` });
@@ -405,7 +418,10 @@ export const tool: LatheTool = {
     const onKey = (e: KeyboardEvent) => {
       if (!stage.closest('[data-active-tab]')) return;
       if (typing(e.target) || !sel || isCredits(cur) || e.metaKey || e.ctrlKey) return;
-      if (e.key === 'Escape') { sel = null; render(); return; }
+      if (e.key === 'Escape') {
+        if (cropSlot) return; // let escCrop handle it
+        sel = null; render(); return;
+      }
       // Brand tiles: no grid movement
       if (deck.slides[cur]?.brand) return;
       const slide = deck.slides[cur], t = slide.tiles.find(x => x.id === sel); if (!t?.rect) return;
@@ -423,6 +439,7 @@ export const tool: LatheTool = {
 
     /* ---------------- brand tile: dblclick crop + wheel zoom ---------------- */
     let cropSlot: string | null = null;
+    let cropCleanup: (() => void) | null = null;
     overlay.addEventListener('dblclick', e => {
       const el = (e.target as HTMLElement).closest<HTMLElement>('.bt__tile');
       if (!el || !deck.slides[cur]?.brand) return;
@@ -431,21 +448,21 @@ export const tool: LatheTool = {
       if (!slotData?.assetUrl) return;
       cropSlot = slotData.name;
       el.classList.add('is-cropping');
-      el.style.cursor = 'grab';
       const onCropMove = (ev: PointerEvent) => {
         slotData.focalX = Math.max(0, Math.min(1, slotData.focalX - ev.movementX * 0.002));
         slotData.focalY = Math.max(0, Math.min(1, slotData.focalY - ev.movementY * 0.002));
-        commit();
+        updateBrandTileCSS(slotData);
       };
       const endCrop = () => {
         document.removeEventListener('pointermove', onCropMove);
         document.removeEventListener('pointerup', endCrop);
         window.removeEventListener('keydown', escCrop);
         el.classList.remove('is-cropping');
-        el.style.cursor = '';
         cropSlot = null;
+        commit();
       };
       const escCrop = (ev: KeyboardEvent) => { if (ev.key === 'Escape') endCrop(); };
+      cropCleanup = endCrop;
       document.addEventListener('pointermove', onCropMove);
       document.addEventListener('pointerup', endCrop);
       window.addEventListener('keydown', escCrop);
@@ -455,8 +472,8 @@ export const tool: LatheTool = {
       e.preventDefault();
       const slotData = deck.slides[cur].brand!.slots.find(s => s.name === cropSlot);
       if (!slotData) return;
-      slotData.cropZoom = Math.max(0.5, Math.min(3, slotData.cropZoom + (e.deltaY > 0 ? -0.1 : 0.1)));
-      commit();
+      slotData.cropZoom = Math.max(0.5, Math.min(3, (slotData.cropZoom ?? 1) + (e.deltaY > 0 ? -0.1 : 0.1)));
+      updateBrandTileCSS(slotData);
     }, { passive: false });
 
     /* ---------------- exports ---------------- */
@@ -546,7 +563,7 @@ export const tool: LatheTool = {
     render();
 
     return {
-      unmount() { off(); ro.disconnect(); document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); document.removeEventListener('keydown', onKey); if (drag) drag = null; },
+      unmount() { off(); ro.disconnect(); if (cropCleanup) cropCleanup(); document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); document.removeEventListener('keydown', onKey); if (drag) drag = null; },
       export: () => void run('pptx'),
     };
   },
