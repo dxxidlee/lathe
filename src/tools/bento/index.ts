@@ -499,6 +499,46 @@ export const tool: LatheTool = {
       document.addEventListener('pointermove', onMove);
       document.addEventListener('pointerup', onUp);
     });
+    // Gutter hover + drag (brand slides)
+    overlay.addEventListener('mousemove', e => {
+      if (drag || bResize || cropSlot || !deck.slides[cur]?.brand) { overlay.style.cursor = ''; return; }
+      if ((e.target as HTMLElement).closest('.bt__tile')) { overlay.style.cursor = ''; return; }
+      const sr = slideEl.getBoundingClientRect();
+      const px = (e.clientX - sr.left) / sr.width, py = (e.clientY - sr.top) / sr.height;
+      const brand = deck.slides[cur].brand!;
+      const rects = brandTileRects(brand);
+      const tiles = new Map(rects.map(t => [t.name, t]));
+      const boundaries = buildBoundaries(rects, GUTTER_FX, GUTTER_FY);
+      const hit = boundaryAtPoint(boundaries, tiles, px, py, GUTTER_FX, GUTTER_FY);
+      overlay.style.cursor = hit ? (hit.axis === 'x' ? 'col-resize' : 'row-resize') : '';
+    });
+    slideEl.addEventListener('pointerdown', e => {
+      if (drag || bResize || cropSlot || !deck.slides[cur]?.brand) return;
+      if ((e.target as HTMLElement).closest('.bt__tile')) return;
+      const sr = slideEl.getBoundingClientRect();
+      const px = (e.clientX - sr.left) / sr.width, py = (e.clientY - sr.top) / sr.height;
+      const brand = deck.slides[cur].brand!;
+      const rects = brandTileRects(brand);
+      const boundaries = buildBoundaries(rects, GUTTER_FX, GUTTER_FY);
+      const tiles = new Map(rects.map(t => [t.name, t]));
+      const hit = boundaryAtPoint(boundaries, tiles, px, py, GUTTER_FX, GUTTER_FY);
+      if (!hit) return;
+      e.preventDefault();
+      const orig = new Map(rects.map(t => [t.name, { ...t }]));
+      const tile = orig.values().next().value!;
+      const xTargets: number[] = [0.5], yTargets: number[] = [0.5];
+      for (const b of boundaries) (b.axis === 'x' ? xTargets : yTargets).push(b.pos);
+      bResize = {
+        handle: hit.axis === 'x' ? 'e' : 's',
+        bx: hit.axis === 'x' ? hit : null,
+        by: hit.axis === 'y' ? hit : null,
+        orig, x0: e.clientX, y0: e.clientY,
+        snapX: xTargets, snapY: yTargets,
+        startAr: 1, moved: false,
+      };
+      document.addEventListener('pointermove', onBrandResize);
+      document.addEventListener('pointerup', onBrandResizeUp);
+    });
     const onMove = (e: PointerEvent) => {
       if (!drag) return;
       const dx = e.clientX - drag.x0, dy = e.clientY - drag.y0;
