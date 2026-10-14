@@ -1016,7 +1016,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
 
   render();
   // Phase B: section renderers kept for the editing stage inspector
-  const sections = { shotsSection, paletteSection, typeSection, logoSection, imagerySection, timelineSection, obsSection };
+  const sections = { shotsSection, paletteSection, typeSection, logoSection, imagerySection, timelineSection, obsSection, observe };
   void sections;
 
   void fetchCatalog().then(c => { features = c.brand; render(); if (query) void run(query); });
