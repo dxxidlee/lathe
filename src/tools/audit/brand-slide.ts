@@ -32,7 +32,7 @@ export interface BrandSlide {
     focalX: number; focalY: number; // 0-1, for object-position
     rect?: { x: number; y: number; w: number; h: number }; // fractional 0-1 override
   }>;
-  motion: { assetUrl: string; gifUrl: string | null } | null;
+  motion: { assetUrl: string; gifUrl: string | null; posterUrl: string | null; slotName: string | null } | null;
 }
 
 // --- Template variants ---

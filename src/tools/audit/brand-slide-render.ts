@@ -44,8 +44,15 @@ export function renderSlideDOM(slide: BrandSlide): HTMLElement {
         tile.appendChild(img);
       }
     } else {
-      const slotData = slide.slots.find(s => s.name === slot.name);
-      if (slotData?.assetUrl) {
+      // Motion tile: show GIF if this slot is the motion slot
+      const isMotion = slide.motion?.slotName === slot.name && slide.motion.gifUrl;
+      if (isMotion) {
+        tile.style.background = slide.theme === 'dark' ? '#141414' : '#f0f0f0';
+        const img = document.createElement('img');
+        img.src = slide.motion!.gifUrl!;
+        img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+        tile.appendChild(img);
+      } else if (slotData?.assetUrl) {
         if (!slot.hasTileBg) tile.style.background = 'transparent';
         else tile.style.background = slide.theme === 'dark' ? '#141414' : '#f0f0f0';
         const img = document.createElement('img');

@@ -7,7 +7,7 @@ import { BRAND_SLIDE_MIME, type BrandSlide, getTemplate as getBrandTemplate, res
 import { ensureLayout, layoutSlide, reshuffle, variantsFor } from './layout';
 import { allSlides, drawSlide, type DrawConfig } from './draw';
 import { slideSvg } from './render-svg';
-import { copyForFigma, deckToPdf, deckToPptx, slideToPng, slideToSvg, slidesToPngZip, type ExportCtx } from './export';
+import { copyForFigma, deckToPdf, addGridSlidesToPptx, writePptx, slideToPng, slideToSvg, brandSlideToPptx, brandSlideToSvg, brandSlideToPng, brandSlideToPdf, type ExportCtx } from './export';
 import { proxied } from './images';
 import { advancedSection, button, chips, field, note, section, select, slider, textarea } from '../../ui/primitives';
 import { assetUrl } from '../../lib/assets';
@@ -401,11 +401,36 @@ export const tool: LatheTool = {
           tileBody.append(note(brand.palette.join(', ')));
           return;
         }
-        if (slotData?.assetUrl) {
+        // Motion tile
+        const isMotion = brand.motion?.slotName === sel;
+        if (isMotion && brand.motion?.gifUrl) {
+          tileBody.append(note('Motion tile'));
+          tileBody.append(button({ label: 'Download GIF', onClick: () => {
+            const a = document.createElement('a');
+            a.href = brand.motion!.gifUrl!;
+            a.download = `${deck.title || 'brand'}-motion.gif`;
+            a.click();
+          }}));
+          tileBody.append(button({ label: 'Remove motion', onClick: () => { brand.motion = null; commit(); } }));
+        } else if (slotData?.assetUrl) {
           tileBody.append(
             chips<'cover' | 'contain'>({ label: 'Fit', value: slotData.fit, options: [{ value: 'cover', label: 'Fill' }, { value: 'contain', label: 'Fit' }], onChange: v => { slotData.fit = v as 'cover' | 'contain'; commit(); } }).el,
             button({ label: 'Remove image', onClick: () => { slotData.assetUrl = null; slotData.assetThumbUrl = null; commit(); } }),
             button({ label: 'Crop', onClick: () => { if (sel) enterCrop(sel); } }),
+            button({ label: 'Set as motion tile', onClick: async () => {
+              if (!slotData.assetUrl) return;
+              emit('toast', 'Converting to GIF…');
+              try {
+                const { videoToGif } = await import('./motion');
+                const r = resolveSlotRect(slotDef, slotData.rect);
+                const result = await videoToGif(slotData.assetUrl, Math.round(r.w));
+                const gifUrl = URL.createObjectURL(result.gif);
+                const posterUrl = URL.createObjectURL(result.poster);
+                brand.motion = { assetUrl: slotData.assetUrl, gifUrl, posterUrl, slotName: sel! };
+                commit();
+                emit('toast', `GIF ready: ${result.frames} frames, ${Math.round(result.gif.size / 1024)}KB`);
+              } catch (e) { emit('toast', `GIF failed: ${e instanceof Error ? e.message : e}`); }
+            }}),
           );
         } else {
           tileBody.append(note('Empty slot — drop an image.'));
@@ -823,16 +848,57 @@ export const tool: LatheTool = {
     async function run(kind: 'pptx' | 'pdf' | 'png' | 'pngzip' | 'svg' | 'figma') {
       const vs = views();
       const base = slug(deck.title);
-      const one = drawSlide(vs[cur], deck, cfg);
+      const curSlide = vs[cur];
       const nn = String(cur + 1).padStart(2, '0');
       status.textContent = 'Exporting…';
       try {
-        if (kind === 'pptx') await saveExport(await deckToPptx(vs.map(s => drawSlide(s, deck, cfg)), deck, xctx), `${base}.pptx`, 'deck');
-        else if (kind === 'pdf') await saveExport(await deckToPdf(vs.map(s => drawSlide(s, deck, cfg)), xctx, deck.title), `${base}.pdf`, 'deck');
-        else if (kind === 'png') await saveExport(await slideToPng(one, xctx), `${base}-slide-${nn}.png`, 'deck');
-        else if (kind === 'pngzip') await saveExport(await slidesToPngZip(vs.map(s => drawSlide(s, deck, cfg)), xctx, base), `${base}-slides.zip`, 'deck');
-        else if (kind === 'svg') await saveExport(new Blob([await slideToSvg(one, xctx)], { type: 'image/svg+xml' }), `${base}-slide-${nn}.svg`, 'deck');
-        else { await copyForFigma(one, xctx); emit('toast', 'Slide copied as SVG. Paste into Figma for editable layers.'); }
+        if (kind === 'pptx') {
+          const { default: PptxGenJS } = await import('pptxgenjs');
+          const pptx = new PptxGenJS();
+          pptx.defineLayout({ name: 'LATHE_16x9', width: xctx.cfg.slideW, height: xctx.cfg.slideH });
+          pptx.layout = 'LATHE_16x9'; pptx.title = deck.title; pptx.company = 'Lathe';
+          pptx.theme = { headFontFace: 'Helvetica Neue', bodyFontFace: 'Helvetica Neue' };
+          for (const s of vs) {
+            if (s.brand) await brandSlideToPptx(s.brand, pptx, assets);
+            else await addGridSlidesToPptx([drawSlide(s, deck, cfg)], pptx, xctx);
+          }
+          await saveExport(await writePptx(pptx), `${base}.pptx`, 'deck');
+        } else if (kind === 'pdf') {
+          const { jsPDF } = await import('jspdf');
+          const doc = new jsPDF({ orientation: 'landscape', unit: 'in', format: [xctx.cfg.slideW, xctx.cfg.slideH], compress: true });
+          doc.setProperties({ title: deck.title, creator: 'Lathe Deck' });
+          for (let i = 0; i < vs.length; i++) {
+            if (i) doc.addPage([xctx.cfg.slideW, xctx.cfg.slideH], 'landscape');
+            if (vs[i].brand) await brandSlideToPdf(vs[i].brand!, doc);
+            else { const ds = drawSlide(vs[i], deck, cfg); await deckToPdf([ds], xctx, deck.title, doc); }
+          }
+          await saveExport(doc.output('blob'), `${base}.pdf`, 'deck');
+        } else if (kind === 'png') {
+          if (curSlide.brand) await saveExport(await brandSlideToPng(curSlide.brand!), `${base}-slide-${nn}.png`, 'deck');
+          else await saveExport(await slideToPng(drawSlide(curSlide, deck, cfg), xctx), `${base}-slide-${nn}.png`, 'deck');
+        } else if (kind === 'pngzip') {
+          const zip = (await import('jszip')).default;
+          const z = new zip();
+          for (let i = 0; i < vs.length; i++) {
+            const fn = `${base}-${String(i + 1).padStart(2, '0')}.png`;
+            if (vs[i].brand) z.file(fn, await brandSlideToPng(vs[i].brand!));
+            else z.file(fn, await slideToPng(drawSlide(vs[i], deck, cfg), xctx));
+          }
+          await saveExport(await z.generateAsync({ type: 'blob' }), `${base}-slides.zip`, 'deck');
+        } else if (kind === 'svg') {
+          if (curSlide.brand) {
+            const svg = await brandSlideToSvg(curSlide.brand!, assets);
+            await saveExport(new Blob([svg], { type: 'image/svg+xml' }), `${base}-slide-${nn}.svg`, 'deck');
+          } else {
+            await saveExport(new Blob([await slideToSvg(drawSlide(curSlide, deck, cfg), xctx)], { type: 'image/svg+xml' }), `${base}-slide-${nn}.svg`, 'deck');
+          }
+        } else {
+          if (curSlide.brand) {
+            const svg = await brandSlideToSvg(curSlide.brand!, assets);
+            await navigator.clipboard.writeText(svg);
+            emit('toast', 'Brand slide copied as SVG. Paste into Figma for editable layers.');
+          } else { await copyForFigma(drawSlide(curSlide, deck, cfg), xctx); emit('toast', 'Slide copied as SVG. Paste into Figma for editable layers.'); }
+        }
         status.textContent = kind === 'figma' ? 'Copied for Figma' : `Exported ${kind === 'pngzip' ? `${vs.length} slides` : kind === 'png' || kind === 'svg' ? `slide ${cur + 1}` : `${vs.length} slides`}`;
       } catch (err) {
         console.error('[bento] export failed', err);

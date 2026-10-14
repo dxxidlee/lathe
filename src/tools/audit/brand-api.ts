@@ -16,6 +16,8 @@ export interface SiteCapture {
   social: Record<string, string>;
   /** Large content images on the homepage (hero, product, campaign photography). */
   images: { url: string; alt: string | null; w: number | null }[];
+  /** Video sources found on the homepage (mp4/webm only). */
+  videos?: { url: string; type: string; poster: string | null }[];
   colorStats: { declarations: number; unique: number; clusters: number };
   stylesheets: { url: string; bytes: number; ok: boolean }[]; googleFonts: string[]; adobeKits: string[]; ms: number;
 }

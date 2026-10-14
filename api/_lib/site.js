@@ -253,7 +253,29 @@ export function scanHtml(html, base) {
     consider(b?.u ?? img.getAttribute('data-src') ?? img.getAttribute('src') ?? null, img.getAttribute('alt') ?? null, b?.w || (Number.isFinite(wAttr) ? wAttr : null), img);
     if (images.length >= 24) break;
   }
-  return { ...out, social, images: images.slice(0, 24) };
+  // Videos: <video src>, <video><source>, og:video — mp4/webm only, skip HLS
+  /** @type {{ url: string; type: string; poster: string | null }[]} */ const videos = [];
+  const seenVid = new Set();
+  const addVid = (/** @type {string | null} */ raw, /** @type {string} */ type, /** @type {string | null} */ poster) => {
+    const url = raw ? abs(raw, base) : null;
+    if (!url || seenVid.has(url) || /\.m3u8|\.mpd|\.ts(\?|$)/i.test(url)) return;
+    seenVid.add(url); videos.push({ url, type: type || 'video/mp4', poster: poster ? abs(poster, base) : null });
+  };
+  for (const vid of root.querySelectorAll('video')) {
+    const poster = vid.getAttribute('poster') || null;
+    const src = vid.getAttribute('src') || vid.getAttribute('data-src');
+    if (src && /\.(mp4|webm)(\?|$)/i.test(src)) addVid(src, /\.webm/i.test(src) ? 'video/webm' : 'video/mp4', poster);
+    for (const s of vid.querySelectorAll('source')) {
+      const ssrc = s.getAttribute('src') || s.getAttribute('data-src');
+      const stype = (s.getAttribute('type') || '').toLowerCase();
+      if (ssrc && (/video\/(mp4|webm)/.test(stype) || /\.(mp4|webm)(\?|$)/i.test(ssrc))) addVid(ssrc, stype || 'video/mp4', poster);
+    }
+    if (videos.length >= 4) break;
+  }
+  const ogVideo = meta('meta[property="og:video"]') || meta('meta[property="og:video:url"]');
+  if (ogVideo && /\.(mp4|webm)(\?|$)/i.test(ogVideo)) addVid(ogVideo, 'video/mp4', null);
+
+  return { ...out, social, images: images.slice(0, 24), videos: videos.slice(0, 4) };
 }
 
 /* ------------------------------------------------------------------ fetch + assemble */

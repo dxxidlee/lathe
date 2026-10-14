@@ -73,14 +73,14 @@ function containRect(p: Extract<Prim, { kind: 'image' }>, img: ResolvedImage) {
   return { x: p.x + (p.w - w) / 2, y: p.y + (p.h - h) / 2, w, h };
 }
 
-export async function deckToPdf(ds: SlideDrawing[], ctx: ExportCtx, title: string): Promise<Blob> {
-  const { jsPDF } = await import('jspdf');
+/** Add grid slides to a PDF doc. When existingDoc is passed, adds pages to it. */
+export async function deckToPdf(ds: SlideDrawing[], ctx: ExportCtx, title: string, existingDoc?: any): Promise<Blob> {
   const { slideW: W, slideH: H } = ctx.cfg;
-  const doc = new jsPDF({ orientation: 'landscape', unit: 'in', format: [W, H], compress: true });
-  doc.setProperties({ title, creator: 'Lathe Deck' });
+  let doc = existingDoc;
+  if (!doc) { const { jsPDF } = await import('jspdf'); doc = new jsPDF({ orientation: 'landscape', unit: 'in', format: [W, H], compress: true }); doc.setProperties({ title, creator: 'Lathe Deck' }); }
   const imgs = await resolveAll(ds, ctx);
   for (let i = 0; i < ds.length; i++) {
-    if (i) doc.addPage([W, H], 'landscape');
+    if (i || existingDoc) doc.addPage([W, H], 'landscape');
     const d = ds[i];
     doc.setFillColor(...hexRgb(d.bg)); doc.rect(0, 0, W, H, 'F');
     for (const p of d.prims) {
@@ -124,14 +124,8 @@ function declareFallback(xml: string): string {
   });
 }
 
-export async function deckToPptx(ds: SlideDrawing[], deck: Deck, ctx: ExportCtx): Promise<Blob> {
-  const { default: PptxGenJS } = await import('pptxgenjs');
-  const pptx = new PptxGenJS();
-  pptx.defineLayout({ name: 'LATHE_16x9', width: ctx.cfg.slideW, height: ctx.cfg.slideH });
-  pptx.layout = 'LATHE_16x9';
-  pptx.title = deck.title;
-  pptx.company = 'Lathe';
-  pptx.theme = { headFontFace: 'Helvetica Neue', bodyFontFace: 'Helvetica Neue' };
+/** Add grid-based slides to an existing pptx instance. */
+export async function addGridSlidesToPptx(ds: SlideDrawing[], pptx: any, ctx: ExportCtx): Promise<void> {
   const imgs = await resolveAll(ds, ctx);
   const c = (h: string) => h.replace('#', '').toUpperCase();
   for (const d of ds) {
@@ -162,8 +156,11 @@ export async function deckToPptx(ds: SlideDrawing[], deck: Deck, ctx: ExportCtx)
       }
     }
   }
+}
+
+/** Write a pptx instance to a Blob with Arial fallback declarations. */
+export async function writePptx(pptx: any): Promise<Blob> {
   const raw = await pptx.write({ outputType: 'blob', compression: true }) as Blob;
-  // Declare the Arial fallback: give every Helvetica Neue face Arial's panose and pitch family.
   const zip = await JSZip.loadAsync(raw);
   await Promise.all(Object.keys(zip.files).filter(n => /^ppt\/(slides\/slide\d+|theme\/theme\d+|slideMasters\/slideMaster\d+)\.xml$/.test(n)).map(async n => {
     const xml = await zip.file(n)!.async('string');
@@ -172,4 +169,182 @@ export async function deckToPptx(ds: SlideDrawing[], deck: Deck, ctx: ExportCtx)
   return zip.generateAsync({ type: 'blob', mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', compression: 'DEFLATE' });
 }
 
+/** Full pipeline: create pptx, add grid slides, write. For backward compat. */
+export async function deckToPptx(ds: SlideDrawing[], deck: Deck, ctx: ExportCtx): Promise<Blob> {
+  const { default: PptxGenJS } = await import('pptxgenjs');
+  const pptx = new PptxGenJS();
+  pptx.defineLayout({ name: 'LATHE_16x9', width: ctx.cfg.slideW, height: ctx.cfg.slideH });
+  pptx.layout = 'LATHE_16x9'; pptx.title = deck.title; pptx.company = 'Lathe';
+  pptx.theme = { headFontFace: 'Helvetica Neue', bodyFontFace: 'Helvetica Neue' };
+  await addGridSlidesToPptx(ds, pptx, ctx);
+  return writePptx(pptx);
+}
+
 export const pxSize = (cfg: DrawConfig) => ({ w: Math.round(cfg.slideW * PX_PER_IN), h: Math.round(cfg.slideH * PX_PER_IN) });
+
+/* ---- Brand slide exports ---- */
+import { getTemplate, resolveSlotRect, SLIDE_W as B_SW, SLIDE_H as B_SH, RADIUS as B_RAD, type BrandSlide } from '../audit/brand-slide';
+import { renderSlideCanvas } from '../audit/brand-slide-render';
+
+async function loadDataUrl(src: string, assets: AssetsAPI, thumb?: string | null): Promise<string | null> {
+  const url = src.startsWith('asset:') ? (() => { const a = assets.get(src.slice(6)); return a ? URL.createObjectURL(a.blob) : null; })() : `/api/img?url=${encodeURIComponent(thumb || src)}`;
+  if (!url) return null;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) return null;
+    const blob = await r.blob();
+    return await new Promise<string>((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result as string); fr.onerror = rej; fr.readAsDataURL(blob); });
+  } catch { return null; }
+}
+
+/** Render a brand slide tile image to a data URL with rounded corners baked in. */
+async function renderTileImage(brand: BrandSlide, slotName: string, assets: AssetsAPI): Promise<string | null> {
+  const template = getTemplate(brand.variant);
+  const slotDef = template.find(s => s.name === slotName);
+  if (!slotDef) return null;
+  const sd = brand.slots.find(s => s.name === slotName);
+  const r = resolveSlotRect(slotDef, sd?.rect);
+  const isMotion = brand.motion?.slotName === slotName && brand.motion.gifUrl;
+  const src = isMotion ? brand.motion!.gifUrl! : (sd?.assetThumbUrl || sd?.assetUrl);
+  if (!src) return null;
+  const dataUrl = await loadDataUrl(src, assets);
+  if (!dataUrl) return null;
+  const img = new Image(); img.crossOrigin = 'anonymous'; img.src = dataUrl;
+  await img.decode().catch(() => {});
+  const cv = document.createElement('canvas'); cv.width = Math.round(r.w); cv.height = Math.round(r.h);
+  const ctx = cv.getContext('2d')!;
+  ctx.beginPath(); ctx.roundRect(0, 0, r.w, r.h, B_RAD); ctx.clip();
+  if (sd?.fit === 'contain') {
+    const s = Math.min(r.w / img.width, r.h / img.height);
+    ctx.drawImage(img, (r.w - img.width * s) / 2, (r.h - img.height * s) / 2, img.width * s, img.height * s);
+  } else {
+    const z = sd?.cropZoom ?? 1;
+    const imgAr = img.width / img.height, slotAr = r.w / r.h;
+    let sw: number, sh: number;
+    if (imgAr > slotAr) { sh = img.height / z; sw = sh * slotAr; }
+    else { sw = img.width / z; sh = sw / slotAr; }
+    const sx = (img.width - sw) * (sd?.focalX ?? 0.5), sy = (img.height - sh) * (sd?.focalY ?? 0.3);
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, r.w, r.h);
+  }
+  return cv.toDataURL('image/png');
+}
+
+/** Brand slide → PPTX: each tile as a separate element, palette as native rects. */
+export async function brandSlideToPptx(
+  brand: BrandSlide,
+  pptx: any,
+  assets: AssetsAPI,
+): Promise<void> {
+  const template = getTemplate(brand.variant);
+  const s = pptx.addSlide();
+  const SW = 13.333, SH = 7.5;
+  s.background = { color: brand.theme === 'dark' ? '000000' : 'FFFFFF' };
+
+  for (const slot of template) {
+    const sd = brand.slots.find(d => d.name === slot.name);
+    const r = resolveSlotRect(slot, sd?.rect);
+    const x = r.x / B_SW * SW, y = r.y / B_SH * SH, w = r.w / B_SW * SW, h = r.h / B_SH * SH;
+    const rad = B_RAD / B_SW * SW;
+
+    if (slot.role === 'palette') {
+      const pw = w / Math.max(1, brand.palette.length);
+      brand.palette.forEach((hex, i) => {
+        s.addShape('rect', { x: x + i * pw, y, w: pw, h, fill: { color: hex.replace('#', '') }, line: { type: 'none' }, rectRadius: i === 0 ? rad : i === brand.palette.length - 1 ? rad : 0 });
+      });
+      continue;
+    }
+
+    if (slot.role === 'logo') {
+      s.addShape('rect', { x, y, w, h, fill: { color: brand.logo.bgColor.replace('#', '') }, line: { type: 'none' }, rectRadius: rad });
+      if (brand.logo.assetUrl) {
+        const data = await loadDataUrl(brand.logo.assetUrl, assets);
+        if (data) {
+          const iw = w * 0.6, ih = h * 0.6;
+          s.addImage({ data: data.replace(/^data:/, ''), x: x + (w - iw) / 2, y: y + (h - ih) / 2, w: iw, h: ih });
+        }
+      }
+      continue;
+    }
+
+    // Image / motion tile
+    const isMotion = brand.motion?.slotName === slot.name && brand.motion.gifUrl;
+    if (isMotion) {
+      try {
+        const r2 = await fetch(brand.motion!.gifUrl!);
+        const blob = await r2.blob();
+        const data = await new Promise<string>((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result as string); fr.onerror = rej; fr.readAsDataURL(blob); });
+        s.addImage({ data: data.replace(/^data:/, ''), x, y, w, h, rounding: true });
+      } catch { /* skip motion */ }
+      continue;
+    }
+
+    if (sd?.assetUrl) {
+      const data = await renderTileImage(brand, slot.name, assets);
+      if (data) s.addImage({ data: data.replace(/^data:/, ''), x, y, w, h });
+    } else if (slot.hasTileBg) {
+      s.addShape('rect', { x, y, w, h, fill: { color: brand.theme === 'dark' ? '141414' : 'F0F0F0' }, line: { type: 'none' }, rectRadius: rad });
+    }
+  }
+}
+
+/** Brand slide → SVG with editable structure: each tile as a <image> with rounded clipPath, palette as <rect>s. */
+export async function brandSlideToSvg(brand: BrandSlide, assets: AssetsAPI): Promise<string> {
+  const template = getTemplate(brand.variant);
+  const parts: string[] = [`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${B_SW} ${B_SH}" width="${B_SW}" height="${B_SH}">`];
+  parts.push(`<defs>`);
+  for (const slot of template) {
+    const sd = brand.slots.find(d => d.name === slot.name);
+    const r = resolveSlotRect(slot, sd?.rect);
+    parts.push(`<clipPath id="clip-${slot.name}"><rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="${B_RAD}"/></clipPath>`);
+  }
+  parts.push(`</defs>`);
+  parts.push(`<rect width="${B_SW}" height="${B_SH}" fill="${brand.theme === 'dark' ? '#000' : '#fff'}"/>`);
+
+  for (const slot of template) {
+    const sd = brand.slots.find(d => d.name === slot.name);
+    const r = resolveSlotRect(slot, sd?.rect);
+
+    if (slot.role === 'palette') {
+      const pw = r.w / Math.max(1, brand.palette.length);
+      parts.push(`<g clip-path="url(#clip-${slot.name})">`);
+      brand.palette.forEach((hex, i) => parts.push(`<rect x="${r.x + i * pw}" y="${r.y}" width="${pw}" height="${r.h}" fill="${hex}"/>`));
+      parts.push(`</g>`);
+      continue;
+    }
+
+    if (slot.role === 'logo') {
+      parts.push(`<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="${B_RAD}" fill="${brand.logo.bgColor}"/>`);
+      if (brand.logo.assetUrl) {
+        const data = await loadDataUrl(brand.logo.assetUrl, assets);
+        if (data) {
+          const iw = r.w * 0.6, ih = r.h * 0.6;
+          parts.push(`<image href="${data}" x="${r.x + (r.w - iw) / 2}" y="${r.y + (r.h - ih) / 2}" width="${iw}" height="${ih}"/>`);
+        }
+      }
+      continue;
+    }
+
+    if (sd?.assetUrl) {
+      const data = await renderTileImage(brand, slot.name, assets);
+      if (data) parts.push(`<image clip-path="url(#clip-${slot.name})" href="${data}" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}"/>`);
+    } else if (slot.hasTileBg) {
+      parts.push(`<rect x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}" rx="${B_RAD}" fill="${brand.theme === 'dark' ? '#141414' : '#f0f0f0'}"/>`);
+    }
+  }
+  parts.push(`</svg>`);
+  return parts.join('\n');
+}
+
+/** Brand slide → PNG at 2x (3840×2160). */
+export async function brandSlideToPng(brand: BrandSlide): Promise<Blob> {
+  const canvas = await renderSlideCanvas(brand, 2);
+  return new Promise<Blob>((res, rej) => canvas.toBlob(b => b ? res(b) : rej(new Error('PNG encode failed')), 'image/png'));
+}
+
+/** Brand slide → PDF page. */
+export async function brandSlideToPdf(brand: BrandSlide, doc: any): Promise<void> {
+  const canvas = await renderSlideCanvas(brand, 2);
+  const data = canvas.toDataURL('image/png');
+  const W = 13.333, H = 7.5;
+  doc.addImage(data, 'PNG', 0, 0, W, H);
+}
