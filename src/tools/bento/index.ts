@@ -791,14 +791,12 @@ export const tool: LatheTool = {
       cropBar = document.createElement('div');
       cropBar.className = 'bt__crop-bar';
       cropBar.innerHTML = `<span class="bt__crop-label">Crop</span>`;
-      const zoomSlider = document.createElement('input');
-      Object.assign(zoomSlider, { type: 'range', min: '50', max: '300', step: '5', value: String(Math.round((slotData.cropZoom ?? 1) * 100)) });
-      zoomSlider.className = 'bt__crop-zoom';
-      zoomSlider.addEventListener('input', () => {
-        slotData.cropZoom = Number(zoomSlider.value) / 100;
+      const zoomCtrl = slider({ label: 'Zoom', min: 50, max: 300, value: Math.round((slotData.cropZoom ?? 1) * 100), unit: '%', onChange: v => {
+        slotData.cropZoom = v / 100;
         updateBrandTileCSS(slotData);
-      });
-      cropBar.appendChild(zoomSlider);
+      }});
+      zoomCtrl.el.classList.add('bt__crop-zoom');
+      cropBar.appendChild(zoomCtrl.el);
       const cancelBtn = document.createElement('button'); cancelBtn.type = 'button';
       cancelBtn.className = 'bt__crop-btn'; cancelBtn.textContent = 'Cancel';
       cancelBtn.addEventListener('click', () => cancelCrop());
@@ -860,7 +858,7 @@ export const tool: LatheTool = {
       if (!slotData) return;
       slotData.cropZoom = Math.max(0.5, Math.min(3, (slotData.cropZoom ?? 1) + (e.deltaY > 0 ? -0.1 : 0.1)));
       updateBrandTileCSS(slotData);
-      if (cropBar) { const z = cropBar.querySelector<HTMLInputElement>('.bt__crop-zoom'); if (z) z.value = String(Math.round(slotData.cropZoom * 100)); }
+      if (cropBar) { const z = cropBar.querySelector<HTMLInputElement>('.bt__crop-zoom input[type="range"]'); if (z) { z.value = String(Math.round(slotData.cropZoom * 100)); z.dispatchEvent(new Event('input')); } }
     }, { passive: false });
 
     /* ---------------- exports ---------------- */
