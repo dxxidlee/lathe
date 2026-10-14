@@ -51,8 +51,12 @@ export function renderSlideDOM(slide: BrandSlide): HTMLElement {
         img.style.cssText = `width:100%;height:100%;object-fit:${slotData.fit};object-position:${slotData.focalX * 100}% ${slotData.focalY * 100}%;`;
         img.onerror = () => { img.src = proxied(slotData.assetUrl!); };
         tile.appendChild(img);
-      } else {
-        tile.style.background = slot.hasTileBg ? (slide.theme === 'dark' ? '#141414' : '#f0f0f0') : 'transparent';
+      } else if (slot.hasTileBg) {
+        tile.style.background = slide.theme === 'dark' ? '#141414' : '#f0f0f0';
+        const plus = document.createElement('div');
+        plus.style.cssText = 'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.15);font-size:32px;';
+        plus.textContent = '+';
+        tile.appendChild(plus);
       }
     }
 

@@ -49,13 +49,14 @@ const BASE_SLOTS: SlotRect[] = [
 
   // Middle row (y=308, h=392)
   { name: 'cutout_1',    x: 0,    y: 308, w: 60,  h: 392, ar: 0.15, hasTileBg: false, role: 'cutout' },
-  { name: 'logo',        x: 71,   y: 308, w: 493, h: 392, ar: 1.26, hasTileBg: true,  role: 'logo' },
-  { name: 'mid_sq1',     x: 575,  y: 308, w: 219, h: 179, ar: 1.22, hasTileBg: true,  role: 'image' },
-  { name: 'mid_sq2',     x: 805,  y: 308, w: 219, h: 179, ar: 1.22, hasTileBg: true,  role: 'image' },
+  { name: 'logo',        x: 71,   y: 308, w: 560, h: 392, ar: 1.43, hasTileBg: true,  role: 'logo' },
+  { name: 'mid_sq1',     x: 642,  y: 308, w: 186, h: 179, ar: 1.04, hasTileBg: true,  role: 'image' },
+  { name: 'mid_sq2',     x: 839,  y: 308, w: 185, h: 179, ar: 1.03, hasTileBg: true,  role: 'image' },
   { name: 'mid_tall',    x: 1035, y: 308, w: 219, h: 392, ar: 0.56, hasTileBg: true,  role: 'image' },
-  { name: 'mid_far',     x: 1265, y: 308, w: 631, h: 392, ar: 1.61, hasTileBg: true,  role: 'image' },
-  { name: 'mid_lower1',  x: 575,  y: 498, w: 219, h: 202, ar: 1.08, hasTileBg: true,  role: 'image' },
-  { name: 'mid_lower2',  x: 805,  y: 498, w: 219, h: 202, ar: 1.08, hasTileBg: true,  role: 'image' },
+  { name: 'mid_wide',    x: 1265, y: 308, w: 306, h: 392, ar: 0.78, hasTileBg: true,  role: 'image' },
+  { name: 'mid_far',     x: 1582, y: 308, w: 314, h: 392, ar: 0.80, hasTileBg: true,  role: 'image' },
+  { name: 'mid_lower1',  x: 642,  y: 498, w: 186, h: 202, ar: 0.92, hasTileBg: true,  role: 'image' },
+  { name: 'mid_lower2',  x: 839,  y: 498, w: 185, h: 202, ar: 0.92, hasTileBg: true,  role: 'image' },
 
   // Bottom row (y=711, h=345)
   { name: 'cutout_2',    x: 0,    y: 711, w: 60,  h: 345, ar: 0.17, hasTileBg: false, role: 'cutout' },
