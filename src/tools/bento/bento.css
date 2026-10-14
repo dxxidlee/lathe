@@ -3,15 +3,30 @@
 .bt__slide { position: relative; outline: 1px solid var(--border); }
 .bt__svg, .bt__svg svg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 .bt__overlay { position: absolute; inset: 0; }
-.bt__tile { position: absolute; cursor: grab; touch-action: none; }
-.bt__tile:hover { outline: 1px solid var(--text-3); }
-.bt__tile.is-selected { outline: calc(1px * 2) solid var(--accent); z-index: 1; }
-.bt__tile.is-dragging { opacity: var(--o-64); cursor: grabbing; z-index: 2; }
+.bt__tile { position: absolute; cursor: default; touch-action: none; }
+.bt__tile:hover { outline: 1px solid var(--accent); z-index: 1; }
+.bt__tile.is-selected { outline: 1px solid var(--accent); z-index: 2; }
+.bt__tile.is-dragging { opacity: var(--o-64); cursor: grabbing; z-index: 3; }
 .bt__tile.is-locked::after { content: ""; position: absolute; inset: 0; outline: 1px dashed var(--text-3); pointer-events: none; }
 .bt__lock { position: absolute; top: var(--space-1); left: var(--space-1); padding: 0 var(--space-2); background: rgba(0,0,0,0.64); color: var(--text-1); font-size: var(--text-meta); border-radius: var(--radius-control); }
 .bt__handle {
-  position: absolute; right: calc(var(--space-2) * -1); bottom: calc(var(--space-2) * -1);
-  width: var(--space-4); height: var(--space-4); background: var(--accent); border-radius: var(--radius-control); cursor: nwse-resize;
+  position: absolute; width: 8px; height: 8px;
+  background: #fff; border: 1px solid var(--accent); box-sizing: border-box;
+  pointer-events: auto; z-index: 4;
+}
+.bt__handle[data-handle="nw"] { top: -4px; left: -4px; cursor: nwse-resize; }
+.bt__handle[data-handle="n"]  { top: -4px; left: 50%; margin-left: -4px; cursor: ns-resize; }
+.bt__handle[data-handle="ne"] { top: -4px; right: -4px; cursor: nesw-resize; }
+.bt__handle[data-handle="e"]  { top: 50%; margin-top: -4px; right: -4px; cursor: ew-resize; }
+.bt__handle[data-handle="se"] { bottom: -4px; right: -4px; cursor: nwse-resize; }
+.bt__handle[data-handle="s"]  { bottom: -4px; left: 50%; margin-left: -4px; cursor: ns-resize; }
+.bt__handle[data-handle="sw"] { bottom: -4px; left: -4px; cursor: nesw-resize; }
+.bt__handle[data-handle="w"]  { top: 50%; margin-top: -4px; left: -4px; cursor: ew-resize; }
+.bt__dim {
+  position: absolute; left: 50%; bottom: -22px; transform: translateX(-50%);
+  padding: 1px 6px; background: var(--accent); color: var(--accent-text);
+  font: 500 10px/14px var(--font); font-variant-numeric: tabular-nums;
+  border-radius: 3px; white-space: nowrap; pointer-events: none;
 }
 .bt__empty {
   position: absolute; inset: 0; display: grid; place-items: center; padding: var(--space-8);

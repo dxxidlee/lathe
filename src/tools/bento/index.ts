@@ -161,6 +161,18 @@ export const tool: LatheTool = {
     inspector.append(deckSec.el, slideSec.el, addSec.el, tileSec.el, advSec.el, outSec.el);
 
     /* ---------------- render ---------------- */
+    const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const;
+    function addSelectionChrome(el: HTMLElement, wPx: number, hPx: number) {
+      for (const h of HANDLES) {
+        const d = document.createElement('div');
+        d.className = 'bt__handle'; d.dataset.handle = h;
+        el.appendChild(d);
+      }
+      const dim = document.createElement('div');
+      dim.className = 'bt__dim';
+      dim.textContent = `${Math.round(wPx)} × ${Math.round(hPx)}`;
+      el.appendChild(dim);
+    }
     let brandDomEl: HTMLElement | null = null;
     const updateBrandTileCSS = (sd: { name: string; focalX: number; focalY: number; cropZoom: number; fit: string }) => {
       if (!brandDomEl) return;
@@ -211,6 +223,7 @@ export const tool: LatheTool = {
             lk.textContent = slot.role === 'logo' ? 'Logo' : 'Palette';
             el.appendChild(lk);
           }
+          if (sel === slot.name) addSelectionChrome(el, slot.w, slot.h);
           return el;
         }));
         emptyEl.hidden = true;
@@ -227,7 +240,7 @@ export const tool: LatheTool = {
           el.style.width = `${b.w / cfg.slideW * 100}%`; el.style.height = `${b.h / cfg.slideH * 100}%`;
           el.setAttribute('aria-label', `${t.type} tile`);
           if (t.locked) { const lk = document.createElement('span'); lk.className = 'bt__lock'; lk.textContent = 'Locked'; el.appendChild(lk); }
-          if (t.id === sel) { const h = document.createElement('div'); h.className = 'bt__handle'; h.dataset.handle = '1'; h.setAttribute('aria-label', 'Resize'); el.appendChild(h); }
+          if (t.id === sel && t.rect) addSelectionChrome(el, t.rect.w, t.rect.h);
           return el;
         })));
       }
