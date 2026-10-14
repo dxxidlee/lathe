@@ -187,7 +187,9 @@ import { getTemplate, resolveSlotRect, SLIDE_W as B_SW, SLIDE_H as B_SH, RADIUS 
 import { renderSlideCanvas } from '../audit/brand-slide-render';
 
 async function loadDataUrl(src: string, assets: AssetsAPI, thumb?: string | null): Promise<string | null> {
-  const url = src.startsWith('asset:') ? (() => { const a = assets.get(src.slice(6)); return a ? URL.createObjectURL(a.blob) : null; })() : `/api/img?url=${encodeURIComponent(thumb || src)}`;
+  const isAsset = src.startsWith('asset:');
+  const blobUrl = isAsset ? (() => { const a = assets.get(src.slice(6)); return a ? URL.createObjectURL(a.blob) : null; })() : null;
+  const url = blobUrl ?? `/api/img?url=${encodeURIComponent(thumb || src)}`;
   if (!url) return null;
   try {
     const r = await fetch(url);
@@ -195,6 +197,7 @@ async function loadDataUrl(src: string, assets: AssetsAPI, thumb?: string | null
     const blob = await r.blob();
     return await new Promise<string>((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result as string); fr.onerror = rej; fr.readAsDataURL(blob); });
   } catch { return null; }
+  finally { if (blobUrl) URL.revokeObjectURL(blobUrl); }
 }
 
 /** Render a brand slide tile image to a data URL with rounded corners baked in. */
