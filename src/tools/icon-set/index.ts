@@ -88,7 +88,16 @@ export const tool: LatheTool = {
     const oSec = section('Export');
     const zipBtn = button({ label: 'Export icon set (.zip)', primary: true, onClick: () => void exportZip() });
     const send = sendControl({ from: 'icons', type: () => (rendered.length ? 'image/png' : null), get: async () => { const r = rendered.find(x => x.size === 512 && x.kind === 'png') ?? rendered[rendered.length - 1]; return r ? assets.add(r.blob, { name: r.name, source: 'export', origin: 'icons' }) : null; }, emit });
-    oSec.body.append(zipBtn, note('PNG sizes, favicon.ico, favicon.svg, apple-touch-icon.png, a maskable icon, manifest.webmanifest and an HTML snippet.'), send.el);
+    oSec.body.append(zipBtn, note('PNG sizes, favicon.ico, favicon.svg, apple-touch-icon.png, a maskable icon, manifest.webmanifest and an HTML snippet.'), send.el,
+      button({ label: 'Save to Library', onClick: async () => {
+        const { supabase } = await import('../../lib/supabase');
+        if (!supabase) { emit('toast', 'Sign in to save'); return; }
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { emit('toast', 'Sign in to save'); return; }
+        const { cloudSaveItem } = await import('../../lib/cloud-library');
+        await cloudSaveItem(user.id, { type: 'image', name: source?.name ?? 'icon set', toolId: 'icons' });
+        emit('toast', 'Saved to Library');
+      }}));
     inspector.append(srcSec.el, lSec.el, advSec.el, oSec.el);
 
     /* ---------------- rendering ---------------- */

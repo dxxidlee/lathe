@@ -82,7 +82,16 @@ export const tool: LatheTool = {
     const oRow = document.createElement('div'); oRow.className = 'l-row';
     oRow.append(button({ label: 'Specimen PDF', primary: true, onClick: () => void exportPdf() }), button({ label: 'CSS scale tokens', onClick: () => void exportCss() }));
     const send = sendControl({ from: 'specimen', type: () => (source ? source.type || 'font/ttf' : null), get: async () => source ?? null, emit });
-    oSec.body.append(oRow, note('The PDF draws every glyph from the font’s own outlines, so it needs no font installed to print.'), send.el);
+    oSec.body.append(oRow, note('The PDF draws every glyph from the font\'s own outlines, so it needs no font installed to print.'), send.el,
+      button({ label: 'Save to Library', onClick: async () => {
+        const { supabase } = await import('../../lib/supabase');
+        if (!supabase) { emit('toast', 'Sign in to save'); return; }
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { emit('toast', 'Sign in to save'); return; }
+        const { cloudSaveItem } = await import('../../lib/cloud-library');
+        await cloudSaveItem(user.id, { type: 'image', name: info?.family ?? 'specimen', toolId: 'specimen' });
+        emit('toast', 'Saved to Library');
+      }}));
     const advSec = advancedSection();
     advSec.body.append(
       field({ label: 'Pangram', value: d.pangram as string, onChange: v => { (d as Record<string, unknown>).pangram = v || d.pangram; render(); } }).el,
@@ -160,7 +169,7 @@ export const tool: LatheTool = {
         grid.append(b);
       }
       const wrap = el('div', 'sp-gl');
-      wrap.append(el('p', 'sp__caption', `${n} of ${f.glyphs} glyphs, drawn from the font’s outlines.`), grid);
+      wrap.append(el('p', 'sp__caption', `${n} of ${f.glyphs} glyphs, drawn from the font's outlines.`), grid);
       return wrap;
     }
     function waterfall() {

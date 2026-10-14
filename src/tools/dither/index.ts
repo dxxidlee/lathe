@@ -118,7 +118,16 @@ export const tool: LatheTool = {
     const svgBtn = button({ label: 'Export SVG', onClick: () => void exportSvg() });
     const oRow = document.createElement('div'); oRow.className = 'l-row'; oRow.append(pngBtn, svgBtn);
     const send = sendControl({ from: 'dither', type: () => (pixels ? 'image/png' : null), get: () => resultAsset(), emit });
-    oSec.body.append(oRow, note('PNG at the source size. SVG for halftones: dots and bands as vector paths.'), send.el);
+    oSec.body.append(oRow, note('PNG at the source size. SVG for halftones: dots and bands as vector paths.'), send.el, button({ label: 'Save to Library', onClick: async () => {
+      if (!pixels) { emit('toast', 'Dither an image first'); return; }
+      const { supabase } = await import('../../lib/supabase');
+      if (!supabase) { emit('toast', 'Sign in to save'); return; }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { emit('toast', 'Sign in to save'); return; }
+      const { cloudSaveItem } = await import('../../lib/cloud-library');
+      await cloudSaveItem(user.id, { type: 'image', name: 'Dither export', toolId: 'dither' });
+      emit('toast', 'Saved to Library');
+    }}));
     inspector.append(srcSec.el, mSec.el, cSec.el, advSec.el, vSec.el, oSec.el);
 
     function sync() {

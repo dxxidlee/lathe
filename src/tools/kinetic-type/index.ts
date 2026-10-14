@@ -99,7 +99,15 @@ export const tool: LatheTool = {
     const oStats = statList();
     let lastBlob: Blob | null = null, lastName = '';
     const send = sendControl({ from: 'kinetic-type', type: () => (lastBlob ? lastBlob.type : null), get: async () => (lastBlob ? assets.add(lastBlob, { name: lastName, source: 'export', origin: 'kinetic-type' }) : null), emit });
-    oSec.body.append(oRow, oStats.el, note(`One full cycle at ${fps} fps. GIF ${d.gifWidth} px wide; WebM at the canvas size, recorded in real time.`), send.el);
+    oSec.body.append(oRow, oStats.el, note(`One full cycle at ${fps} fps. GIF ${d.gifWidth} px wide; WebM at the canvas size, recorded in real time.`), send.el, button({ label: 'Save to Library', onClick: async () => {
+      const { supabase } = await import('../../lib/supabase');
+      if (!supabase) { emit('toast', 'Sign in to save'); return; }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { emit('toast', 'Sign in to save'); return; }
+      const { cloudSaveItem } = await import('../../lib/cloud-library');
+      await cloudSaveItem(user.id, { type: 'image', name: `Kinetic · ${s.text.slice(0, 20)}`, toolId: 'kinetic-type' });
+      emit('toast', 'Saved to Library');
+    }}));
     inspector.append(tSec.el, mSec.el, lSec.el, advSec.el, pSec.el, oSec.el);
 
     /* ---------------- fonts ---------------- */

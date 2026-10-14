@@ -135,7 +135,15 @@ export const tool: LatheTool = {
       button({ label: 'Randomize', onClick: () => randomize() }),
     );
     const status = note(''); status.setAttribute('role', 'status');
-    out.body.append(row, status);
+    out.body.append(row, status, button({ label: 'Save to Library', onClick: async () => {
+      const { supabase } = await import('../../lib/supabase');
+      if (!supabase) { emit('toast', 'Sign in to save'); return; }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { emit('toast', 'Sign in to save'); return; }
+      const { cloudSaveItem } = await import('../../lib/cloud-library');
+      await cloudSaveItem(user.id, { type: 'image', name: `Gradient · ${S.fam}`, toolId: 'gradient' });
+      emit('toast', 'Saved to Library');
+    }}));
     inspector.append(setup.el, pal.el, motion.el, advSec.el, out.el);
 
     const setStatus = (s: string) => { status.textContent = s; updateStatusbar(s); };
