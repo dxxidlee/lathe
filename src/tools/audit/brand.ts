@@ -133,15 +133,18 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
     }
     if (social?.youtube?.videos) {
       for (const v of social.youtube.videos) {
-        const thumb = v.stills[0];
-        if (!thumb) continue;
-        items.push({
-          id: `yt:${v.id}`,
-          url: stillSrc(thumb),
-          thumbUrl: stillSrc(thumb),
-          source: 'youtube',
-          isVideo: false,
-        });
+        // Show each video's best still (first one, highest res)
+        for (let si = 0; si < v.stills.length; si++) {
+          const still = v.stills[si];
+          if (!still) continue;
+          items.push({
+            id: `yt:${v.id}:${si}`,
+            url: stillSrc(still),
+            thumbUrl: stillSrc(still),
+            source: 'youtube',
+            isVideo: false,
+          });
+        }
       }
     }
     for (const img of siteImages()) {
@@ -280,7 +283,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
       // Video autoplay (muted, looped, play only when visible)
       if (item.isVideo && item.videoUrl) {
         const video = document.createElement('video');
-        video.src = proxied(item.videoUrl);
+        video.src = item.source === 'instagram' ? igSrc(item.videoUrl) : proxied(item.videoUrl);
         video.muted = true;
         video.loop = true;
         video.playsInline = true;
@@ -316,7 +319,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
       loadMoreBtn.textContent = 'Load more';
       loadMoreBtn.disabled = false;
     });
-    loadMoreRow.hidden = !nextIgCursor;
+    loadMoreRow.hidden = !nextIgCursor || (contentFilter !== 'all' && contentFilter !== 'instagram');
     loadMoreRow.appendChild(loadMoreBtn);
 
     if (!filtered.length) {
