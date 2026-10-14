@@ -284,7 +284,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
         toggleSelection(item.id);
       });
 
-      // Video autoplay (muted, looped, play only when visible)
+      // Videos: autoplay muted+looped, fall back to poster on expired CDN URL
       if (item.isVideo && item.videoUrl) {
         const video = document.createElement('video');
         const videoSrc = item.source === 'instagram' ? igSrc(item.videoUrl) : proxied(item.videoUrl);
@@ -295,9 +295,15 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
         video.preload = 'metadata';
         video.className = 'ab__content-video';
         video.poster = posterSrc;
-        // Set src after appending to DOM so IntersectionObserver can control playback
         video.dataset.src = videoSrc;
-        card.append(video, selBtn);
+        video.addEventListener('error', () => {
+          // CDN URL expired — show poster image instead
+          video.style.display = 'none';
+          img.src = posterSrc;
+          img.style.display = '';
+        }, { once: true });
+        img.style.display = 'none';
+        card.append(video, img, selBtn);
         contentVideoObserver.observe(video);
       } else {
         card.append(img, selBtn);
