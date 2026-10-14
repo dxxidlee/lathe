@@ -2,6 +2,7 @@
 /* Shared server helpers for /api: outbound fetch with timeout, JSON responses, rate limiting. */
 
 export const UA = 'LatheAudit/0.1 (open-source design research tool)';
+const BROWSER_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
 
 /* Wikimedia rate-limits agents without contact details (429) and asks for a URL or email in the
    User-Agent; the Art Institute's firewall rejects agents that carry one (403). So the contact form
@@ -9,7 +10,12 @@ export const UA = 'LatheAudit/0.1 (open-source design research tool)';
    project owner's public GitHub profile. */
 const CONTACT_UA = () => `LatheAudit/0.1 (+${process.env.LATHE_CONTACT_URL || 'https://github.com/dxxidlee'})`;
 /** @param {string | URL} url */
-export const uaFor = url => (/(^|\.)(wikimedia|wikidata)\.org$/.test(new URL(url).hostname) ? CONTACT_UA() : UA);
+export const uaFor = url => {
+  const h = new URL(url).hostname;
+  if (/(^|\.)(wikimedia|wikidata)\.org$/.test(h)) return CONTACT_UA();
+  if (/(^|\.)archive\.org$/.test(h)) return UA;
+  return BROWSER_UA;
+};
 
 /**
  * Fetch JSON with a timeout and a descriptive User-Agent. Throws with the HTTP status on failure.

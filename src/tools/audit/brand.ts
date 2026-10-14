@@ -18,8 +18,8 @@ interface ShotState { status: 'loading' | 'done' | 'error'; label: string; pageU
 /** The brand's name: og:site_name, the company Wikidata matched, Brandfetch's, or the title's first part ("Stripe | Payments" → "Stripe"). */
 export function brandName(cap: BrandCapture): string {
   const s = cap.site;
-  const fromTitle = s.title?.split(/\s+[|–—·:-]\s+/)[0]?.trim();
-  return s.siteName || cap.company?.name || cap.brandfetch?.name || (fromTitle && fromTitle.length <= 32 ? fromTitle : '') || cap.domain;
+  const fromTitle = s?.title?.split(/\s+[|–—·:-]\s+/)[0]?.trim();
+  return s?.siteName || cap.company?.name || cap.brandfetch?.name || (fromTitle && fromTitle.length <= 32 ? fromTitle : '') || cap.domain;
 }
 /** Official files first, then SVGs named as logos (or in the home link), then app icons. */
 const logoRank = (l: LogoCandidate) => l.kind === 'brandfetch' ? 0 : l.kind === 'svg' && !/header$/.test(l.label) ? 1
@@ -375,7 +375,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
 
     const slide = createSlide(
       candidates, logoUrl, logoIsLight,
-      cap.site.colors.map((c: any) => c.hex),
+      (cap.site?.colors ?? []).map((c: any) => c.hex),
       cap.brandfetch?.colors?.map((c: any) => c.hex) ?? [],
     );
 
@@ -458,20 +458,26 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
     capturing = false;
     if (signal.aborted) return;
     if (!cap) { render(); return; }
+    if (cap.siteError && !cap.site && !cap.brandfetch) { capError = cap.siteError; cap = null; render(); return; }
     defaultLogos();
     obs = await restoreObservations();
     render();
     const site = cap.site;
-    const fallbackPage = site.snapshot ? `https://web.archive.org/web/${site.snapshot.timestamp}if_/${site.url}` : null;
-    const capturedOn = new Date(cap.capturedAt).toISOString().slice(0, 10);
-    const homeCredit = (device: string) => ({ title: `${cap!.domain} homepage, ${device}`, source: 'Screenshot via Microlink', license: 'Site © its owner; captured for research', url: site.url, date: capturedOn });
-    await Promise.all([
-      shoot('desktop', site.url, 'desktop', 'Homepage, desktop', homeCredit('desktop'), signal, fallbackPage),
-      shoot('mobile', site.url, 'mobile', 'Homepage, mobile', homeCredit('mobile'), signal, fallbackPage),
-      loadTimeline(signal),
-      loadSocial(signal),
-      loadInstagram(signal),
-    ]);
+    const work: Promise<void>[] = [loadInstagram(signal)];
+    if (site) {
+      const fallbackPage = site.snapshot ? `https://web.archive.org/web/${site.snapshot.timestamp}if_/${site.url}` : null;
+      const capturedOn = new Date(cap.capturedAt).toISOString().slice(0, 10);
+      const homeCredit = (device: string) => ({ title: `${cap!.domain} homepage, ${device}`, source: 'Screenshot via Microlink', license: 'Site © its owner; captured for research', url: site.url, date: capturedOn });
+      work.push(
+        shoot('desktop', site.url, 'desktop', 'Homepage, desktop', homeCredit('desktop'), signal, fallbackPage),
+        shoot('mobile', site.url, 'mobile', 'Homepage, mobile', homeCredit('mobile'), signal, fallbackPage),
+        loadTimeline(signal),
+        loadSocial(signal),
+      );
+    } else {
+      work.push(loadSocial(signal));
+    }
+    await Promise.all(work);
   }
 
   /** The brand's Instagram: the account Brandfetch links (or the site does, or a handle typed for this
@@ -479,7 +485,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   async function loadInstagram(signal: AbortSignal) {
     if (!cap) return;
     const typed = settings.get<Record<string, string>>('igHandles', {})[cap.domain];
-    const fromBf = igHandle(cap.brandfetch?.social?.instagram), fromSite = igHandle(cap.site.social?.instagram);
+    const fromBf = igHandle(cap.brandfetch?.social?.instagram), fromSite = igHandle(cap.site?.social?.instagram);
     igName = typed ?? fromBf ?? fromSite;
     igFrom = typed ? 'typed' : fromBf ? 'Brandfetch' : fromSite ? 'site' : null;
     if (!igName) { render(); return; }
@@ -514,15 +520,15 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
     // Search YouTube with the name as typed (or the brand's name, without ® and the like, for a domain).
     const clean = (t: string) => t.replace(/[®™©]/g, '').replace(/\([^)]*\)/g, '').replace(/\s+/g, ' ').trim();
     const name = /\.[a-z]{2,}(\/|$)/i.test(query) ? clean(brandName(cap)) : clean(query);
-    const few = (cap.site.images ?? []).length < 4;
+    const few = (cap.site?.images ?? []).length < 4;
     const [so, re] = await Promise.allSettled([
-      fetchSocial(name, cap.site.social?.youtube, { videos: 100, cacheHours: d.cacheHours as number }, signal),
-      few ? fetchRendered(cap.site.url, d.cacheHours as number, signal) : Promise.resolve({ images: [], logos: [] }),
+      fetchSocial(name, cap.site?.social?.youtube, { videos: 100, cacheHours: d.cacheHours as number }, signal),
+      few && cap.site ? fetchRendered(cap.site.url, d.cacheHours as number, signal) : Promise.resolve({ images: [], logos: [] }),
     ]);
     if (signal.aborted) return;
     if (so.status === 'fulfilled') social = so.value; else socialError = so.reason instanceof Error ? so.reason.message : String(so.reason);
     if (re.status === 'fulfilled') {
-      const known = new Set((cap.site.images ?? []).map(i => i.url));
+      const known = new Set((cap.site?.images ?? []).map(i => i.url));
       rendered = re.value.images.filter(i => !known.has(i.url));
       renderedLogos = (await Promise.all(re.value.logos.map(u => logoFromUrl(u, 'Logo in the rendered page')))).filter((x): x is LogoCandidate => !!x);
       if (renderedLogos.length && !logosTouched) { pickedLogos.clear(); defaultLogos(); }
@@ -547,7 +553,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
     vids.forEach(v => add(`yt:${v.id}:1`));
     picks = out;
   }
-  const siteImages = (): SiteImage[] => [...(cap?.site.images ?? []), ...rendered];
+  const siteImages = (): SiteImage[] => [...(cap?.site?.images ?? []), ...rendered];
   const stillSrc = (st: { url: string; fallback: string[] }) => `/api/img?url=${encodeURIComponent(st.url)}${st.fallback.map(f => `&fallback=${encodeURIComponent(f)}`).join('')}`;
   const siteSrc = (url: string) => `/api/fetch?url=${encodeURIComponent(url)}`;
   const togglePick = (k: string) => { picksTouched = true; picks = picks.includes(k) ? picks.filter(x => x !== k) : [...picks, k]; render(); };
@@ -583,6 +589,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   async function loadTimeline(signal: AbortSignal) {
     if (!cap) return;
     timelineLoading = true; render();
+    if (!cap.site) { timelineLoading = false; render(); return; }
     try { timeline = await fetchTimeline(cap.site.host, { snapshots: d.timelineSnapshots as number, span: d.timelineSpan as number, cacheHours: d.cacheHours as number }, signal); }
     catch (e) { if (!signal.aborted) timelineError = e instanceof Error ? e.message : String(e); }
     timelineLoading = false;
@@ -602,7 +609,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
 
   /* ---------------- logos ---------------- */
   // Rendered logos arrive last, so they go last: indices of logos already picked stay put.
-  const allLogos = (): LogoCandidate[] => [...(cap?.brandfetch?.logos ?? []), ...(cap?.site.logos ?? []), ...renderedLogos];
+  const allLogos = (): LogoCandidate[] => [...(cap?.brandfetch?.logos ?? []), ...(cap?.site?.logos ?? []), ...renderedLogos];
   function defaultLogos() {
     allLogos().map((l, i) => ({ l, i })).sort((a, b) => logoRank(a.l) - logoRank(b.l)).slice(0, 3).forEach(({ i }) => pickedLogos.add(i));
   }
@@ -611,7 +618,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   function declaredMatch(hex: string): { hex: string; de: number } | null {
     const lab = hexToOklab(hex); if (!lab || !cap) return null;
     let best: { hex: string; de: number } | null = null;
-    for (const h of cap.site.declared ?? cap.site.colors.map(c => c.hex)) {
+    for (const h of cap.site?.declared ?? cap.site?.colors.map(c => c.hex) ?? []) {
       const l2 = hexToOklab(h); if (!l2) continue;
       const de = deltaE(lab, l2);
       if (!best || de < best.de) best = { hex: h, de };
@@ -672,7 +679,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
       kitLogoWrap.style.color = 'var(--text-3)';
     }
     brandPalette = buildPalette(
-      cap.site.colors.map(c => c.hex),
+      (cap.site?.colors ?? []).map(c => c.hex),
       cap.brandfetch?.colors?.map(c => c.hex) ?? []
     );
     const kitPalette = el('div', 'ab__kit-palette');
@@ -724,16 +731,16 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   }
   function paletteSection() {
     const s = cap!.site;
-    const sec = block('Palette', `${s.colorStats.unique} colors in ${s.colorStats.declarations} declarations`);
+    const sec = block('Palette', s ? `${s.colorStats.unique} colors in ${s.colorStats.declarations} declarations` : 'From Brandfetch');
     const grid = el('div', 'ab-pal');
-    for (const c of s.colors) {
+    for (const c of s?.colors ?? []) {
       const sw = el('div', 'ab-pal__sw'); sw.dataset.hex = c.hex;
       const chip = el('span', 'ab-pal__chip'); chip.style.background = c.hex;
       sw.append(chip, el('span', 'ab-pal__hex', c.hex), el('span', 'ab-pal__meta', `${Math.round(c.share * 100)}% · ${c.count}×`));
       if (c.vars.length) sw.append(el('span', 'ab-pal__vars', c.vars.join(' ')));
       grid.append(sw);
     }
-    if (!s.colors.length) grid.append(note('No colors found in the CSS.'));
+    if (!s?.colors.length) grid.append(note(s ? 'No colors found in the CSS.' : 'Site not captured — showing Brandfetch data.'));
     sec.append(el('h4', 'ab__sub', 'Declared in CSS'), grid);
     const desk = shots.get('desktop');
     if (desk?.swatches) {
@@ -760,16 +767,16 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   }
   function typeSection() {
     const s = cap!.site;
-    const sec = block('Typography', s.googleFonts.length || s.adobeKits.length ? [s.googleFonts.length ? 'Google Fonts' : '', s.adobeKits.length ? 'Adobe Fonts' : ''].filter(Boolean).join(' · ') : undefined);
+    const sec = block('Typography', s?.googleFonts.length || s?.adobeKits.length ? [s.googleFonts.length ? 'Google Fonts' : '', s.adobeKits.length ? 'Adobe Fonts' : ''].filter(Boolean).join(' · ') : undefined);
     const list = el('div', 'ab-type');
-    for (const t of s.typefaces) {
+    for (const t of s?.typefaces ?? []) {
       const r = el('div', 'ab-type__row');
       r.append(el('span', 'ab-type__fam', t.family), el('span', 'ab-type__src', t.source),
         el('span', 'ab-type__w', t.weights.length ? t.weights.join(' / ') : '—'), el('span', 'ab-type__uses', t.uses ? `${t.uses} stacks` : 'declared'));
       if (t.stack) r.title = t.stack;
       list.append(r);
     }
-    if (!s.typefaces.length) list.append(note('No typefaces declared in the CSS.'));
+    if (!s?.typefaces.length) list.append(note(s ? 'No typefaces declared in the CSS.' : 'Site not captured.'));
     for (const f of cap!.brandfetch?.fonts ?? []) {
       const r = el('div', 'ab-type__row'); r.append(el('span', 'ab-type__fam', f.name), el('span', 'ab-type__src', `Brandfetch${f.origin ? ` · ${f.origin}` : ''}`), el('span', 'ab-type__w', f.type ?? ''), el('span', 'ab-type__uses', ''));
       list.append(r);
@@ -791,9 +798,9 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
     });
     if (!logos.length) grid.append(note('No logo candidates found.'));
     sec.append(grid);
-    const og = cap!.site.og;
-    if (og.imageData) {
-      const fig = el('figure', 'ab-shot ab-og'); const img = document.createElement('img'); img.className = 'ab-shot__img'; img.src = og.imageData; img.alt = 'Open Graph image';
+    const og = cap!.site?.og;
+    if (og?.imageData) {
+      const fig = el('figure', 'ab-shot ab-og'); const img = document.createElement('img'); img.className = 'ab-shot__img'; img.src = og!.imageData!; img.alt = 'Open Graph image';
       fig.append(img, el('figcaption', 'ab-shot__cap', 'Open Graph image'));
       sec.append(el('h4', 'ab__sub', 'Share image'), fig);
     }
@@ -842,7 +849,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
       sec.append(g);
     }
     // Profiles Lathe can link but not read
-    const links = Object.entries({ ...cap!.site.social, ...cap!.brandfetch?.social }).filter(([k]) => k !== 'youtube' && k !== 'instagram');
+    const links = Object.entries({ ...cap!.site?.social, ...cap!.brandfetch?.social }).filter(([k]) => k !== 'youtube' && k !== 'instagram');
     if (links.length) {
       const p = el('p', 'ab-social');
       p.append(`Also on ${links.map(([k]) => k[0].toUpperCase() + k.slice(1)).join(', ')}: `);
@@ -962,10 +969,10 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
       const captures: { id: string; label: string; dataUrl: string }[] = await Promise.all(done.map(async ([id, s]) => ({ id: id as string, label: s.label, dataUrl: await downscale(s.blob!, d.observationImagePx as number) })));
       const site = cap.site;
       const facts = {
-        title: site.title, description: site.description, themeColor: site.themeColor, readFrom: site.via,
-        cssColors: site.colors.map(c => ({ hex: c.hex, share: Math.round(c.share * 1000) / 1000, vars: c.vars })),
+        title: site?.title ?? null, description: site?.description ?? null, themeColor: site?.themeColor ?? null, readFrom: site?.via ?? 'brandfetch-only',
+        cssColors: (site?.colors ?? []).map(c => ({ hex: c.hex, share: Math.round(c.share * 1000) / 1000, vars: c.vars })),
         desktopPixelColors: shots.get('desktop')?.swatches?.map(x => ({ hex: x.hex, share: Math.round(x.share * 1000) / 1000 })) ?? [],
-        typefaces: site.typefaces.map(t => ({ family: t.family, source: t.source, weights: t.weights, stacksLed: t.uses })),
+        typefaces: (site?.typefaces ?? []).map(t => ({ family: t.family, source: t.source, weights: t.weights, stacksLed: t.uses })),
         brandfetch: cap.brandfetch ? { colors: cap.brandfetch.colors, fonts: cap.brandfetch.fonts } : null,
         timelineYears: timeline?.snapshots.map(s => s.year) ?? [],
         instagram: ig && !ig.mock ? {
@@ -1027,7 +1034,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
       const im = siteImages()[Number(k.slice(5))];
       if (!im) return null;
       url = siteSrc(im.url);
-      credit = { title: im.alt || `Image from ${cap.domain}`, creator: null, date: null, source: cap.domain, license: 'Site © its owner; shown for research', url: cap.site.url };
+      credit = { title: im.alt || `Image from ${cap.domain}`, creator: null, date: null, source: cap.domain, license: 'Site © its owner; shown for research', url: cap.site?.url ?? `https://${cap.domain}` };
     }
     try {
       const map = settings.get<Record<string, string>>('brandAssets', {});
@@ -1096,7 +1103,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
       const im = st && await trayImage(`y${s.year}`, st);
       if (im) timelineImgs.push({ ...im, year: s.year });
     }
-    const ogImg = site.og.imageData ? await (async () => {
+    const ogImg = site?.og.imageData ? await (async () => {
       const bmp = await createImageBitmap(await (await fetch(site.og.imageData!)).blob()).catch(() => null);
       const aspect = bmp ? bmp.width / bmp.height : 1.91; bmp?.close();
       return { src: site.og.imageData!, aspect, credit: { title: `${cap!.domain} share image`, creator: null, date: null, source: site.og.image ? new URL(site.og.image).hostname : cap!.domain, license: 'Site © its owner; shown for research', url: site.og.image ?? site.url } } as DeckImage;

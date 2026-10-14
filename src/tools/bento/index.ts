@@ -3,7 +3,7 @@
 import type { Asset, LatheTool } from '../types';
 import { defaults } from './defaults';
 import { COLS, DECK_MIME, ROWS, emptyDeck, parseDeck, uid, type Deck, type Tile, type TileType } from './model';
-import { BRAND_SLIDE_MIME, type BrandSlide, getTemplate as getBrandTemplate, SLIDE_W as B_SW, SLIDE_H as B_SH } from '../audit/brand-slide';
+import { BRAND_SLIDE_MIME, type BrandSlide, getTemplate as getBrandTemplate, resolveSlotRect, SLIDE_W as B_SW, SLIDE_H as B_SH, GUTTER_FX, GUTTER_FY } from '../audit/brand-slide';
 import { ensureLayout, layoutSlide, reshuffle, variantsFor } from './layout';
 import { allSlides, drawSlide, type DrawConfig } from './draw';
 import { slideSvg } from './render-svg';
@@ -12,6 +12,7 @@ import { proxied } from './images';
 import { advancedSection, button, chips, field, note, section, select, slider, textarea } from '../../ui/primitives';
 import { assetUrl } from '../../lib/assets';
 import { saveExport } from '../../lib/download';
+import { buildBoundaries, boundariesForHandle, computeResize, applyResize, boundaryAtPoint, fillNeighbor, applyRemoval, type TileRect, type Boundary, type HandleDir } from './resize';
 import './bento.css';
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || 'deck';
@@ -41,6 +42,11 @@ export const tool: LatheTool = {
     let cur = Math.min(settings.get('slide', 0), deck.slides.length - 1);
     let sel: string | null = null;
 
+    /* ---- undo / redo (per-deck, full-snapshot) ---- */
+    type UndoEntry = { snapshot: string; cur: number; sel: string | null };
+    const undoStack: UndoEntry[] = [], redoStack: UndoEntry[] = [];
+    let lastSnap = JSON.stringify(deck);
+
     const views = () => allSlides(deck, cfg);
     const isCredits = (i: number) => i >= deck.slides.length;
     const save = () => { settings.set('deck', deck); settings.set('slide', cur); };
@@ -59,7 +65,8 @@ export const tool: LatheTool = {
     const overlay = document.createElement('div'); overlay.className = 'bt__overlay';
     const emptyEl = document.createElement('div'); emptyEl.className = 'bt__empty';
     emptyEl.textContent = 'Drop images here, send an Audit collection, or add tiles from the inspector.';
-    slideEl.append(svgHost, overlay, emptyEl);
+    const guides = document.createElement('div'); guides.className = 'bt__guides';
+    slideEl.append(svgHost, overlay, guides, emptyEl);
     main.appendChild(slideEl);
     const strip = document.createElement('div'); strip.className = 'bt__strip';
     root.append(main, strip);
@@ -156,6 +163,18 @@ export const tool: LatheTool = {
     inspector.append(deckSec.el, slideSec.el, addSec.el, tileSec.el, advSec.el, outSec.el);
 
     /* ---------------- render ---------------- */
+    const HANDLES = ['nw', 'n', 'ne', 'e', 'se', 's', 'sw', 'w'] as const;
+    function addSelectionChrome(el: HTMLElement, wPx: number, hPx: number) {
+      for (const h of HANDLES) {
+        const d = document.createElement('div');
+        d.className = 'bt__handle'; d.dataset.handle = h;
+        el.appendChild(d);
+      }
+      const dim = document.createElement('div');
+      dim.className = 'bt__dim';
+      dim.textContent = `${Math.round(wPx)} × ${Math.round(hPx)}`;
+      el.appendChild(dim);
+    }
     let brandDomEl: HTMLElement | null = null;
     const updateBrandTileCSS = (sd: { name: string; focalX: number; focalY: number; cropZoom: number; fit: string }) => {
       if (!brandDomEl) return;
@@ -191,21 +210,18 @@ export const tool: LatheTool = {
         // Clickable overlays on each brand tile
         const template = getBrandTemplate(slide.brand!.variant);
         overlay.replaceChildren(...template.map(slot => {
+          const sd = slide.brand!.slots.find(s => s.name === slot.name);
+          const r = resolveSlotRect(slot, sd?.rect);
           const el = document.createElement('div');
           el.className = `bt__tile${sel === slot.name ? ' is-selected' : ''}${cropSlot === slot.name ? ' is-cropping' : ''}`;
           el.dataset.id = slot.name;
-          el.style.left = `${slot.x / B_SW * 100}%`;
-          el.style.top = `${slot.y / B_SH * 100}%`;
-          el.style.width = `${slot.w / B_SW * 100}%`;
-          el.style.height = `${slot.h / B_SH * 100}%`;
+          el.style.left = `${r.x / B_SW * 100}%`;
+          el.style.top = `${r.y / B_SH * 100}%`;
+          el.style.width = `${r.w / B_SW * 100}%`;
+          el.style.height = `${r.h / B_SH * 100}%`;
           el.style.position = 'absolute';
           el.setAttribute('aria-label', `${slot.role} tile: ${slot.name}`);
-          if (slot.role === 'logo' || slot.role === 'palette') {
-            const lk = document.createElement('span');
-            lk.className = 'bt__lock';
-            lk.textContent = slot.role === 'logo' ? 'Logo' : 'Palette';
-            el.appendChild(lk);
-          }
+          if (sel === slot.name && !cropSlot) addSelectionChrome(el, Math.round(r.w), Math.round(r.h));
           return el;
         }));
         emptyEl.hidden = true;
@@ -222,7 +238,7 @@ export const tool: LatheTool = {
           el.style.width = `${b.w / cfg.slideW * 100}%`; el.style.height = `${b.h / cfg.slideH * 100}%`;
           el.setAttribute('aria-label', `${t.type} tile`);
           if (t.locked) { const lk = document.createElement('span'); lk.className = 'bt__lock'; lk.textContent = 'Locked'; el.appendChild(lk); }
-          if (t.id === sel) { const h = document.createElement('div'); h.className = 'bt__handle'; h.dataset.handle = '1'; h.setAttribute('aria-label', 'Resize'); el.appendChild(h); }
+          if (t.id === sel && t.rect) addSelectionChrome(el, t.rect.w, t.rect.h);
           return el;
         })));
       }
@@ -260,8 +276,64 @@ export const tool: LatheTool = {
     }
 
     function commit(relayout = false) {
+      undoStack.push({ snapshot: lastSnap, cur, sel });
+      redoStack.length = 0;
+      if (undoStack.length > 50) undoStack.shift();
+      applyCommit(relayout);
+    }
+    function applyCommit(relayout = false) {
       if (relayout && !isCredits(cur) && !deck.slides[cur]?.brand) deck.slides[cur] = layoutSlide(deck.slides[cur]);
       save(); render();
+      lastSnap = JSON.stringify(deck);
+    }
+    function undo() {
+      const entry = undoStack.pop();
+      if (!entry) return;
+      redoStack.push({ snapshot: JSON.stringify(deck), cur, sel });
+      deck = JSON.parse(entry.snapshot);
+      cur = Math.min(entry.cur, deck.slides.length - 1);
+      sel = entry.sel;
+      titleField.input.value = deck.title; themeChips.set(deck.theme);
+      applyCommit();
+    }
+    function redo() {
+      const entry = redoStack.pop();
+      if (!entry) return;
+      undoStack.push({ snapshot: JSON.stringify(deck), cur, sel });
+      deck = JSON.parse(entry.snapshot);
+      cur = Math.min(entry.cur, deck.slides.length - 1);
+      sel = entry.sel;
+      titleField.input.value = deck.title; themeChips.set(deck.theme);
+      applyCommit();
+    }
+
+    function removeBrandTile(slotName: string) {
+      const brand = deck.slides[cur]?.brand;
+      if (!brand) return;
+      const template = getBrandTemplate(brand.variant);
+      const slotDef = template.find(s => s.name === slotName);
+      if (!slotDef || slotDef.role === 'logo' || slotDef.role === 'palette') return;
+      const rects = brandTileRects(brand);
+      const removed = rects.find(t => t.name === slotName);
+      if (!removed) return;
+      const neighbor = fillNeighbor(removed, rects, GUTTER_FX, GUTTER_FY);
+      if (neighbor) {
+        const tileMap = new Map(rects.map(t => [t.name, { ...t }]));
+        applyRemoval(tileMap, slotName, neighbor, GUTTER_FX, GUTTER_FY);
+        for (const [name, rect] of tileMap) {
+          const sd = brand.slots.find(s => s.name === name);
+          if (sd) sd.rect = { x: rect.x, y: rect.y, w: rect.w, h: rect.h };
+          else brand.slots.push({ name, assetUrl: null, assetThumbUrl: null, fit: 'cover', cropX: 0.5, cropY: 0.3, cropZoom: 1, removedBg: false, focalX: 0.5, focalY: 0.3, rect: { x: rect.x, y: rect.y, w: rect.w, h: rect.h } });
+        }
+        const sd = brand.slots.find(s => s.name === slotName);
+        if (sd) { sd.assetUrl = null; sd.assetThumbUrl = null; delete sd.rect; }
+        brand.slots = brand.slots.filter(s => s.name !== slotName);
+      } else {
+        const sd = brand.slots.find(s => s.name === slotName);
+        if (sd) { sd.assetUrl = null; sd.assetThumbUrl = null; }
+      }
+      sel = null;
+      commit();
     }
 
     function moveSlide(dir: number) {
@@ -291,30 +363,54 @@ export const tool: LatheTool = {
         const template = getBrandTemplate(brand.variant);
         const slotDef = template.find(s => s.name === sel);
         if (!slotDef) { tileBody.append(note('Select a tile.')); return; }
+        const slotData = brand.slots.find(s => s.name === sel);
+        const r = resolveSlotRect(slotDef, slotData?.rect);
+        // Position fields (W/H editable)
+        const posRow = document.createElement('div'); posRow.className = 'bt__span';
+        const mkPosField = (lbl: string, val: number, editable: boolean, onChange?: (v: number) => void) => {
+          const f = field({ label: lbl, type: 'number', value: String(Math.round(val)), onChange: v => {
+            if (!editable || !onChange) return;
+            const n = Number(v); if (!Number.isFinite(n) || n < 1) return;
+            onChange(n);
+          }});
+          if (!editable) f.input.readOnly = true;
+          return f.el;
+        };
+        posRow.append(
+          mkPosField('X', r.x, false),
+          mkPosField('Y', r.y, false),
+          mkPosField('W', r.w, true, w => {
+            const sd = slotData ?? brand.slots[brand.slots.push({ name: sel!, assetUrl: null, assetThumbUrl: null, fit: 'cover', cropX: 0.5, cropY: 0.3, cropZoom: 1, removedBg: false, focalX: 0.5, focalY: 0.3 }) - 1];
+            sd.rect = { x: r.x / B_SW, y: r.y / B_SH, w: w / B_SW, h: r.h / B_SH };
+            commit();
+          }),
+          mkPosField('H', r.h, true, h => {
+            const sd = slotData ?? brand.slots[brand.slots.push({ name: sel!, assetUrl: null, assetThumbUrl: null, fit: 'cover', cropX: 0.5, cropY: 0.3, cropZoom: 1, removedBg: false, focalX: 0.5, focalY: 0.3 }) - 1];
+            sd.rect = { x: r.x / B_SW, y: r.y / B_SH, w: r.w / B_SW, h: h / B_SH };
+            commit();
+          }),
+        );
+        tileBody.append(posRow);
         if (slotDef.role === 'logo') {
-          tileBody.append(note('Logo tile'));
           tileBody.append(field({ label: 'Background', value: brand.logo.bgColor, onChange: v => {
-            if (/^#[0-9a-f]{3,6}$/i.test(v)) { brand.logo.bgColor = v.length === 4 ? '#' + v[1]+v[1]+v[2]+v[2]+v[3]+v[3] : v; commit(); }
+            if (/^#([0-9a-f]{3}|[0-9a-f]{6})$/i.test(v)) { brand.logo.bgColor = v.length === 4 ? '#' + v[1]+v[1]+v[2]+v[2]+v[3]+v[3] : v; commit(); }
           }}).el);
           return;
         }
         if (slotDef.role === 'palette') {
-          tileBody.append(note('Palette tile'), note(brand.palette.join(', ')));
+          tileBody.append(note(brand.palette.join(', ')));
           return;
         }
-        // Image / cutout slot
-        const slotData = brand.slots.find(s => s.name === sel);
-        if (!slotData) { tileBody.append(note('Empty slot')); return; }
-        if (slotData.assetUrl) {
-          tileBody.append(note(`Image: ${slotData.name}`));
+        if (slotData?.assetUrl) {
           tileBody.append(
             chips<'cover' | 'contain'>({ label: 'Fit', value: slotData.fit, options: [{ value: 'cover', label: 'Fill' }, { value: 'contain', label: 'Fit' }], onChange: v => { slotData.fit = v as 'cover' | 'contain'; commit(); } }).el,
             button({ label: 'Remove image', onClick: () => { slotData.assetUrl = null; slotData.assetThumbUrl = null; commit(); } }),
+            button({ label: 'Crop', onClick: () => { if (sel) enterCrop(sel); } }),
           );
-          tileBody.append(note('Double-click tile to crop; scroll to zoom.'));
         } else {
-          tileBody.append(note('Empty slot — drop an image from the tray or file system.'));
+          tileBody.append(note('Empty slot — drop an image.'));
         }
+        tileBody.append(button({ label: 'Remove tile', onClick: () => { if (sel) removeBrandTile(sel); } }));
         return;
       }
       if (!t || !slide) { tileBody.append(note('Select a tile to edit it. Drag a tile onto another to swap them; drag the corner to resize.')); return; }
@@ -367,6 +463,21 @@ export const tool: LatheTool = {
 
     /* ---------------- pointer: select, swap, resize ---------------- */
     let drag: { id: string; mode: 'move' | 'resize'; x0: number; y0: number; el: HTMLElement; moved: boolean } | null = null;
+    let bResize: {
+      handle: HandleDir; bx: Boundary | null; by: Boundary | null;
+      orig: Map<string, TileRect>; x0: number; y0: number;
+      snapX: number[]; snapY: number[]; startAr: number; moved: boolean;
+    } | null = null;
+
+    function brandTileRects(brand: BrandSlide): TileRect[] {
+      const tmpl = getBrandTemplate(brand.variant);
+      return tmpl.map(s => {
+        const sd = brand.slots.find(d => d.name === s.name);
+        const r = sd?.rect;
+        return r ? { name: s.name, x: r.x, y: r.y, w: r.w, h: r.h } : { name: s.name, x: s.x / B_SW, y: s.y / B_SH, w: s.w / B_SW, h: s.h / B_SH };
+      });
+    }
+
     const cellAt = (cx: number, cy: number) => {
       const r = slideEl.getBoundingClientRect();
       const fx = (cx - r.left) / r.width * cfg.slideW, fy = (cy - r.top) / r.height * cfg.slideH;
@@ -380,9 +491,25 @@ export const tool: LatheTool = {
       if (sel !== id) { sel = id; render(); }
       if (deck.slides[cur]?.brand) {
         if (cropSlot) return;
+        const handle = (e.target as HTMLElement).dataset.handle as HandleDir | undefined;
+        if (handle) {
+          const brand = deck.slides[cur].brand!;
+          const rects = brandTileRects(brand);
+          const boundaries = buildBoundaries(rects, GUTTER_FX, GUTTER_FY);
+          const { bx, by } = boundariesForHandle(id, handle, boundaries);
+          const orig = new Map(rects.map(t => [t.name, { ...t }]));
+          const tile = orig.get(id)!;
+          const xTargets: number[] = [0.5], yTargets: number[] = [0.5];
+          for (const b of boundaries) (b.axis === 'x' ? xTargets : yTargets).push(b.pos);
+          bResize = { handle, bx, by, orig, x0: e.clientX, y0: e.clientY, snapX: xTargets, snapY: yTargets, startAr: tile.w / tile.h, moved: false };
+          document.addEventListener('pointermove', onBrandResize);
+          document.addEventListener('pointerup', onBrandResizeUp);
+          return;
+        }
         const tmpl = getBrandTemplate(deck.slides[cur].brand!.variant);
         const sd = tmpl.find(s => s.name === id);
-        if (!sd || sd.role === 'logo' || sd.role === 'palette') return;
+        if (!sd) return;
+        if (sd.role === 'logo' || sd.role === 'palette') return;
         const fresh = overlay.querySelector<HTMLElement>(`.bt__tile[data-id="${id}"]`)!;
         drag = { id, mode: 'move', x0: e.clientX, y0: e.clientY, el: fresh, moved: false };
         fresh.setPointerCapture?.(e.pointerId);
@@ -395,6 +522,45 @@ export const tool: LatheTool = {
       fresh.setPointerCapture?.(e.pointerId);
       document.addEventListener('pointermove', onMove);
       document.addEventListener('pointerup', onUp);
+    });
+    // Gutter hover + drag (brand slides)
+    overlay.addEventListener('mousemove', e => {
+      if (drag || bResize || cropSlot || !deck.slides[cur]?.brand) { overlay.style.cursor = ''; return; }
+      if ((e.target as HTMLElement).closest('.bt__tile')) { overlay.style.cursor = ''; return; }
+      const sr = slideEl.getBoundingClientRect();
+      const px = (e.clientX - sr.left) / sr.width, py = (e.clientY - sr.top) / sr.height;
+      const brand = deck.slides[cur].brand!;
+      const rects = brandTileRects(brand);
+      const tiles = new Map(rects.map(t => [t.name, t]));
+      const boundaries = buildBoundaries(rects, GUTTER_FX, GUTTER_FY);
+      const hit = boundaryAtPoint(boundaries, tiles, px, py, GUTTER_FX, GUTTER_FY);
+      overlay.style.cursor = hit ? (hit.axis === 'x' ? 'col-resize' : 'row-resize') : '';
+    });
+    slideEl.addEventListener('pointerdown', e => {
+      if (drag || bResize || cropSlot || !deck.slides[cur]?.brand) return;
+      if ((e.target as HTMLElement).closest('.bt__tile')) return;
+      const sr = slideEl.getBoundingClientRect();
+      const px = (e.clientX - sr.left) / sr.width, py = (e.clientY - sr.top) / sr.height;
+      const brand = deck.slides[cur].brand!;
+      const rects = brandTileRects(brand);
+      const boundaries = buildBoundaries(rects, GUTTER_FX, GUTTER_FY);
+      const tiles = new Map(rects.map(t => [t.name, t]));
+      const hit = boundaryAtPoint(boundaries, tiles, px, py, GUTTER_FX, GUTTER_FY);
+      if (!hit) return;
+      e.preventDefault();
+      const orig = new Map(rects.map(t => [t.name, { ...t }]));
+      const xTargets: number[] = [0.5], yTargets: number[] = [0.5];
+      for (const b of boundaries) (b.axis === 'x' ? xTargets : yTargets).push(b.pos);
+      bResize = {
+        handle: hit.axis === 'x' ? 'e' : 's',
+        bx: hit.axis === 'x' ? hit : null,
+        by: hit.axis === 'y' ? hit : null,
+        orig, x0: e.clientX, y0: e.clientY,
+        snapX: xTargets, snapY: yTargets,
+        startAr: 1, moved: false,
+      };
+      document.addEventListener('pointermove', onBrandResize);
+      document.addEventListener('pointerup', onBrandResizeUp);
     });
     const onMove = (e: PointerEvent) => {
       if (!drag) return;
@@ -434,7 +600,7 @@ export const tool: LatheTool = {
         }
         render(); return;
       }
-      if (d0.mode === 'resize') { if (d0.moved) save(); return; }
+      if (d0.mode === 'resize') { if (d0.moved) commit(); return; }
       d0.el.style.transform = ''; d0.el.classList.remove('is-dragging');
       if (!d0.moved) return;
       d0.el.style.visibility = 'hidden';
@@ -444,15 +610,105 @@ export const tool: LatheTool = {
       if (a && b && a !== b) { [a.rect, b.rect] = [b.rect, a.rect]; commit(); } else render();
     };
 
+    /* ---- brand tile resize handlers ---- */
+    const onBrandResize = (e: PointerEvent) => {
+      if (!bResize) return;
+      const slideRect = slideEl.getBoundingClientRect();
+      const rawDx = (e.clientX - bResize.x0) / slideRect.width;
+      const rawDy = (e.clientY - bResize.y0) / slideRect.height;
+      if (!bResize.moved && Math.hypot(rawDx, rawDy) < 0.002) return;
+      bResize.moved = true;
+      const tiles = new Map(bResize.orig);
+      // work on copies
+      const work = new Map<string, TileRect>();
+      for (const [k, v] of tiles) work.set(k, { ...v });
+      const snapTx = 8 / slideRect.width;
+      const snapTy = 8 / slideRect.height;
+      const res = computeResize(work, bResize.bx, bResize.by, rawDx, rawDy, 0.06, 0.06, bResize.snapX, snapTx, e.shiftKey, bResize.startAr, bResize.snapY, snapTy);
+      applyResize(work, bResize.bx, bResize.by, res.dx, res.dy);
+      // Update overlay tiles visually
+      for (const [name, t] of work) {
+        const oel = overlay.querySelector<HTMLElement>(`.bt__tile[data-id="${name}"]`);
+        if (oel) {
+          oel.style.left = `${t.x * 100}%`; oel.style.top = `${t.y * 100}%`;
+          oel.style.width = `${t.w * 100}%`; oel.style.height = `${t.h * 100}%`;
+        }
+        // Update brand DOM tiles
+        if (brandDomEl) {
+          const btel = brandDomEl.querySelector<HTMLElement>(`[data-slot="${name}"]`);
+          if (btel) { btel.style.left = `${t.x * B_SW}px`; btel.style.top = `${t.y * B_SH}px`; btel.style.width = `${t.w * B_SW}px`; btel.style.height = `${t.h * B_SH}px`; }
+        }
+      }
+      // Guide lines
+      guides.innerHTML = '';
+      if (res.snapX !== null) {
+        const g = document.createElement('div'); g.className = 'bt__guide bt__guide--v';
+        g.style.left = `${res.snapX * 100}%`;
+        guides.appendChild(g);
+      }
+      if (res.snapY !== null) {
+        const g = document.createElement('div'); g.className = 'bt__guide bt__guide--h';
+        g.style.top = `${res.snapY * 100}%`;
+        guides.appendChild(g);
+      }
+      // Update dimension pill
+      const selTile = work.get(sel ?? '');
+      if (selTile) {
+        const dim = overlay.querySelector('.bt__dim');
+        if (dim) dim.textContent = `${Math.round(selTile.w * B_SW)} × ${Math.round(selTile.h * B_SH)}`;
+      }
+    };
+    const onBrandResizeUp = () => {
+      if (!bResize) return;
+      document.removeEventListener('pointermove', onBrandResize);
+      document.removeEventListener('pointerup', onBrandResizeUp);
+      guides.innerHTML = '';
+      if (!bResize.moved) { bResize = null; return; }
+      // Apply final positions to brand slot rects
+      const brand = deck.slides[cur].brand!;
+      // Replay the last pointer position's delta
+      // Actually, apply the visual state: read from overlay elements
+      const template = getBrandTemplate(brand.variant);
+      for (const slot of template) {
+        const oel = overlay.querySelector<HTMLElement>(`.bt__tile[data-id="${slot.name}"]`);
+        if (!oel) continue;
+        const fx = parseFloat(oel.style.left) / 100;
+        const fy = parseFloat(oel.style.top) / 100;
+        const fw = parseFloat(oel.style.width) / 100;
+        const fh = parseFloat(oel.style.height) / 100;
+        const orig = bResize.orig.get(slot.name);
+        if (orig && (Math.abs(fx - orig.x) > 0.0001 || Math.abs(fy - orig.y) > 0.0001 || Math.abs(fw - orig.w) > 0.0001 || Math.abs(fh - orig.h) > 0.0001)) {
+          const sd = brand.slots.find(s => s.name === slot.name);
+          if (sd) sd.rect = { x: fx, y: fy, w: fw, h: fh };
+          else {
+            // logo/palette: store rect on the template slot via a new slot entry
+            brand.slots.push({ name: slot.name, assetUrl: null, assetThumbUrl: null, fit: 'cover', cropX: 0.5, cropY: 0.3, cropZoom: 1, removedBg: false, focalX: 0.5, focalY: 0.3, rect: { x: fx, y: fy, w: fw, h: fh } });
+          }
+        }
+      }
+      bResize = null;
+      commit();
+    };
+
     const onKey = (e: KeyboardEvent) => {
       if (!stage.closest('[data-active-tab]')) return;
+      if ((e.metaKey || e.ctrlKey) && !e.altKey) {
+        if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
+        if ((e.key === 'z' && e.shiftKey) || e.key === 'y') { e.preventDefault(); redo(); return; }
+      }
       if (typing(e.target) || !sel || isCredits(cur) || e.metaKey || e.ctrlKey) return;
       if (e.key === 'Escape') {
-        if (cropSlot) return; // let escCrop handle it
+        if (cropSlot) return;
         sel = null; render(); return;
       }
-      // Brand tiles: no grid movement
-      if (deck.slides[cur]?.brand) return;
+      if (e.key === 'Enter' && deck.slides[cur]?.brand && sel && !cropSlot) {
+        enterCrop(sel); e.preventDefault(); return;
+      }
+      // Brand tiles: delete or no-op
+      if (deck.slides[cur]?.brand) {
+        if ((e.key === 'Delete' || e.key === 'Backspace') && sel) { e.preventDefault(); removeBrandTile(sel); }
+        return;
+      }
       const slide = deck.slides[cur], t = slide.tiles.find(x => x.id === sel); if (!t?.rect) return;
       const r = { ...t.rect };
       const k = e.key;
@@ -466,35 +722,92 @@ export const tool: LatheTool = {
     };
     document.addEventListener('keydown', onKey);
 
-    /* ---------------- brand tile: dblclick crop + wheel zoom ---------------- */
+    /* ---------------- brand tile: crop mode ---------------- */
     let cropSlot: string | null = null;
     let cropCleanup: (() => void) | null = null;
-    overlay.addEventListener('dblclick', e => {
-      const el = (e.target as HTMLElement).closest<HTMLElement>('.bt__tile');
-      if (!el || !deck.slides[cur]?.brand) return;
-      const brand = deck.slides[cur].brand!;
-      const slotData = brand.slots.find(s => s.name === el.dataset.id);
+    let cropBar: HTMLElement | null = null;
+    let cropOrig: { focalX: number; focalY: number; cropZoom: number } | null = null;
+
+    function enterCrop(slotName: string) {
+      if (cropSlot) confirmCrop();
+      const brand = deck.slides[cur]?.brand;
+      if (!brand) return;
+      const slotData = brand.slots.find(s => s.name === slotName);
       if (!slotData?.assetUrl) return;
-      cropSlot = slotData.name;
-      el.classList.add('is-cropping');
+
+      cropSlot = slotName;
+      cropOrig = { focalX: slotData.focalX, focalY: slotData.focalY, cropZoom: slotData.cropZoom };
+      // Dim non-cropped tiles
+      overlay.classList.add('is-crop-active');
+      slideEl.classList.add('is-crop-active');
+      const tileEl = overlay.querySelector<HTMLElement>(`.bt__tile[data-id="${slotName}"]`);
+      if (tileEl) tileEl.classList.add('is-cropping');
+
+      // Floating toolbar
+      cropBar = document.createElement('div');
+      cropBar.className = 'bt__crop-bar';
+      cropBar.innerHTML = `<span class="bt__crop-label">Crop</span>`;
+      const zoomSlider = document.createElement('input');
+      Object.assign(zoomSlider, { type: 'range', min: '50', max: '300', step: '5', value: String(Math.round((slotData.cropZoom ?? 1) * 100)) });
+      zoomSlider.className = 'bt__crop-zoom';
+      zoomSlider.addEventListener('input', () => {
+        slotData.cropZoom = Number(zoomSlider.value) / 100;
+        updateBrandTileCSS(slotData);
+      });
+      cropBar.appendChild(zoomSlider);
+      const cancelBtn = document.createElement('button'); cancelBtn.type = 'button';
+      cancelBtn.className = 'bt__crop-btn'; cancelBtn.textContent = 'Cancel';
+      cancelBtn.addEventListener('click', () => cancelCrop());
+      cropBar.appendChild(cancelBtn);
+      const confirmBtn = document.createElement('button'); confirmBtn.type = 'button';
+      confirmBtn.className = 'bt__crop-btn bt__crop-btn--confirm'; confirmBtn.textContent = '✓';
+      confirmBtn.addEventListener('click', () => confirmCrop());
+      cropBar.appendChild(confirmBtn);
+      slideEl.appendChild(cropBar);
+
       const onCropMove = (ev: PointerEvent) => {
+        if (ev.buttons === 0) return;
         slotData.focalX = Math.max(0, Math.min(1, slotData.focalX - ev.movementX * 0.002));
         slotData.focalY = Math.max(0, Math.min(1, slotData.focalY - ev.movementY * 0.002));
         updateBrandTileCSS(slotData);
       };
-      const endCrop = () => {
-        document.removeEventListener('pointermove', onCropMove);
-        document.removeEventListener('pointerup', endCrop);
-        window.removeEventListener('keydown', escCrop);
-        el.classList.remove('is-cropping');
-        cropSlot = null;
-        commit();
+      const onCropKey = (ev: KeyboardEvent) => {
+        if (ev.key === 'Escape') { cancelCrop(); ev.preventDefault(); }
+        if (ev.key === 'Enter') { confirmCrop(); ev.preventDefault(); }
       };
-      const escCrop = (ev: KeyboardEvent) => { if (ev.key === 'Escape') endCrop(); };
-      cropCleanup = endCrop;
       document.addEventListener('pointermove', onCropMove);
-      document.addEventListener('pointerup', endCrop);
-      window.addEventListener('keydown', escCrop);
+      window.addEventListener('keydown', onCropKey);
+
+      const cleanup = () => {
+        document.removeEventListener('pointermove', onCropMove);
+        window.removeEventListener('keydown', onCropKey);
+        if (tileEl) tileEl.classList.remove('is-cropping');
+        if (cropBar) { cropBar.remove(); cropBar = null; }
+        overlay.classList.remove('is-crop-active');
+        slideEl.classList.remove('is-crop-active');
+        cropSlot = null; cropOrig = null; cropCleanup = null;
+      };
+      cropCleanup = cleanup;
+    }
+    function confirmCrop() {
+      cropCleanup?.();
+      commit();
+    }
+    function cancelCrop() {
+      const brand = deck.slides[cur]?.brand;
+      if (brand && cropOrig && cropSlot) {
+        const sd = brand.slots.find(s => s.name === cropSlot);
+        if (sd) { sd.focalX = cropOrig.focalX; sd.focalY = cropOrig.focalY; sd.cropZoom = cropOrig.cropZoom; }
+      }
+      cropCleanup?.();
+      render();
+    }
+
+    overlay.addEventListener('dblclick', e => {
+      const el = (e.target as HTMLElement).closest<HTMLElement>('.bt__tile');
+      if (!el || !deck.slides[cur]?.brand) return;
+      if (cropSlot === el.dataset.id) return;
+      enterCrop(el.dataset.id!);
     });
     overlay.addEventListener('wheel', e => {
       if (!cropSlot || !deck.slides[cur]?.brand) return;
@@ -503,6 +816,7 @@ export const tool: LatheTool = {
       if (!slotData) return;
       slotData.cropZoom = Math.max(0.5, Math.min(3, (slotData.cropZoom ?? 1) + (e.deltaY > 0 ? -0.1 : 0.1)));
       updateBrandTileCSS(slotData);
+      if (cropBar) { const z = cropBar.querySelector<HTMLInputElement>('.bt__crop-zoom'); if (z) z.value = String(Math.round(slotData.cropZoom * 100)); }
     }, { passive: false });
 
     /* ---------------- exports ---------------- */
@@ -536,7 +850,8 @@ export const tool: LatheTool = {
           if (!deck.slides.length) deck.slides.push({ id: uid('s'), tiles: [], variant: 0 });
           cur = 0; sel = null;
           titleField.input.value = deck.title; themeChips.set(deck.theme);
-          commit();
+          undoStack.length = 0; redoStack.length = 0;
+          applyCommit();
           emit('toast', `Loaded “${deck.title}”: ${deck.slides.length} slides`);
         } catch { emit('toast', 'That file is not a deck'); }
         return;
@@ -592,7 +907,7 @@ export const tool: LatheTool = {
     render();
 
     return {
-      unmount() { off(); ro.disconnect(); if (cropCleanup) cropCleanup(); document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); document.removeEventListener('keydown', onKey); if (drag) drag = null; },
+      unmount() { off(); ro.disconnect(); if (cropCleanup) cropCleanup(); if (bResize) { document.removeEventListener('pointermove', onBrandResize); document.removeEventListener('pointerup', onBrandResizeUp); bResize = null; } document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); document.removeEventListener('keydown', onKey); if (drag) drag = null; },
       export: () => void run('pptx'),
     };
   },

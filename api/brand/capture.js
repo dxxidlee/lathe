@@ -36,16 +36,22 @@ export async function GET(request) {
     captureSite(site, { merge, top }),
     brandfetch(domain, process.env.BRANDFETCH_KEY),
   ]);
+  const bfVal = bf.status === 'fulfilled' ? bf.value : null;
+  const bfErr = bf.status === 'rejected' ? (bf.reason instanceof Error ? bf.reason.message : String(bf.reason)) : null;
   if (cap.status === 'rejected') {
     const msg = cap.reason instanceof Error ? cap.reason.message : String(cap.reason);
-    const status = /Private|Only|credentials/.test(msg) ? 400 : 502;
-    return json({ error: `Could not capture ${site.hostname}: ${msg}`, domain, company }, { status });
+    if (/Private|Only|credentials/.test(msg) && !bfVal) return json({ error: `Could not capture ${site.hostname}: ${msg}`, domain, company }, { status: 400 });
+    return json({
+      query: q, domain, company,
+      site: null, siteError: msg,
+      brandfetch: bfVal, brandfetchError: bfErr,
+      capturedAt: new Date().toISOString(),
+    });
   }
   return json({
     query: q, domain, company,
     site: cap.value,
-    brandfetch: bf.status === 'fulfilled' ? bf.value : null,
-    brandfetchError: bf.status === 'rejected' ? (bf.reason instanceof Error ? bf.reason.message : String(bf.reason)) : null,
+    brandfetch: bfVal, brandfetchError: bfErr,
     capturedAt: new Date().toISOString(),
   });
 }

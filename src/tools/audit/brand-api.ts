@@ -28,7 +28,8 @@ export interface Brandfetch {
 export interface BrandCapture {
   query: string; domain: string; capturedAt: string;
   company: { name: string; description: string | null; website: string; wikidata: string | null } | null;
-  site: SiteCapture; brandfetch: Brandfetch | null; brandfetchError: string | null;
+  site: SiteCapture | null; siteError?: string;
+  brandfetch: Brandfetch | null; brandfetchError: string | null;
 }
 export interface Snapshot { year: number; timestamp: string; original: string; archiveUrl: string; renderUrl: string }
 export interface Timeline { domain: string; firstYear: number; years: number[]; snapshots: Snapshot[]; ms: number }

@@ -1,5 +1,5 @@
 /* Render a BrandSlide to DOM or canvas. Single source of truth for layout. */
-import { getTemplate, SLIDE_W, SLIDE_H, RADIUS, type BrandSlide } from './brand-slide';
+import { getTemplate, resolveSlotRect, SLIDE_W, SLIDE_H, RADIUS, type BrandSlide } from './brand-slide';
 import { proxied } from './api';
 
 /** Render the slide as a DOM element for the editing stage. */
@@ -10,10 +10,12 @@ export function renderSlideDOM(slide: BrandSlide): HTMLElement {
   el.style.cssText = `position:relative;width:${SLIDE_W}px;height:${SLIDE_H}px;background:${slide.theme === 'dark' ? '#000' : '#fff'};overflow:hidden;border-radius:${RADIUS}px;`;
 
   for (const slot of template) {
+    const slotData = slide.slots.find(s => s.name === slot.name);
+    const r = resolveSlotRect(slot, slotData?.rect);
     const tile = document.createElement('div');
     tile.className = 'brand-slide__tile';
     tile.dataset.slot = slot.name;
-    tile.style.cssText = `position:absolute;left:${slot.x}px;top:${slot.y}px;width:${slot.w}px;height:${slot.h}px;border-radius:${RADIUS}px;overflow:hidden;`;
+    tile.style.cssText = `position:absolute;left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;border-radius:${RADIUS}px;overflow:hidden;`;
 
     if (slot.role === 'logo') {
       tile.style.background = slide.logo.bgColor;
@@ -97,55 +99,56 @@ export async function renderSlideCanvas(slide: BrandSlide, scale = 2): Promise<H
   });
 
   for (const slot of template) {
+    const sd = slide.slots.find(s => s.name === slot.name);
+    const r = resolveSlotRect(slot, sd?.rect);
     ctx.save();
     ctx.beginPath();
-    ctx.roundRect(slot.x, slot.y, slot.w, slot.h, RADIUS);
+    ctx.roundRect(r.x, r.y, r.w, r.h, RADIUS);
     ctx.clip();
 
     if (slot.role === 'logo') {
       ctx.fillStyle = slide.logo.bgColor;
-      ctx.fillRect(slot.x, slot.y, slot.w, slot.h);
+      ctx.fillRect(r.x, r.y, r.w, r.h);
       if (slide.logo.assetUrl) {
         try {
           const img = await loadImg(slide.logo.assetUrl);
-          const iw = slot.w * 0.6, ih = slot.h * 0.6;
-          const ix = slot.x + (slot.w - iw) / 2, iy = slot.y + (slot.h - ih) / 2;
+          const iw = r.w * 0.6, ih = r.h * 0.6;
+          const ix = r.x + (r.w - iw) / 2, iy = r.y + (r.h - ih) / 2;
           ctx.drawImage(img, ix, iy, iw, ih);
         } catch { /* skip */ }
       }
     } else if (slot.role === 'palette') {
-      const pw = slot.w / Math.max(1, slide.palette.length);
+      const pw = r.w / Math.max(1, slide.palette.length);
       slide.palette.forEach((hex, i) => {
         ctx.fillStyle = hex;
-        ctx.fillRect(slot.x + i * pw, slot.y, pw, slot.h);
+        ctx.fillRect(r.x + i * pw, r.y, pw, r.h);
       });
     } else {
-      const slotData = slide.slots.find(s => s.name === slot.name);
-      if (slotData?.assetUrl) {
+      if (sd?.assetUrl) {
         ctx.fillStyle = slot.hasTileBg ? (slide.theme === 'dark' ? '#141414' : '#f0f0f0') : 'transparent';
-        if (slot.hasTileBg) ctx.fillRect(slot.x, slot.y, slot.w, slot.h);
+        if (slot.hasTileBg) ctx.fillRect(r.x, r.y, r.w, r.h);
         try {
-          const img = await loadImg(slotData.assetUrl);
-          if (slotData.fit === 'contain') {
-            const s = Math.min(slot.w / img.width, slot.h / img.height);
+          const img = await loadImg(sd.assetUrl);
+          if (sd.fit === 'contain') {
+            const s = Math.min(r.w / img.width, r.h / img.height);
             const sw = img.width * s, sh = img.height * s;
-            ctx.drawImage(img, slot.x + (slot.w - sw) / 2, slot.y + (slot.h - sh) / 2, sw, sh);
+            ctx.drawImage(img, r.x + (r.w - sw) / 2, r.y + (r.h - sh) / 2, sw, sh);
           } else {
             // Cover with focal point + cropZoom
-            const z = Math.max(0.5, Math.min(3, slotData.cropZoom ?? 1));
+            const z = Math.max(0.5, Math.min(3, sd.cropZoom ?? 1));
             const imgAr = img.width / img.height;
-            const slotAr = slot.w / slot.h;
+            const slotAr = r.w / r.h;
             let srcW: number, srcH: number;
             if (imgAr > slotAr) { srcH = img.height / z; srcW = srcH * slotAr; }
             else { srcW = img.width / z; srcH = srcW / slotAr; }
-            const sx = (img.width - srcW) * slotData.focalX;
-            const sy = (img.height - srcH) * slotData.focalY;
-            ctx.drawImage(img, sx, sy, srcW, srcH, slot.x, slot.y, slot.w, slot.h);
+            const sx = (img.width - srcW) * sd.focalX;
+            const sy = (img.height - srcH) * sd.focalY;
+            ctx.drawImage(img, sx, sy, srcW, srcH, r.x, r.y, r.w, r.h);
           }
         } catch { /* empty tile */ }
       } else {
         ctx.fillStyle = slot.hasTileBg ? (slide.theme === 'dark' ? '#141414' : '#f0f0f0') : 'transparent';
-        if (slot.hasTileBg) ctx.fillRect(slot.x, slot.y, slot.w, slot.h);
+        if (slot.hasTileBg) ctx.fillRect(r.x, r.y, r.w, r.h);
       }
     }
     ctx.restore();
