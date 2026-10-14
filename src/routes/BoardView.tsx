@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X } from 'lucide-react';
 import { useShell } from '../shell/state';
+import { BottomSheet } from '../shell/BottomSheet';
 import { loadBoards, saveBoard, renameBoard, deleteBoard, toggleSharing, type Board, type BoardItem } from '../lib/boards';
 import { proxied, PaletteQueue } from '../tools/audit/api';
 import type { Swatch } from '../lib/color';
@@ -195,6 +196,27 @@ export function BoardView({ boardId }: Props) {
     </>
   );
 
+  const inspectorContent = (
+    <div className="l-section">
+      <h3 className="l-section__title">Board</h3>
+      <div className="l-section__body">
+        <div className="l-field">
+          <label className="l-label">Name</label>
+          <input className="l-input" value={board.name} onChange={e => handleRename(e.target.value)} />
+        </div>
+        <div className="l-stats">
+          <div className="l-stat"><span className="l-stat__label">Images</span><span className="l-stat__value">{board.items.length}</span></div>
+          <div className="l-stat"><span className="l-stat__label">Sources</span><span className="l-stat__value">{new Set(board.items.map(i => i.source)).size}</span></div>
+        </div>
+        <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', marginTop: 'var(--space-3)' }}>
+          <button type="button" className="l-btn" onClick={openInAudit}>Add images</button>
+          <button type="button" className="l-btn" onClick={() => void handleShare()}>{board.visibility === 'unlisted' ? 'Copy link' : 'Share'}</button>
+          <button type="button" className="l-btn" onClick={() => void handleDelete()}>Delete</button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <>
       <section className="stage" aria-label={board.name}>
@@ -202,26 +224,11 @@ export function BoardView({ boardId }: Props) {
           {detailIdx !== null && board.items[detailIdx] ? renderDetail(board.items[detailIdx]) : renderGrid()}
         </div>
       </section>
-      <aside className="inspector" aria-label="Inspector">
-        <div className="l-section">
-          <h3 className="l-section__title">Board</h3>
-          <div className="l-section__body">
-            <div className="l-field">
-              <label className="l-label">Name</label>
-              <input className="l-input" value={board.name} onChange={e => handleRename(e.target.value)} />
-            </div>
-            <div className="l-stats">
-              <div className="l-stat"><span className="l-stat__label">Images</span><span className="l-stat__value">{board.items.length}</span></div>
-              <div className="l-stat"><span className="l-stat__label">Sources</span><span className="l-stat__value">{new Set(board.items.map(i => i.source)).size}</span></div>
-            </div>
-            <div style={{ display: 'flex', gap: 'var(--space-2)', flexWrap: 'wrap', marginTop: 'var(--space-3)' }}>
-              <button type="button" className="l-btn" onClick={openInAudit}>Add images</button>
-              <button type="button" className="l-btn" onClick={() => void handleShare()}>{board.visibility === 'unlisted' ? 'Copy link' : 'Share'}</button>
-              <button type="button" className="l-btn" onClick={() => void handleDelete()}>Delete</button>
-            </div>
-          </div>
-        </div>
-      </aside>
+      {shell.isMobile ? (
+        <BottomSheet>{inspectorContent}</BottomSheet>
+      ) : (
+        <aside className="inspector" aria-label="Inspector">{inspectorContent}</aside>
+      )}
     </>
   );
 }

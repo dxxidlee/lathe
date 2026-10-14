@@ -65,9 +65,9 @@
 .au-detail__img { grid-row: 2; width: 100%; height: 100%; object-fit: contain; border-radius: var(--radius-panel); background: var(--fill-1); min-height: 0; }
 .au-detail__meta { grid-row: 2; overflow-y: auto; display: flex; flex-direction: column; }
 .au-detail__actions { grid-column: 1 / -1; display: flex; gap: var(--space-3); }
-.au-detail__pal-block { padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
-.au-detail__pal-title { color: var(--text-3); margin-bottom: var(--space-2); }
-.au-detail__palette { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.au-detail__pal-block { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-4); padding: var(--space-2) 0; border-bottom: 1px solid var(--border); }
+.au-detail__pal-title { color: var(--text-3); flex-shrink: 0; padding-top: var(--space-1); }
+.au-detail__palette { display: flex; gap: var(--space-2); flex-wrap: wrap; justify-content: flex-end; }
 .au-detail__swatch-item { display: flex; align-items: center; gap: var(--space-1); cursor: pointer; background: none; border: none; padding: 0; font: inherit; }
 .au-detail__swatch { display: block; width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--border); flex-shrink: 0; }
 .au-detail__swatch-item:hover .au-detail__swatch { border-color: var(--text-1); }
