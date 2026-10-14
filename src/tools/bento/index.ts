@@ -771,6 +771,7 @@ export const tool: LatheTool = {
     let cropCleanup: (() => void) | null = null;
     let cropBar: HTMLElement | null = null;
     let cropOrig: { focalX: number; focalY: number; cropZoom: number } | null = null;
+    let cropZoomCtrl: { set: (v: number) => void } | null = null;
 
     function enterCrop(slotName: string) {
       if (cropSlot) confirmCrop();
@@ -797,6 +798,7 @@ export const tool: LatheTool = {
       }});
       zoomCtrl.el.classList.add('bt__crop-zoom');
       cropBar.appendChild(zoomCtrl.el);
+      cropZoomCtrl = zoomCtrl;
       const cancelBtn = document.createElement('button'); cancelBtn.type = 'button';
       cancelBtn.className = 'bt__crop-btn'; cancelBtn.textContent = 'Cancel';
       cancelBtn.addEventListener('click', () => cancelCrop());
@@ -827,7 +829,7 @@ export const tool: LatheTool = {
         if (cropBar) { cropBar.remove(); cropBar = null; }
         overlay.classList.remove('is-crop-active');
         slideEl.classList.remove('is-crop-active');
-        cropSlot = null; cropOrig = null; cropCleanup = null;
+        cropSlot = null; cropOrig = null; cropCleanup = null; cropZoomCtrl = null;
       };
       cropCleanup = cleanup;
     }
@@ -858,7 +860,7 @@ export const tool: LatheTool = {
       if (!slotData) return;
       slotData.cropZoom = Math.max(0.5, Math.min(3, (slotData.cropZoom ?? 1) + (e.deltaY > 0 ? -0.1 : 0.1)));
       updateBrandTileCSS(slotData);
-      if (cropBar) { const z = cropBar.querySelector<HTMLInputElement>('.bt__crop-zoom input[type="range"]'); if (z) { z.value = String(Math.round(slotData.cropZoom * 100)); z.dispatchEvent(new Event('input')); } }
+      cropZoomCtrl?.set(Math.round(slotData.cropZoom * 100));
     }, { passive: false });
 
     /* ---------------- exports ---------------- */

@@ -117,8 +117,7 @@ export class UIController {
       s.el.querySelector('.l-slider__label')?.addEventListener('dblclick', e => {
         e.preventDefault();
         this.settings[def.key] = def.def;
-        s.input.value = String(Math.round(def.def*100));
-        s.input.dispatchEvent(new Event('input'));
+        s.set(Math.round(def.def*100));
         this.renderer.resetHistory();
         this.persist();
         this.toast(def.label + ' reset');
@@ -130,7 +129,7 @@ export class UIController {
   syncSettingsUI(){
     this.defs.forEach(d => {
       const s = this._settingsSliders?.[d.key];
-      if(s){ s.input.value = String(Math.round(this.settings[d.key]*100)); s.input.dispatchEvent(new Event('input')); }
+      if(s) s.set(Math.round(this.settings[d.key]*100));
     });
   }
 
