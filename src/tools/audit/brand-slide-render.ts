@@ -48,7 +48,8 @@ export function renderSlideDOM(slide: BrandSlide): HTMLElement {
         else tile.style.background = slide.theme === 'dark' ? '#141414' : '#f0f0f0';
         const img = document.createElement('img');
         img.src = slotData.assetThumbUrl || slotData.assetUrl;
-        img.style.cssText = `width:100%;height:100%;object-fit:${slotData.fit};object-position:${slotData.focalX * 100}% ${slotData.focalY * 100}%;`;
+        const z = slotData.cropZoom ?? 1;
+        img.style.cssText = `width:100%;height:100%;object-fit:${slotData.fit};object-position:${slotData.focalX * 100}% ${slotData.focalY * 100}%;${z !== 1 ? `transform:scale(${z});transform-origin:${slotData.focalX * 100}% ${slotData.focalY * 100}%;` : ''}`;
         img.onerror = () => { img.src = proxied(slotData.assetUrl!); };
         tile.appendChild(img);
       } else if (slot.hasTileBg) {
@@ -130,17 +131,15 @@ export async function renderSlideCanvas(slide: BrandSlide, scale = 2): Promise<H
             const sw = img.width * s, sh = img.height * s;
             ctx.drawImage(img, slot.x + (slot.w - sw) / 2, slot.y + (slot.h - sh) / 2, sw, sh);
           } else {
-            // Cover with focal point
+            // Cover with focal point + cropZoom
+            const z = Math.max(0.5, Math.min(3, slotData.cropZoom ?? 1));
             const imgAr = img.width / img.height;
             const slotAr = slot.w / slot.h;
-            let srcW: number, srcH: number, sx: number, sy: number;
-            if (imgAr > slotAr) {
-              srcH = img.height; srcW = srcH * slotAr;
-              sx = (img.width - srcW) * slotData.focalX; sy = 0;
-            } else {
-              srcW = img.width; srcH = srcW / slotAr;
-              sx = 0; sy = (img.height - srcH) * slotData.focalY;
-            }
+            let srcW: number, srcH: number;
+            if (imgAr > slotAr) { srcH = img.height / z; srcW = srcH * slotAr; }
+            else { srcW = img.width / z; srcH = srcW / slotAr; }
+            const sx = (img.width - srcW) * slotData.focalX;
+            const sy = (img.height - srcH) * slotData.focalY;
             ctx.drawImage(img, sx, sy, srcW, srcH, slot.x, slot.y, slot.w, slot.h);
           }
         } catch { /* empty tile */ }

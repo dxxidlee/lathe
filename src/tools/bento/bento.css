@@ -29,4 +29,5 @@
 .bt__thumb svg { width: 100%; height: 100%; display: block; }
 .bt__thumb.is-active { outline: calc(1px * 2) solid var(--accent); }
 .bt__num { position: absolute; left: var(--space-1); bottom: var(--space-1); padding: 0 var(--space-1); background: rgba(0,0,0,0.64); color: var(--text-1); font-size: var(--text-meta); font-variant-numeric: tabular-nums; border-radius: var(--radius-control); }
+.bt__tile.is-cropping { outline: 2px solid var(--accent) !important; cursor: grab !important; }
 .bt__span { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); }

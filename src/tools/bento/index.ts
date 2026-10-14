@@ -3,7 +3,7 @@
 import type { Asset, LatheTool } from '../types';
 import { defaults } from './defaults';
 import { COLS, DECK_MIME, ROWS, emptyDeck, parseDeck, uid, type Deck, type Tile, type TileType } from './model';
-import { BRAND_SLIDE_MIME, type BrandSlide } from '../audit/brand-slide';
+import { BRAND_SLIDE_MIME, type BrandSlide, getTemplate as getBrandTemplate, SLIDE_W as B_SW, SLIDE_H as B_SH } from '../audit/brand-slide';
 import { ensureLayout, layoutSlide, reshuffle, variantsFor } from './layout';
 import { allSlides, drawSlide, type DrawConfig } from './draw';
 import { slideSvg } from './render-svg';
@@ -170,16 +170,34 @@ export const tool: LatheTool = {
       if (isBrand) {
         // Render brand slide via its own pixel-precise DOM renderer, scaled to fit
         import('../audit/brand-slide-render').then(({ renderSlideDOM }) => {
-          const SW = 1920, SH = 1080;
           svgHost.innerHTML = '';
           brandDomEl = renderSlideDOM(slide.brand!);
           const containerW = svgHost.clientWidth || slideEl.clientWidth || 800;
           const containerH = svgHost.clientHeight || slideEl.clientHeight || 450;
-          const scale = Math.min(containerW / SW, containerH / SH);
+          const scale = Math.min(containerW / B_SW, containerH / B_SH);
           brandDomEl.style.cssText += `transform-origin:top left;transform:scale(${scale});`;
           svgHost.appendChild(brandDomEl);
         });
-        overlay.replaceChildren();
+        // Clickable overlays on each brand tile
+        const template = getBrandTemplate(slide.brand!.variant);
+        overlay.replaceChildren(...template.map(slot => {
+          const el = document.createElement('div');
+          el.className = `bt__tile${sel === slot.name ? ' is-selected' : ''}`;
+          el.dataset.id = slot.name;
+          el.style.left = `${slot.x / B_SW * 100}%`;
+          el.style.top = `${slot.y / B_SH * 100}%`;
+          el.style.width = `${slot.w / B_SW * 100}%`;
+          el.style.height = `${slot.h / B_SH * 100}%`;
+          el.style.position = 'absolute';
+          el.setAttribute('aria-label', `${slot.role} tile: ${slot.name}`);
+          if (slot.role === 'logo' || slot.role === 'palette') {
+            const lk = document.createElement('span');
+            lk.className = 'bt__lock';
+            lk.textContent = slot.role === 'logo' ? 'Logo' : 'Palette';
+            el.appendChild(lk);
+          }
+          return el;
+        }));
         emptyEl.hidden = true;
       } else {
         const drawing = drawSlide(slide, deck, cfg);
@@ -254,6 +272,38 @@ export const tool: LatheTool = {
       const slide = isCredits(cur) ? null : deck.slides[cur];
       const t = slide?.tiles.find(x => x.id === sel);
       tileBody.replaceChildren();
+      // Brand slide tile editor
+      if (slide?.brand && sel) {
+        const brand = slide.brand;
+        const template = getBrandTemplate(brand.variant);
+        const slotDef = template.find(s => s.name === sel);
+        if (!slotDef) { tileBody.append(note('Select a tile.')); return; }
+        if (slotDef.role === 'logo') {
+          tileBody.append(note('Logo tile'));
+          tileBody.append(field({ label: 'Background', value: brand.logo.bgColor, onChange: v => {
+            if (/^#[0-9a-f]{3,6}$/i.test(v)) { brand.logo.bgColor = v.length === 4 ? '#' + v[1]+v[1]+v[2]+v[2]+v[3]+v[3] : v; commit(); }
+          }}).el);
+          return;
+        }
+        if (slotDef.role === 'palette') {
+          tileBody.append(note('Palette tile'), note(brand.palette.join(', ')));
+          return;
+        }
+        // Image / cutout slot
+        const slotData = brand.slots.find(s => s.name === sel);
+        if (!slotData) { tileBody.append(note('Empty slot')); return; }
+        if (slotData.assetUrl) {
+          tileBody.append(note(`Image: ${slotData.name}`));
+          tileBody.append(
+            chips<'cover' | 'contain'>({ label: 'Fit', value: slotData.fit, options: [{ value: 'cover', label: 'Fill' }, { value: 'contain', label: 'Fit' }], onChange: v => { slotData.fit = v as 'cover' | 'contain'; commit(); } }).el,
+            button({ label: 'Remove image', onClick: () => { slotData.assetUrl = null; slotData.assetThumbUrl = null; commit(); } }),
+          );
+          tileBody.append(note('Double-click tile to crop; scroll to zoom.'));
+        } else {
+          tileBody.append(note('Empty slot — drop an image from the tray or file system.'));
+        }
+        return;
+      }
       if (!t || !slide) { tileBody.append(note('Select a tile to edit it. Drag a tile onto another to swap them; drag the corner to resize.')); return; }
       const update = (patch: Partial<Tile>, relayout = false) => { Object.assign(t, patch); commit(relayout); };
       tileBody.append(note(`${t.type[0].toUpperCase()}${t.type.slice(1)} tile`));
@@ -315,6 +365,8 @@ export const tool: LatheTool = {
       e.preventDefault();
       const id = el.dataset.id!;
       if (sel !== id) { sel = id; render(); }
+      // Brand tiles: select only, no grid drag/resize
+      if (deck.slides[cur]?.brand) return;
       const fresh = overlay.querySelector<HTMLElement>(`.bt__tile[data-id="${id}"]`)!;
       drag = { id, mode: (e.target as HTMLElement).dataset.handle ? 'resize' : 'move', x0: e.clientX, y0: e.clientY, el: fresh, moved: false };
       fresh.setPointerCapture?.(e.pointerId);
@@ -353,11 +405,13 @@ export const tool: LatheTool = {
     const onKey = (e: KeyboardEvent) => {
       if (!stage.closest('[data-active-tab]')) return;
       if (typing(e.target) || !sel || isCredits(cur) || e.metaKey || e.ctrlKey) return;
+      if (e.key === 'Escape') { sel = null; render(); return; }
+      // Brand tiles: no grid movement
+      if (deck.slides[cur]?.brand) return;
       const slide = deck.slides[cur], t = slide.tiles.find(x => x.id === sel); if (!t?.rect) return;
       const r = { ...t.rect };
       const k = e.key;
       if (k === 'Delete' || k === 'Backspace') { slide.tiles = slide.tiles.filter(x => x.id !== sel); sel = null; e.preventDefault(); commit(true); return; }
-      if (k === 'Escape') { sel = null; render(); return; }
       const dx = k === 'ArrowLeft' ? -1 : k === 'ArrowRight' ? 1 : 0, dy = k === 'ArrowUp' ? -1 : k === 'ArrowDown' ? 1 : 0;
       if (!dx && !dy) return;
       e.preventDefault();
@@ -366,6 +420,44 @@ export const tool: LatheTool = {
       t.rect = r; commit();
     };
     document.addEventListener('keydown', onKey);
+
+    /* ---------------- brand tile: dblclick crop + wheel zoom ---------------- */
+    let cropSlot: string | null = null;
+    overlay.addEventListener('dblclick', e => {
+      const el = (e.target as HTMLElement).closest<HTMLElement>('.bt__tile');
+      if (!el || !deck.slides[cur]?.brand) return;
+      const brand = deck.slides[cur].brand!;
+      const slotData = brand.slots.find(s => s.name === el.dataset.id);
+      if (!slotData?.assetUrl) return;
+      cropSlot = slotData.name;
+      el.classList.add('is-cropping');
+      el.style.cursor = 'grab';
+      const onCropMove = (ev: PointerEvent) => {
+        slotData.focalX = Math.max(0, Math.min(1, slotData.focalX - ev.movementX * 0.002));
+        slotData.focalY = Math.max(0, Math.min(1, slotData.focalY - ev.movementY * 0.002));
+        commit();
+      };
+      const endCrop = () => {
+        document.removeEventListener('pointermove', onCropMove);
+        document.removeEventListener('pointerup', endCrop);
+        window.removeEventListener('keydown', escCrop);
+        el.classList.remove('is-cropping');
+        el.style.cursor = '';
+        cropSlot = null;
+      };
+      const escCrop = (ev: KeyboardEvent) => { if (ev.key === 'Escape') endCrop(); };
+      document.addEventListener('pointermove', onCropMove);
+      document.addEventListener('pointerup', endCrop);
+      window.addEventListener('keydown', escCrop);
+    });
+    overlay.addEventListener('wheel', e => {
+      if (!cropSlot || !deck.slides[cur]?.brand) return;
+      e.preventDefault();
+      const slotData = deck.slides[cur].brand!.slots.find(s => s.name === cropSlot);
+      if (!slotData) return;
+      slotData.cropZoom = Math.max(0.5, Math.min(3, slotData.cropZoom + (e.deltaY > 0 ? -0.1 : 0.1)));
+      commit();
+    }, { passive: false });
 
     /* ---------------- exports ---------------- */
     async function run(kind: 'pptx' | 'pdf' | 'png' | 'pngzip' | 'svg' | 'figma') {
@@ -427,7 +519,21 @@ export const tool: LatheTool = {
         }
         return;
       }
-      if (a.type.startsWith('image/')) { addImageAsset(a); return; }
+      if (a.type.startsWith('image/')) {
+        // Brand slide: replace selected tile's image
+        const slide = deck.slides[cur];
+        if (slide?.brand && sel) {
+          const slotData = slide.brand.slots.find(s => s.name === sel);
+          if (slotData) {
+            slotData.assetUrl = `asset:${a.id}`;
+            slotData.assetThumbUrl = assetUrl(a);
+            commit();
+            return;
+          }
+        }
+        addImageAsset(a);
+        return;
+      }
       emit('toast', `Deck takes images or decks, not ${a.type || 'this file'}`);
     }
     const off = assets.onChange(e => {
