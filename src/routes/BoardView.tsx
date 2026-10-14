@@ -41,7 +41,7 @@ export function BoardView({ boardId }: Props) {
   const extractPalette = useCallback((item: BoardItem) => {
     if (palettes[item.id] || item.palette?.length) return;
     if (!paletteQRef.current) {
-      paletteQRef.current = new PaletteQueue({ k: 6, sample: 4, iterations: 6, minShare: 0.04, minSwatches: 3 }, 2);
+      paletteQRef.current = new PaletteQueue({ k: 6, sample: 64, iterations: 12, minShare: 0.02, minSwatches: 5, cacheHours: 24 }, 2);
     }
     paletteQRef.current.get(item.id, item.thumbUrl).then(r => {
       if (r?.swatches) setPalettes(prev => ({ ...prev, [item.id]: r.swatches }));
