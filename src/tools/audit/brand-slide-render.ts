@@ -9,7 +9,9 @@ export function renderSlideDOM(slide: BrandSlide): HTMLElement {
   el.className = 'brand-slide';
   el.style.cssText = `position:relative;width:${SLIDE_W}px;height:${SLIDE_H}px;background:${slide.theme === 'dark' ? '#000' : '#fff'};overflow:hidden;border-radius:${RADIUS}px;`;
 
+  const removedSet = new Set(slide.removed ?? []);
   for (const slot of template) {
+    if (removedSet.has(slot.name)) continue;
     const slotData = slide.slots.find(s => s.name === slot.name);
     const r = resolveSlotRect(slot, slotData?.rect);
     const tile = document.createElement('div');
@@ -44,12 +46,12 @@ export function renderSlideDOM(slide: BrandSlide): HTMLElement {
         tile.appendChild(img);
       }
     } else {
-      // Motion tile: show GIF if this slot is the motion slot
-      const isMotion = slide.motion?.slotName === slot.name && slide.motion.gifUrl;
-      if (isMotion) {
+      // Motion tile: show GIF if this slot has per-slot motion, or matches the legacy motion field
+      const motionGif = slotData?.gifUrl || (slide.motion?.slotName === slot.name ? slide.motion.gifUrl : null);
+      if (motionGif) {
         tile.style.background = slide.theme === 'dark' ? '#141414' : '#f0f0f0';
         const img = document.createElement('img');
-        img.src = slide.motion!.gifUrl!;
+        img.src = motionGif;
         img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
         tile.appendChild(img);
       } else if (slotData?.assetUrl) {
@@ -105,7 +107,9 @@ export async function renderSlideCanvas(slide: BrandSlide, scale = 2): Promise<H
     img.src = src;
   });
 
+  const removedSet2 = new Set(slide.removed ?? []);
   for (const slot of template) {
+    if (removedSet2.has(slot.name)) continue;
     const sd = slide.slots.find(s => s.name === slot.name);
     const r = resolveSlotRect(slot, sd?.rect);
     ctx.save();

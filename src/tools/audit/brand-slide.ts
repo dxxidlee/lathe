@@ -31,7 +31,11 @@ export interface BrandSlide {
     removedBg: boolean;
     focalX: number; focalY: number; // 0-1, for object-position
     rect?: { x: number; y: number; w: number; h: number }; // fractional 0-1 override
+    isMotion?: boolean;
+    gifUrl?: string;
+    posterUrl?: string;
   }>;
+  removed?: string[]; // slot names that have been removed (neighbor expanded to fill)
   motion: { assetUrl: string; gifUrl: string | null; posterUrl: string | null; slotName: string | null } | null;
 }
 
@@ -61,13 +65,61 @@ const BASE_SLOTS: SlotRect[] = [
   { name: 'bot_6',       x: 1708, y: 731, w: 188, h: 325, ar: 0.58, hasTileBg: true,  role: 'image' },
 ];
 
-// Variant 1: swap image content between top and bottom rows (keep layout, swap role assignments)
+// Variant 2: wider hero top-left, fewer bottom tiles
+const VARIANT_2: SlotRect[] = [
+  { name: 'top_1',       x: 24,   y: 24,  w: 745, h: 325, ar: 2.29, hasTileBg: true,  role: 'image' },
+  { name: 'top_2',       x: 780,  y: 24,  w: 370, h: 325, ar: 1.14, hasTileBg: true,  role: 'image' },
+  { name: 'top_3',       x: 1161, y: 24,  w: 344, h: 325, ar: 1.06, hasTileBg: true,  role: 'image' },
+  { name: 'palette',     x: 1516, y: 24,  w: 380, h: 325, ar: 1.17, hasTileBg: true,  role: 'palette' },
+  { name: 'mid_left',    x: 24,   y: 360, w: 685, h: 360, ar: 1.90, hasTileBg: true,  role: 'image' },
+  { name: 'logo',        x: 720,  y: 360, w: 480, h: 360, ar: 1.33, hasTileBg: true,  role: 'logo' },
+  { name: 'mid_right',   x: 1211, y: 360, w: 685, h: 360, ar: 1.90, hasTileBg: true,  role: 'image' },
+  { name: 'bot_1',       x: 24,   y: 731, w: 370, h: 325, ar: 1.14, hasTileBg: true,  role: 'image' },
+  { name: 'bot_2',       x: 405,  y: 731, w: 262, h: 325, ar: 0.81, hasTileBg: true,  role: 'image' },
+  { name: 'bot_3a',      x: 678,  y: 731, w: 262, h: 157, ar: 1.67, hasTileBg: true,  role: 'image' },
+  { name: 'bot_3b',      x: 678,  y: 899, w: 262, h: 157, ar: 1.67, hasTileBg: true,  role: 'image' },
+  { name: 'bot_4',       x: 951,  y: 731, w: 473, h: 325, ar: 1.46, hasTileBg: true,  role: 'image' },
+  { name: 'bot_5',       x: 1435, y: 731, w: 461, h: 325, ar: 1.42, hasTileBg: true,  role: 'image' },
+];
+
+// Variant 3: palette on left, asymmetric grid
+const VARIANT_3: SlotRect[] = [
+  { name: 'palette',     x: 24,   y: 24,  w: 380, h: 325, ar: 1.17, hasTileBg: true,  role: 'palette' },
+  { name: 'top_1',       x: 415,  y: 24,  w: 526, h: 325, ar: 1.62, hasTileBg: true,  role: 'image' },
+  { name: 'top_2',       x: 952,  y: 24,  w: 473, h: 325, ar: 1.46, hasTileBg: true,  role: 'image' },
+  { name: 'top_3',       x: 1436, y: 24,  w: 460, h: 325, ar: 1.42, hasTileBg: true,  role: 'image' },
+  { name: 'mid_left',    x: 24,   y: 360, w: 685, h: 360, ar: 1.90, hasTileBg: true,  role: 'image' },
+  { name: 'logo',        x: 720,  y: 360, w: 480, h: 360, ar: 1.33, hasTileBg: true,  role: 'logo' },
+  { name: 'mid_right',   x: 1211, y: 360, w: 685, h: 360, ar: 1.90, hasTileBg: true,  role: 'image' },
+  { name: 'bot_1',       x: 24,   y: 731, w: 460, h: 325, ar: 1.42, hasTileBg: true,  role: 'image' },
+  { name: 'bot_2',       x: 495,  y: 731, w: 262, h: 325, ar: 0.81, hasTileBg: true,  role: 'image' },
+  { name: 'bot_3a',      x: 768,  y: 731, w: 262, h: 157, ar: 1.67, hasTileBg: true,  role: 'image' },
+  { name: 'bot_3b',      x: 768,  y: 899, w: 262, h: 157, ar: 1.67, hasTileBg: true,  role: 'image' },
+  { name: 'bot_4',       x: 1041, y: 731, w: 473, h: 325, ar: 1.46, hasTileBg: true,  role: 'image' },
+  { name: 'bot_5',       x: 1525, y: 731, w: 371, h: 325, ar: 1.14, hasTileBg: true,  role: 'image' },
+];
+
+// Variant 4: even grid, more uniform tiles
+const VARIANT_4: SlotRect[] = [
+  { name: 'top_1',       x: 24,   y: 24,  w: 460, h: 325, ar: 1.42, hasTileBg: true,  role: 'image' },
+  { name: 'top_2',       x: 495,  y: 24,  w: 460, h: 325, ar: 1.42, hasTileBg: true,  role: 'image' },
+  { name: 'top_3',       x: 966,  y: 24,  w: 539, h: 325, ar: 1.66, hasTileBg: true,  role: 'image' },
+  { name: 'palette',     x: 1516, y: 24,  w: 380, h: 325, ar: 1.17, hasTileBg: true,  role: 'palette' },
+  { name: 'mid_left',    x: 24,   y: 360, w: 685, h: 360, ar: 1.90, hasTileBg: true,  role: 'image' },
+  { name: 'logo',        x: 720,  y: 360, w: 480, h: 360, ar: 1.33, hasTileBg: true,  role: 'logo' },
+  { name: 'mid_right',   x: 1211, y: 360, w: 685, h: 360, ar: 1.90, hasTileBg: true,  role: 'image' },
+  { name: 'bot_1',       x: 24,   y: 731, w: 371, h: 325, ar: 1.14, hasTileBg: true,  role: 'image' },
+  { name: 'bot_2',       x: 406,  y: 731, w: 371, h: 325, ar: 1.14, hasTileBg: true,  role: 'image' },
+  { name: 'bot_3a',      x: 788,  y: 731, w: 262, h: 157, ar: 1.67, hasTileBg: true,  role: 'image' },
+  { name: 'bot_3b',      x: 788,  y: 899, w: 262, h: 157, ar: 1.67, hasTileBg: true,  role: 'image' },
+  { name: 'bot_4',       x: 1061, y: 731, w: 371, h: 325, ar: 1.14, hasTileBg: true,  role: 'image' },
+  { name: 'bot_5',       x: 1443, y: 731, w: 453, h: 325, ar: 1.39, hasTileBg: true,  role: 'image' },
+];
+
+const VARIANTS = [BASE_SLOTS, VARIANT_2, VARIANT_3, VARIANT_4];
+
 export function getTemplate(variant: number): SlotRect[] {
-  if (variant === 0) return BASE_SLOTS;
-  // Variant 1: mirror X positions (logo stays centered)
-  if (variant === 1) return BASE_SLOTS.map(s => ({ ...s, x: SLIDE_W - s.x - s.w }));
-  // Variant 2: swap top and bottom row content assignments
-  return BASE_SLOTS;
+  return VARIANTS[variant % VARIANTS.length];
 }
 
 /** Resolve slot positions: use slot.rect (fractional) override when present, else template pixels. */

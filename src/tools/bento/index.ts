@@ -94,7 +94,17 @@ export const tool: LatheTool = {
     const slideInfo = note('');
     const slideRow = document.createElement('div'); slideRow.className = 'l-row';
     slideRow.append(
-      button({ label: 'Reshuffle', primary: true, onClick: () => { if (isCredits(cur)) return; deck.slides[cur] = reshuffle(deck.slides[cur]); commit(); } }),
+      button({ label: 'Reshuffle', primary: true, onClick: () => {
+        if (isCredits(cur)) return;
+        const slide = deck.slides[cur];
+        if (slide.brand) {
+          slide.brand.variant = (slide.brand.variant + 1) % 4;
+          slide.brand.removed = [];
+          for (const sd of slide.brand.slots) delete sd.rect;
+          commit();
+          emit('toast', 'Layout reset · Undo');
+        } else { deck.slides[cur] = reshuffle(slide); commit(); }
+      } }),
       button({ label: 'Add slide', onClick: () => { deck.slides.splice(cur + 1, 0, { id: uid('s'), tiles: [], variant: 0 }); cur = Math.min(cur + 1, deck.slides.length - 1); sel = null; commit(); } }),
       button({ label: 'Duplicate', onClick: () => { if (isCredits(cur)) return; const s = structuredClone(deck.slides[cur]); s.id = uid('s'); s.tiles.forEach(t => { t.id = uid(); }); deck.slides.splice(cur + 1, 0, s); cur++; commit(); } }),
       button({ label: 'Delete', onClick: () => { if (isCredits(cur) || deck.slides.length < 2) return; deck.slides.splice(cur, 1); cur = Math.max(0, cur - 1); sel = null; commit(); } }),
@@ -209,7 +219,8 @@ export const tool: LatheTool = {
         });
         // Clickable overlays on each brand tile
         const template = getBrandTemplate(slide.brand!.variant);
-        overlay.replaceChildren(...template.map(slot => {
+        const removedSet = new Set(slide.brand!.removed ?? []);
+        overlay.replaceChildren(...template.filter(slot => !removedSet.has(slot.name)).map(slot => {
           const sd = slide.brand!.slots.find(s => s.name === slot.name);
           const r = resolveSlotRect(slot, sd?.rect);
           const el = document.createElement('div');
@@ -267,8 +278,8 @@ export const tool: LatheTool = {
       }));
       // inspector state
       const vcount = variantsFor(slide.tiles.length).length;
-      slideInfo.textContent = credits ? 'Credits are generated from every image’s credit and update on their own.'
-        : isBrand ? `Slide ${cur + 1} of ${deck.slides.length} · brand board`
+      slideInfo.textContent = credits ? 'Credits update automatically.'
+        : isBrand ? `Slide ${cur + 1} of ${deck.slides.length} · layout ${(slide.brand!.variant % 4) + 1} of 4`
         : `Slide ${cur + 1} of ${deck.slides.length} · ${slide.tiles.length} tiles · layout ${slide.variant % Math.max(1, vcount) + 1} of ${vcount}`;
       deckInfo.textContent = `${deck.slides.length} slides + ${vs.length - deck.slides.length} credits`;
       renderTileEditor();
@@ -313,25 +324,22 @@ export const tool: LatheTool = {
       const template = getBrandTemplate(brand.variant);
       const slotDef = template.find(s => s.name === slotName);
       if (!slotDef || slotDef.role === 'logo' || slotDef.role === 'palette') return;
-      const rects = brandTileRects(brand);
-      const removed = rects.find(t => t.name === slotName);
-      if (!removed) return;
-      const neighbor = fillNeighbor(removed, rects, GUTTER_FX, GUTTER_FY);
+      const removedSet = new Set(brand.removed ?? []);
+      const rects = brandTileRects(brand).filter(t => !removedSet.has(t.name));
+      const removedTile = rects.find(t => t.name === slotName);
+      if (!removedTile) return;
+      const neighbor = fillNeighbor(removedTile, rects, GUTTER_FX, GUTTER_FY);
       if (neighbor) {
         const tileMap = new Map(rects.map(t => [t.name, { ...t }]));
         applyRemoval(tileMap, slotName, neighbor, GUTTER_FX, GUTTER_FY);
         for (const [name, rect] of tileMap) {
+          if (name === slotName) continue;
           const sd = brand.slots.find(s => s.name === name);
           if (sd) sd.rect = { x: rect.x, y: rect.y, w: rect.w, h: rect.h };
           else brand.slots.push({ name, assetUrl: null, assetThumbUrl: null, fit: 'cover', cropX: 0.5, cropY: 0.3, cropZoom: 1, removedBg: false, focalX: 0.5, focalY: 0.3, rect: { x: rect.x, y: rect.y, w: rect.w, h: rect.h } });
         }
-        const sd = brand.slots.find(s => s.name === slotName);
-        if (sd) { sd.assetUrl = null; sd.assetThumbUrl = null; delete sd.rect; }
-        brand.slots = brand.slots.filter(s => s.name !== slotName);
-      } else {
-        const sd = brand.slots.find(s => s.name === slotName);
-        if (sd) { sd.assetUrl = null; sd.assetThumbUrl = null; }
       }
+      brand.removed = [...removedSet, slotName];
       sel = null;
       commit();
     }
@@ -402,16 +410,21 @@ export const tool: LatheTool = {
           return;
         }
         // Motion tile
-        const isMotion = brand.motion?.slotName === sel;
-        if (isMotion && brand.motion?.gifUrl) {
+        const hasGif = slotData?.gifUrl || (brand.motion?.slotName === sel && brand.motion?.gifUrl);
+        if (hasGif) {
+          const gifSrc = slotData?.gifUrl || brand.motion!.gifUrl!;
           tileBody.append(note('Motion tile'));
           tileBody.append(button({ label: 'Download GIF', onClick: () => {
             const a = document.createElement('a');
-            a.href = brand.motion!.gifUrl!;
+            a.href = gifSrc;
             a.download = `${deck.title || 'brand'}-motion.gif`;
             a.click();
           }}));
-          tileBody.append(button({ label: 'Remove motion', onClick: () => { brand.motion = null; commit(); } }));
+          tileBody.append(button({ label: 'Remove motion', onClick: () => {
+            if (slotData) { delete slotData.isMotion; delete slotData.gifUrl; delete slotData.posterUrl; }
+            if (brand.motion?.slotName === sel) brand.motion = null;
+            commit();
+          }}));
         } else if (slotData?.assetUrl) {
           tileBody.append(
             chips<'cover' | 'contain'>({ label: 'Fit', value: slotData.fit, options: [{ value: 'cover', label: 'Fill' }, { value: 'contain', label: 'Fit' }], onChange: v => { slotData.fit = v as 'cover' | 'contain'; commit(); } }).el,
@@ -424,9 +437,9 @@ export const tool: LatheTool = {
                 const { videoToGif } = await import('./motion');
                 const r = resolveSlotRect(slotDef, slotData.rect);
                 const result = await videoToGif(slotData.assetUrl, Math.round(r.w));
-                const gifUrl = URL.createObjectURL(result.gif);
-                const posterUrl = URL.createObjectURL(result.poster);
-                brand.motion = { assetUrl: slotData.assetUrl, gifUrl, posterUrl, slotName: sel! };
+                slotData.isMotion = true;
+                slotData.gifUrl = URL.createObjectURL(result.gif);
+                slotData.posterUrl = URL.createObjectURL(result.poster);
                 commit();
                 emit('toast', `GIF ready: ${result.frames} frames, ${Math.round(result.gif.size / 1024)}KB`);
               } catch (e) { emit('toast', `GIF failed: ${e instanceof Error ? e.message : e}`); }
@@ -496,7 +509,8 @@ export const tool: LatheTool = {
 
     function brandTileRects(brand: BrandSlide): TileRect[] {
       const tmpl = getBrandTemplate(brand.variant);
-      return tmpl.map(s => {
+      const removedSet = new Set(brand.removed ?? []);
+      return tmpl.filter(s => !removedSet.has(s.name)).map(s => {
         const sd = brand.slots.find(d => d.name === s.name);
         const r = sd?.rect;
         return r ? { name: s.name, x: r.x, y: r.y, w: r.w, h: r.h } : { name: s.name, x: s.x / B_SW, y: s.y / B_SH, w: s.w / B_SW, h: s.h / B_SH };
