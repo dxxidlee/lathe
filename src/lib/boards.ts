@@ -101,10 +101,11 @@ export async function loadBoards(): Promise<Board[]> {
   if (_userId) {
     const cloud = await loadCloud();
     const local = await loadLocal();
-    // Merge: cloud is source of truth, add any local-only boards
+    // Merge: cloud is source of truth, add local-only boards (dedup by id AND by name+query)
     const cloudIds = new Set(cloud.map(b => b.id));
-    const merged = [...cloud, ...local.filter(b => !cloudIds.has(b.id))];
-    return merged.length ? merged : local;
+    const cloudKeys = new Set(cloud.map(b => `${b.name}\0${b.query}`));
+    const localOnly = local.filter(b => !cloudIds.has(b.id) && !cloudKeys.has(`${b.name}\0${b.query}`));
+    return cloud.length ? [...cloud, ...localOnly] : local;
   }
   return loadLocal();
 }
@@ -133,6 +134,9 @@ export async function createBoard(name: string, query = ''): Promise<Board> {
 }
 
 let saveTimer = 0;
+let saving = false;
+let pending: Board | null = null;
+
 export function saveBoard(board: Board): void {
   board.updatedAt = Date.now();
   clearTimeout(saveTimer);
@@ -140,40 +144,35 @@ export function saveBoard(board: Board): void {
 }
 
 async function saveBoardNow(board: Board): Promise<void> {
-  // Save to IDB
-  const local = await loadLocal();
-  const idx = local.findIndex(b => b.id === board.id);
-  if (idx >= 0) local[idx] = board; else local.push(board);
-  await saveLocal(local);
+  if (saving) { pending = board; return; }
+  saving = true;
+  try {
+    // Save to IDB
+    const local = await loadLocal();
+    const idx = local.findIndex(b => b.id === board.id);
+    if (idx >= 0) local[idx] = board; else local.push(board);
+    await saveLocal(local);
 
-  // Save to cloud
-  if (!_userId || !supabase) return;
-  await supabase.from('boards').upsert({
-    id: board.id, user_id: _userId, name: board.name, query: board.query,
-    visibility: board.visibility, share_slug: board.shareSlug,
-  });
-  // Sync items: delete all then re-insert (simplest for reorder)
-  await supabase.from('board_items').delete().eq('board_id', board.id);
-  if (board.items.length) {
-    await supabase.from('board_items').insert(board.items.map((it, i) => ({
-      board_id: board.id,
-      position: i,
-      source_id: it.sourceId,
-      source: it.source,
-      title: it.title,
-      creator: it.creator,
-      date: it.date,
-      year: it.year,
-      image_url: it.imageUrl,
-      thumb_url: it.thumbUrl,
-      width: it.width,
-      height: it.height,
-      license: it.license,
-      is_public_domain: it.isPublicDomain,
-      source_url: it.sourceUrl,
-      type: it.type,
-      palette: it.palette ?? null,
-    })));
+    // Save to cloud
+    if (_userId && supabase) {
+      await supabase.from('boards').upsert({
+        id: board.id, user_id: _userId, name: board.name, query: board.query,
+        visibility: board.visibility, share_slug: board.shareSlug,
+      });
+      await supabase.from('board_items').delete().eq('board_id', board.id);
+      if (board.items.length) {
+        await supabase.from('board_items').insert(board.items.map((it, i) => ({
+          board_id: board.id, position: i, source_id: it.sourceId, source: it.source,
+          title: it.title, creator: it.creator, date: it.date, year: it.year,
+          image_url: it.imageUrl, thumb_url: it.thumbUrl, width: it.width, height: it.height,
+          license: it.license, is_public_domain: it.isPublicDomain, source_url: it.sourceUrl,
+          type: it.type, palette: it.palette ?? null,
+        })));
+      }
+    }
+  } finally {
+    saving = false;
+    if (pending) { const next = pending; pending = null; void saveBoardNow(next); }
   }
 }
 
