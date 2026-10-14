@@ -67,12 +67,12 @@ const weightsText = (t: Typeface) => (t.weights.length ? (t.weights.length === 2
 
 export function buildBrandDeck(inp: BrandDeckInput): Deck {
   const { cap } = inp;
-  const site = cap.site;
+  const site = cap.site ?? { via: 'brandfetch-only' as const, url: `https://${cap.domain}`, host: cap.domain, snapshot: null, title: null, description: null, siteName: null, themeColor: null, lang: null, generator: null, og: { title: null, type: null, image: null, imageData: null }, logos: [] as any[], typefaces: [] as any[], colors: [] as any[], declared: [] as string[], social: {} as Record<string, string>, images: [] as any[], liveStatus: null, liveError: null, colorStats: { declarations: 0, unique: 0, clusters: 0 }, stylesheets: [], googleFonts: [], adobeKits: [], ms: 0 };
   const date = new Date(cap.capturedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
   const slides: Slide[] = [];
   const how = site.via === 'wayback' && site.snapshot
     ? `From the Wayback Machine capture of ${site.snapshot.timestamp.slice(0, 4)}-${site.snapshot.timestamp.slice(4, 6)}-${site.snapshot.timestamp.slice(6, 8)} (the live site refused automated requests)`
-    : 'Captured from the live site';
+    : site.via === 'brandfetch-only' ? 'Site not captured (blocked); brand data from Brandfetch' : 'Captured from the live site';
 
   // The board: the brand at a glance. Official colors when Brandfetch has them; otherwise the logo's
   // colors, then those measured on the homepage, then the CSS colors (which mix in interface states),
