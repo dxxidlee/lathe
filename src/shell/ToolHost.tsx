@@ -15,7 +15,7 @@ type Phase = 'loading' | 'ready' | 'error';
 
 /** Mounts a ready tool into shell-owned DOM nodes (stage, inspector) with its effective defaults.
     Editing a default saves it and remounts the tool, so the change applies at once. */
-export function ToolHost({ entry, active = true }: { entry: ToolEntry; active?: boolean }) {
+export function ToolHost({ entry, active = true, deckId }: { entry: ToolEntry; active?: boolean; deckId?: string }) {
   const shell = useShell();
   const navigate = useNavigate();
   const stageRef = useRef<HTMLDivElement>(null);
@@ -56,7 +56,7 @@ export function ToolHost({ entry, active = true }: { entry: ToolEntry; active?: 
       try {
         if (resetPending.current) { resetPending.current = false; await resetTool(entry.id); }
         const [tool, settings, savedEdits, applied] = await Promise.all([
-          entry.load!(), loadSettings(entry.id), loadEdits(entry.id), loadApplied(entry.id), loadAssets(),
+          entry.load!(), loadSettings(deckId ? `deck-${deckId}` : entry.id), loadEdits(entry.id), loadApplied(entry.id), loadAssets(),
         ]);
         if (cancelled) return;
         // Drop edits for keys the manifest no longer has.

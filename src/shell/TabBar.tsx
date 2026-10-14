@@ -32,9 +32,10 @@ export function TabBar({ tabs, activeTabId, onActivate, onClose, onReorder }: Pr
         const label = tab.id === 'make' ? 'Make a tool'
           : tab.id === 'library' ? 'Library'
           : tab.id.startsWith('board-') ? (tabLabels[tab.id] ? `Board \u00b7 ${tabLabels[tab.id]}` : 'Board')
+          : tab.id.startsWith('deck-') ? (tabLabels[tab.id] ? `Deck \u00b7 ${tabLabels[tab.id]}` : 'Deck')
           : tool?.name ?? tab.id;
         const active = tab.id === activeTabId;
-        const Icon = tab.id.startsWith('board-') ? toolIcon('board') : toolIcon(tab.id);
+        const Icon = tab.id.startsWith('board-') ? toolIcon('board') : tab.id.startsWith('deck-') ? toolIcon('deck') : toolIcon(tab.id);
         return (
           <button
             key={tab.id}

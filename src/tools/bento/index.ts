@@ -151,8 +151,13 @@ export const tool: LatheTool = {
       if (!supabase) { emit('toast', 'Sign in to save'); return; }
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { emit('toast', 'Sign in to save'); return; }
-      const { cloudSaveItem } = await import('../../lib/cloud-library');
-      await cloudSaveItem(user.id, { type: 'deck', name: deck.title || 'Untitled deck', toolId: 'deck', data: deck });
+      const { cloudSaveItem, cloudUpdateItem } = await import('../../lib/cloud-library');
+      if (deck.libraryId) {
+        await cloudUpdateItem(user.id, deck.libraryId, { name: deck.title, data: deck });
+      } else {
+        const id = await cloudSaveItem(user.id, { type: 'deck', name: deck.title || 'Untitled deck', toolId: 'deck', data: deck });
+        if (id) deck.libraryId = id;
+      }
       emit('toast', 'Saved to Library');
     }}), note('Decks export with an auto-generated credits slide. Fonts: Helvetica Neue, with Arial declared as the fallback.'));
     const advSec = advancedSection();

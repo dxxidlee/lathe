@@ -15,6 +15,7 @@ export function TopBar() {
   const activeLabel = shell.activeTabId === 'make' ? 'Make a tool'
     : shell.activeTabId === 'library' ? 'Library'
     : shell.activeTabId.startsWith('board-') ? (shell.tabLabels[shell.activeTabId] ? `Board \u00b7 ${shell.tabLabels[shell.activeTabId]}` : 'Board')
+    : shell.activeTabId.startsWith('deck-') ? (shell.tabLabels[shell.activeTabId] ? `Deck \u00b7 ${shell.tabLabels[shell.activeTabId]}` : 'Deck')
     : activeEntry?.name ?? shell.activeTabId;
   return (
     <header className="topbar">

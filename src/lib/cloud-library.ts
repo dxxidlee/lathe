@@ -110,6 +110,18 @@ export async function cloudSaveItem(userId: string, item: {
   return data?.id ?? null;
 }
 
+export async function cloudUpdateItem(userId: string, itemId: string, patch: {
+  name?: string; data?: unknown;
+}): Promise<void> {
+  if (!supabase) return;
+  const { error } = await supabase
+    .from('library_items')
+    .update(patch)
+    .eq('user_id', userId)
+    .eq('id', itemId);
+  if (error) console.warn('[lathe] cloud update item', error.message);
+}
+
 export async function cloudDeleteItem(userId: string, itemId: string): Promise<void> {
   if (!supabase) return;
   const { error } = await supabase

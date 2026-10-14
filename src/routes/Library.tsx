@@ -26,6 +26,32 @@ function formatAge(ts: number): string {
   return `${weeks}w`;
 }
 
+function DeckCard({ item, onOpen, onRename, onDelete }: { item: LibraryItem; onOpen: () => void; onRename: (name: string) => void; onDelete: () => void }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const deck = item.data as any;
+  const slideCount = deck?.slides?.length ?? 0;
+  const age = formatAge(item.createdAt);
+  return (
+    <div className="lib__board">
+      <div className="lib__board-cover lib__board-cover--1" onClick={onOpen}>
+        <div className="lib__board-empty" style={{ background: deck?.theme === 'light' ? '#fff' : '#000', borderRadius: '8px' }} />
+      </div>
+      <div className="lib__board-info">
+        <span className="lib__board-name" onClick={onOpen}>{item.name}</span>
+        <button type="button" className="lib__board-menu-btn" onClick={() => setMenuOpen(o => !o)}>{'\u22EF'}</button>
+      </div>
+      <div className="lib__board-meta">{slideCount} slide{slideCount !== 1 ? 's' : ''} &middot; {age}</div>
+      {menuOpen && (
+        <div className="lib__board-menu">
+          <button type="button" onClick={() => { onOpen(); setMenuOpen(false); }}>Open</button>
+          <button type="button" onClick={() => { const n = prompt('Rename deck', item.name); if (n?.trim()) onRename(n.trim()); setMenuOpen(false); }}>Rename</button>
+          <button type="button" className="lib__board-menu-danger" onClick={() => { onDelete(); setMenuOpen(false); }}>Delete</button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function BoardCard({ board, onOpen, onShare, onDelete }: { board: Board; onOpen: () => void; onShare: () => void; onDelete: () => void }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const imgs = board.items.slice(0, 3);
@@ -179,6 +205,19 @@ export function Library() {
                   onOpen={() => handleOpen(b.id)}
                   onShare={() => void handleShare(b)}
                   onDelete={() => void handleDelete(b.id)} />
+              ))}
+            </div>
+          )}
+          {(filter === 'all' || filter === 'deck') && items.filter(i => i.type === 'deck').length > 0 && (
+            <div className="lib__boards">
+              {items.filter(i => i.type === 'deck').map(item => (
+                <DeckCard key={item.id} item={item}
+                  onOpen={() => { shell.openTab(`deck-${item.id}`); navigate(`/t/deck-${item.id}`); }}
+                  onRename={async (name) => {
+                    if (shell.user) { const { cloudUpdateItem } = await import('../lib/cloud-library'); await cloudUpdateItem(shell.user.id, item.id, { name }); }
+                    setItems(items.map(i => i.id === item.id ? { ...i, name } : i));
+                  }}
+                  onDelete={() => void remove(item.id, item.type)} />
               ))}
             </div>
           )}
