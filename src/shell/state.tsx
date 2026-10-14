@@ -49,6 +49,8 @@ interface ShellState {
   reorderTabs: (fromIndex: number, toIndex: number) => void;
   nextTab: () => void;
   prevTab: () => void;
+  tabLabels: Record<string, string>;
+  setTabLabel: (tabId: string, label: string) => void;
   user: AuthUser;
 }
 
@@ -62,6 +64,10 @@ export function ShellProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [tabs, setTabs] = useState<Tab[]>([{ id: 'make', pinned: true }]);
   const [activeTabId, setActiveTabId] = useState('make');
+  const [tabLabels, setTabLabelsRaw] = useState<Record<string, string>>({});
+  const setTabLabel = useCallback((tabId: string, label: string) => {
+    setTabLabelsRaw(prev => prev[tabId] === label ? prev : { ...prev, [tabId]: label });
+  }, []);
   const statusMap = useRef(new Map<string, StatusInfo>());
   const [status, setStatusRaw] = useState<StatusInfo>({});
   const activeTabRef = useRef(activeTabId);
@@ -211,10 +217,11 @@ export function ShellProvider({ children }: { children: ReactNode }) {
     isMobile, menuOpen, toggleMenu, tabSwitcherOpen, setTabSwitcherOpen,
     inspectorExpanded, setInspectorExpanded,
     tabs, activeTabId, openTab, closeTab, reorderTabs, nextTab, prevTab,
+    tabLabels, setTabLabel,
     user,
   }), [railOpen, toggleRail, trayOpen, paletteOpen, sheetOpen, status, toasts, toast, runExport,
        isMobile, menuOpen, toggleMenu, tabSwitcherOpen, inspectorExpanded,
-       tabs, activeTabId, openTab, closeTab, reorderTabs, nextTab, prevTab, user]);
+       tabs, activeTabId, openTab, closeTab, reorderTabs, nextTab, prevTab, tabLabels, user]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }

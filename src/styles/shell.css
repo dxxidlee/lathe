@@ -322,7 +322,7 @@
 .lib__item-type { font-size: var(--text-meta); color: var(--text-3); min-width: 100px; }
 .lib__item-name { flex: 1; color: var(--text-1); }
 .lib__item-date { font-size: var(--text-meta); color: var(--text-3); }
-.lib__item-del { background: none; border: none; color: var(--text-3); cursor: pointer; font-size: var(--text-body); padding: var(--space-1); }
+.lib__item-del { background: none; border: none; color: var(--text-3); cursor: pointer; font-size: var(--text-body); padding: var(--space-1); display: flex; align-items: center; justify-content: center; }
 .lib__item-del:hover { color: var(--danger); }
 
 @media (max-width: 767px) {
@@ -352,7 +352,7 @@
   }
   .topbar__menu-btn {
     width: 40px; height: 40px; display: flex; align-items: center; justify-content: center;
-    background: none; border: none; color: var(--text-2); cursor: pointer;
+    background: none; border: none; color: var(--text-2); cursor: pointer; flex-shrink: 0;
   }
 
   /* Inspector: inside bottom sheet on mobile */
@@ -552,3 +552,12 @@
 .board-view__card:hover .board-view__remove { display: flex; }
 @media (hover: none) { .board-view__remove { display: flex; } }
 @media (max-width: 767px) { .board-view__grid { columns: 2; column-gap: var(--space-2); } .board-view { padding: var(--space-3); } }
+
+/* ---- Board detail view ---- */
+.board-detail { padding: var(--space-3) 0; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(240px, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; gap: var(--space-4); height: 100%; }
+.board-detail__back { grid-column: 1 / -1; background: none; border: none; color: var(--text-2); cursor: pointer; font: inherit; padding: 0; text-align: left; }
+.board-detail__back:hover { color: var(--text-1); }
+.board-detail__img { grid-row: 2; width: 100%; height: 100%; object-fit: contain; border-radius: var(--radius-panel); background: var(--fill-1); min-height: 0; }
+.board-detail__meta { grid-row: 2; overflow-y: auto; display: flex; flex-direction: column; }
+.board-detail__actions { grid-column: 1 / -1; display: flex; gap: var(--space-3); }
+@media (max-width: 767px) { .board-detail { grid-template-columns: 1fr; grid-template-rows: auto auto auto auto; height: auto; } .board-detail__img { grid-row: auto; max-height: 50vh; } .board-detail__meta { grid-row: auto; } }

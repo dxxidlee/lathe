@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { X } from 'lucide-react';
 import { useShell } from '../shell/state';
 
 import { cloudLoadLibrary, cloudDeleteItem, type LibraryItem } from '../lib/cloud-library';
@@ -188,7 +189,7 @@ export function Library() {
                 <span className="lib__item-name">{item.name}</span>
                 <span className="lib__item-date tabular">{new Date(item.createdAt).toLocaleDateString()}</span>
                 {item.type !== 'tool' && (
-                  <button type="button" className="lib__item-del" onClick={() => void remove(item.id, item.type)} title="Remove">&times;</button>
+                  <button type="button" className="lib__item-del" onClick={() => void remove(item.id, item.type)} title="Remove"><X size={14} strokeWidth={2} /></button>
                 )}
               </div>
             ))}
