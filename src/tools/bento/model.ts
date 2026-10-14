@@ -42,7 +42,7 @@ export interface Tile {
 
 export interface Slide { id: string; tiles: Tile[]; variant: number; brand?: import('../audit/brand-slide').BrandSlide }
 
-export interface Deck { version: 1; title: string; theme: 'dark' | 'light'; slides: Slide[] }
+export interface Deck { version: 1; id?: string; title: string; theme: 'dark' | 'light'; slides: Slide[]; libraryId?: string }
 
 let n = 0;
 export const uid = (p = 't') => `${p}${Date.now().toString(36)}${(++n).toString(36)}${Math.random().toString(36).slice(2, 5)}`;

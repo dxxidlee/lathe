@@ -3,7 +3,7 @@
 import type { Asset, LatheTool } from '../types';
 import { defaults } from './defaults';
 import { COLS, DECK_MIME, ROWS, emptyDeck, parseDeck, uid, type Deck, type Tile, type TileType } from './model';
-import { BRAND_SLIDE_MIME, type BrandSlide, getTemplate as getBrandTemplate, resolveSlotRect, SLIDE_W as B_SW, SLIDE_H as B_SH, GUTTER_FX, GUTTER_FY } from '../audit/brand-slide';
+import { BRAND_SLIDE_MIME, type BrandSlide, getTemplate as getBrandTemplate, resolveSlotRect, SLIDE_W as B_SW, SLIDE_H as B_SH, GUTTER_FX, GUTTER_FY, VARIANT_COUNT } from '../audit/brand-slide';
 import { ensureLayout, layoutSlide, reshuffle, variantsFor } from './layout';
 import { allSlides, drawSlide, type DrawConfig } from './draw';
 import { slideSvg } from './render-svg';
@@ -98,7 +98,7 @@ export const tool: LatheTool = {
         if (isCredits(cur)) return;
         const slide = deck.slides[cur];
         if (slide.brand) {
-          slide.brand.variant = (slide.brand.variant + 1) % 4;
+          slide.brand.variant = (slide.brand.variant + 1) % VARIANT_COUNT;
           slide.brand.removed = [];
           for (const sd of slide.brand.slots) delete sd.rect;
           commit();
@@ -151,8 +151,13 @@ export const tool: LatheTool = {
       if (!supabase) { emit('toast', 'Sign in to save'); return; }
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { emit('toast', 'Sign in to save'); return; }
-      const { cloudSaveItem } = await import('../../lib/cloud-library');
-      await cloudSaveItem(user.id, { type: 'deck', name: deck.title || 'Untitled deck', toolId: 'deck', data: deck });
+      const { cloudSaveItem, cloudUpdateItem } = await import('../../lib/cloud-library');
+      if (deck.libraryId) {
+        await cloudUpdateItem(user.id, deck.libraryId, { name: deck.title, data: deck });
+      } else {
+        const id = await cloudSaveItem(user.id, { type: 'deck', name: deck.title || 'Untitled deck', toolId: 'deck', data: deck });
+        if (id) deck.libraryId = id;
+      }
       emit('toast', 'Saved to Library');
     }}), note('Decks export with an auto-generated credits slide. Fonts: Helvetica Neue, with Arial declared as the fallback.'));
     const advSec = advancedSection();
@@ -279,7 +284,7 @@ export const tool: LatheTool = {
       // inspector state
       const vcount = variantsFor(slide.tiles.length).length;
       slideInfo.textContent = credits ? 'Credits update automatically.'
-        : isBrand ? `Slide ${cur + 1} of ${deck.slides.length} · layout ${(slide.brand!.variant % 4) + 1} of 4`
+        : isBrand ? `Slide ${cur + 1} of ${deck.slides.length} · layout ${(slide.brand!.variant % VARIANT_COUNT) + 1} of ${VARIANT_COUNT}`
         : `Slide ${cur + 1} of ${deck.slides.length} · ${slide.tiles.length} tiles · layout ${slide.variant % Math.max(1, vcount) + 1} of ${vcount}`;
       deckInfo.textContent = `${deck.slides.length} slides + ${vs.length - deck.slides.length} credits`;
       renderTileEditor();
