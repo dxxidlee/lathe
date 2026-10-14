@@ -378,8 +378,18 @@ export const tool: LatheTool = {
       e.preventDefault();
       const id = el.dataset.id!;
       if (sel !== id) { sel = id; render(); }
-      // Brand tiles: select only, no grid drag/resize
-      if (deck.slides[cur]?.brand) return;
+      if (deck.slides[cur]?.brand) {
+        if (cropSlot) return;
+        const tmpl = getBrandTemplate(deck.slides[cur].brand!.variant);
+        const sd = tmpl.find(s => s.name === id);
+        if (!sd || sd.role === 'logo' || sd.role === 'palette') return;
+        const fresh = overlay.querySelector<HTMLElement>(`.bt__tile[data-id="${id}"]`)!;
+        drag = { id, mode: 'move', x0: e.clientX, y0: e.clientY, el: fresh, moved: false };
+        fresh.setPointerCapture?.(e.pointerId);
+        document.addEventListener('pointermove', onMove);
+        document.addEventListener('pointerup', onUp);
+        return;
+      }
       const fresh = overlay.querySelector<HTMLElement>(`.bt__tile[data-id="${id}"]`)!;
       drag = { id, mode: (e.target as HTMLElement).dataset.handle ? 'resize' : 'move', x0: e.clientX, y0: e.clientY, el: fresh, moved: false };
       fresh.setPointerCapture?.(e.pointerId);
@@ -404,13 +414,32 @@ export const tool: LatheTool = {
       const d0 = drag; drag = null;
       document.removeEventListener('pointermove', onMove);
       document.removeEventListener('pointerup', onUp);
+      const slide = deck.slides[cur];
+      if (slide?.brand) {
+        d0.el.style.transform = ''; d0.el.classList.remove('is-dragging');
+        if (!d0.moved) return;
+        d0.el.style.visibility = 'hidden';
+        const under = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>('.bt__tile');
+        d0.el.style.visibility = '';
+        if (under && under.dataset.id !== d0.id) {
+          const a = slide.brand.slots.find(s => s.name === d0.id);
+          const b = slide.brand.slots.find(s => s.name === under.dataset.id);
+          if (a && b) {
+            const tmp = { assetUrl: a.assetUrl, assetThumbUrl: a.assetThumbUrl, fit: a.fit, cropX: a.cropX, cropY: a.cropY, cropZoom: a.cropZoom, removedBg: a.removedBg, focalX: a.focalX, focalY: a.focalY };
+            Object.assign(a, { assetUrl: b.assetUrl, assetThumbUrl: b.assetThumbUrl, fit: b.fit, cropX: b.cropX, cropY: b.cropY, cropZoom: b.cropZoom, removedBg: b.removedBg, focalX: b.focalX, focalY: b.focalY });
+            Object.assign(b, tmp);
+            commit();
+            return;
+          }
+        }
+        render(); return;
+      }
       if (d0.mode === 'resize') { if (d0.moved) save(); return; }
       d0.el.style.transform = ''; d0.el.classList.remove('is-dragging');
       if (!d0.moved) return;
       d0.el.style.visibility = 'hidden';
       const under = document.elementFromPoint(e.clientX, e.clientY)?.closest<HTMLElement>('.bt__tile');
       d0.el.style.visibility = '';
-      const slide = deck.slides[cur];
       const a = slide.tiles.find(x => x.id === d0.id), b = under && slide.tiles.find(x => x.id === under.dataset.id);
       if (a && b && a !== b) { [a.rect, b.rect] = [b.rect, a.rect]; commit(); } else render();
     };
