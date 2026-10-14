@@ -4,18 +4,7 @@
    without CORS issues. Forwards Range headers so only the needed bytes are fetched.
    Instagram CDN needs a browser-like Referer/UA or it returns 403. */
 import { uaFor } from './_lib/http.js';
-
-const MAX_CHUNK = 4 * 1024 * 1024;
-
-const ALLOWED_HOSTS = [
-  'cdninstagram.com', 'fbcdn.net', 'scontent.cdninstagram.com',
-  'video.cdninstagram.com', 'scontent-', // scontent-*.cdninstagram.com
-  'i.ytimg.com', 'web.archive.org',
-];
-
-/** @param {string} host */
-const allowed = host => ALLOWED_HOSTS.some(h => host === h || host.endsWith('.' + h))
-  || /\.(mp4|webm)(\?|$)/i.test(host); // allow direct video file hosts from site capture
+import { assertPublic } from './_lib/safefetch.js';
 
 /** @param {number} status @param {string} msg */
 const fail = (status, msg) => new Response(msg, { status, headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' } });
@@ -29,7 +18,8 @@ export async function GET(request) {
   try { target = new URL(url); } catch { return fail(400, 'Bad url'); }
   if (!/^https?:$/.test(target.protocol)) return fail(400, 'Bad protocol');
 
-  // Allow any host that serves video — site capture finds arbitrary domains
+  try { await assertPublic(target); } catch (e) { return fail(403, e instanceof Error ? e.message : 'Blocked'); }
+
   const host = target.hostname;
 
   /** @type {Record<string, string>} */

@@ -23,7 +23,7 @@ export function isPrivateIp(ip) {
 }
 
 /** @param {URL} u */
-async function assertPublic(u) {
+export async function assertPublic(u) {
   if (!/^https?:$/.test(u.protocol)) throw new Error('Only http and https URLs');
   if (u.port && !['80', '443'].includes(u.port)) throw new Error('Only standard ports');
   if (u.username || u.password) throw new Error('No credentials in URLs');
