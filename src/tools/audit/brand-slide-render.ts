@@ -1,5 +1,5 @@
 /* Render a BrandSlide to DOM or canvas. Single source of truth for layout. */
-import { getTemplate, SLIDE_W, SLIDE_H, RADIUS, type BrandSlide, type SlotRect } from './brand-slide';
+import { getTemplate, SLIDE_W, SLIDE_H, RADIUS, type BrandSlide } from './brand-slide';
 import { proxied } from './api';
 
 /** Render the slide as a DOM element for the editing stage. */
