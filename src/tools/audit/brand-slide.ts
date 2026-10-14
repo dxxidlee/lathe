@@ -1,9 +1,12 @@
 /* Brand slide: one slide per audit. Template slots, assignment, and palette. */
 
+export const BRAND_SLIDE_MIME = 'application/vnd.lathe.brand-slide+json';
+
 export const SLIDE_W = 1920;
 export const SLIDE_H = 1080;
-export const GUTTER = 12;
-export const RADIUS = 16;
+export const GUTTER = 11;
+export const RADIUS = 13;
+export const MARGIN = 24;
 
 export interface SlotRect {
   name: string;
@@ -36,44 +39,53 @@ export interface BrandSlide {
 // Positions as px at 1920×1080
 
 const BASE_SLOTS: SlotRect[] = [
-  // Top row
-  { name: 'top_wide',    x: 115, y: 27,  w: 442, h: 297, ar: 1.49, hasTileBg: true,  role: 'image' },
-  { name: 'top_small',   x: 566, y: 27,  w: 221, h: 297, ar: 0.74, hasTileBg: true,  role: 'image' },
-  { name: 'top_product', x: 797, y: 27,  w: 288, h: 297, ar: 0.97, hasTileBg: true,  role: 'image' },
-  { name: 'top_hero',    x: 1094, y: 27, w: 384, h: 297, ar: 1.29, hasTileBg: true,  role: 'image' },
-  { name: 'palette',     x: 1488, y: 27, w: 384, h: 297, ar: 1.29, hasTileBg: true,  role: 'palette' },
+  // Top row (y=24, h=273)
+  { name: 'top_wide',    x: 71,   y: 24,  w: 347, h: 273, ar: 1.27, hasTileBg: true,  role: 'image' },
+  { name: 'top_small',   x: 429,  y: 24,  w: 164, h: 273, ar: 0.60, hasTileBg: true,  role: 'image' },
+  { name: 'top_hero',    x: 604,  y: 24,  w: 438, h: 273, ar: 1.60, hasTileBg: true,  role: 'image' },
+  { name: 'top_accent',  x: 1053, y: 24,  w: 55,  h: 273, ar: 0.20, hasTileBg: true,  role: 'image' },
+  { name: 'top_right',   x: 1119, y: 24,  w: 310, h: 273, ar: 1.14, hasTileBg: true,  role: 'image' },
+  { name: 'palette',     x: 1440, y: 24,  w: 456, h: 273, ar: 1.67, hasTileBg: true,  role: 'palette' },
 
-  // Middle row
-  { name: 'logo',        x: 442, y: 335, w: 595, h: 400, ar: 1.49, hasTileBg: true,  role: 'logo' },
-  { name: 'mid_sq1',     x: 1046, y: 335, w: 269, h: 194, ar: 1.38, hasTileBg: true, role: 'image' },
-  { name: 'mid_sq2',     x: 1325, y: 335, w: 269, h: 194, ar: 1.38, hasTileBg: true, role: 'image' },
-  { name: 'mid_right',   x: 1603, y: 335, w: 278, h: 400, ar: 0.70, hasTileBg: true, role: 'image' },
-  { name: 'mid_lower1',  x: 1046, y: 540, w: 269, h: 200, ar: 1.35, hasTileBg: true, role: 'image' },
-  { name: 'mid_lower2',  x: 1325, y: 540, w: 269, h: 200, ar: 1.35, hasTileBg: true, role: 'image' },
+  // Middle row (y=308, h=392)
+  { name: 'cutout_1',    x: 0,    y: 308, w: 60,  h: 392, ar: 0.15, hasTileBg: false, role: 'cutout' },
+  { name: 'logo',        x: 71,   y: 308, w: 493, h: 392, ar: 1.26, hasTileBg: true,  role: 'logo' },
+  { name: 'mid_sq1',     x: 575,  y: 308, w: 219, h: 179, ar: 1.22, hasTileBg: true,  role: 'image' },
+  { name: 'mid_sq2',     x: 805,  y: 308, w: 219, h: 179, ar: 1.22, hasTileBg: true,  role: 'image' },
+  { name: 'mid_tall',    x: 1035, y: 308, w: 219, h: 392, ar: 0.56, hasTileBg: true,  role: 'image' },
+  { name: 'mid_far',     x: 1265, y: 308, w: 631, h: 392, ar: 1.61, hasTileBg: true,  role: 'image' },
+  { name: 'mid_lower1',  x: 575,  y: 498, w: 219, h: 202, ar: 1.08, hasTileBg: true,  role: 'image' },
+  { name: 'mid_lower2',  x: 805,  y: 498, w: 219, h: 202, ar: 1.08, hasTileBg: true,  role: 'image' },
 
-  // Bottom row
-  { name: 'bot_sq',      x: 115, y: 745, w: 326, h: 308, ar: 1.06, hasTileBg: true,  role: 'image' },
-  { name: 'bot_port',    x: 451, y: 745, w: 307, h: 308, ar: 1.00, hasTileBg: true,  role: 'image' },
-  { name: 'bot_sm1',     x: 768, y: 745, w: 269, h: 151, ar: 1.78, hasTileBg: true,  role: 'image' },
-  { name: 'bot_sm2',     x: 768, y: 906, w: 269, h: 151, ar: 1.78, hasTileBg: true,  role: 'image' },
-  { name: 'bot_large',   x: 1046, y: 745, w: 547, h: 308, ar: 1.78, hasTileBg: true, role: 'image' },
-
-  // Left edge cutouts (no tile background)
-  { name: 'cutout_1',    x: 0, y: 335, w: 115, h: 400, ar: 0.29, hasTileBg: false, role: 'cutout' },
-  { name: 'cutout_2',    x: 0, y: 745, w: 115, h: 308, ar: 0.37, hasTileBg: false, role: 'cutout' },
+  // Bottom row (y=711, h=345)
+  { name: 'cutout_2',    x: 0,    y: 711, w: 60,  h: 345, ar: 0.17, hasTileBg: false, role: 'cutout' },
+  { name: 'bot_sq',      x: 71,   y: 711, w: 256, h: 345, ar: 0.74, hasTileBg: true,  role: 'image' },
+  { name: 'bot_port',    x: 338,  y: 711, w: 237, h: 345, ar: 0.69, hasTileBg: true,  role: 'image' },
+  { name: 'bot_sm1',     x: 586,  y: 711, w: 237, h: 167, ar: 1.42, hasTileBg: true,  role: 'image' },
+  { name: 'bot_sm2',     x: 586,  y: 889, w: 237, h: 167, ar: 1.42, hasTileBg: true,  role: 'image' },
+  { name: 'bot_large',   x: 834,  y: 711, w: 438, h: 345, ar: 1.27, hasTileBg: true,  role: 'image' },
+  { name: 'bot_tall',    x: 1283, y: 711, w: 219, h: 345, ar: 0.63, hasTileBg: true,  role: 'image' },
+  { name: 'bot_far',     x: 1513, y: 711, w: 383, h: 345, ar: 1.11, hasTileBg: true,  role: 'image' },
 ];
 
-// Variant 1: swap top_wide and bot_large positions
+// Variant 1: swap image content between top and bottom rows (keep layout, swap role assignments)
 export function getTemplate(variant: number): SlotRect[] {
   if (variant === 0) return BASE_SLOTS;
+  const topNames = new Set(['top_wide', 'top_small', 'top_hero', 'top_accent', 'top_right']);
+  const botNames = new Set(['bot_sq', 'bot_port', 'bot_sm1', 'bot_sm2', 'bot_large', 'bot_tall', 'bot_far']);
   if (variant === 1) {
+    // Swap: top image slots get bottom names (in order) and vice versa
+    const topSlots = BASE_SLOTS.filter(s => topNames.has(s.name));
+    const botSlots = BASE_SLOTS.filter(s => botNames.has(s.name));
     return BASE_SLOTS.map(s => {
-      if (s.name === 'top_wide') return { ...BASE_SLOTS.find(b => b.name === 'bot_large')!, name: 'top_wide', role: 'image' as const };
-      if (s.name === 'bot_large') return { ...BASE_SLOTS.find(b => b.name === 'top_wide')!, name: 'bot_large', role: 'image' as const };
+      const ti = topSlots.indexOf(s);
+      if (ti >= 0 && ti < botSlots.length) return { ...s, name: botSlots[ti].name };
+      const bi = botSlots.indexOf(s);
+      if (bi >= 0 && bi < topSlots.length) return { ...s, name: topSlots[bi].name };
       return s;
     });
   }
-  // Variant 2: mirror horizontally
+  // Variant 2: mirror X positions
   return BASE_SLOTS.map(s => ({
     ...s,
     x: SLIDE_W - s.x - s.w,

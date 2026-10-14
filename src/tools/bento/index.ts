@@ -3,6 +3,7 @@
 import type { Asset, LatheTool } from '../types';
 import { defaults } from './defaults';
 import { COLS, DECK_MIME, ROWS, emptyDeck, parseDeck, uid, type Deck, type Tile, type TileType } from './model';
+import { BRAND_SLIDE_MIME, type BrandSlide } from '../audit/brand-slide';
 import { ensureLayout, layoutSlide, reshuffle, variantsFor } from './layout';
 import { allSlides, drawSlide, type DrawConfig } from './draw';
 import { slideSvg } from './render-svg';
@@ -21,7 +22,7 @@ export const tool: LatheTool = {
   name: 'Deck',
   group: 'Workbench',
   defaults,
-  accepts: ['image/*', DECK_MIME, 'application/json'],
+  accepts: ['image/*', DECK_MIME, BRAND_SLIDE_MIME, 'application/json'],
 
   mount({ defaults: d, stage, inspector, statusbar, assets, settings, emit }) {
     const cfg: DrawConfig = {
@@ -368,6 +369,14 @@ export const tool: LatheTool = {
           commit();
           emit('toast', `Loaded “${deck.title}”: ${deck.slides.length} slides`);
         } catch { emit('toast', 'That file is not a deck'); }
+        return;
+      }
+      if (a.type === BRAND_SLIDE_MIME || /\.brand-slide\.json$/i.test(a.name)) {
+        try {
+          const slide = JSON.parse(await a.blob.text()) as BrandSlide;
+          const filled = slide.slots.filter(s => s.assetUrl).length;
+          emit('toast', `Brand slide loaded: ${slide.palette.length} colors, ${filled} images`);
+        } catch { emit('toast', 'Could not read brand slide'); }
         return;
       }
       if (a.type.startsWith('image/')) { addImageAsset(a); return; }
