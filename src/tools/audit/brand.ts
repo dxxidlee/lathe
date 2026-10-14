@@ -5,6 +5,8 @@ import type { MountContext, MountResult } from '../types';
 import { PaletteQueue, fetchCatalog, type BrandFeatures } from './api';
 import { ApiError, captureBrand, downscale, fetchInstagram, fetchRendered, fetchShot, igHandle, igSrc, logoFromUrl, fetchSocial, fetchTimeline, requestObservations, type BrandCapture, type IgPost, type Instagram, type LogoCandidate, type SiteCapture, type Observations, type Social, type Timeline } from './brand-api';
 import { buildBrandDeck, type DeckImage } from './brand-deck';
+import { createSlide, type AssetCandidate, type BrandSlide } from './brand-slide';
+import { renderSlideDOM } from './brand-slide-render';
 import { DECK_MIME } from '../bento/model';
 import { deltaE, hexToOklab, kmeans, rgbToOklab, type Lab, type Swatch } from '../../lib/color';
 import { button, chips, field, note, section, select, slider, statList } from '../../ui/primitives';
@@ -56,6 +58,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   let igError: string | null = null;
   let igFrom: 'Brandfetch' | 'site' | 'typed' | null = null;
   let igName: string | null = null;
+  let brandSlide: BrandSlide | null = null;
   /** Instagram tiles are kept across repaints so their videos keep playing. */
   const igNodes = new Map<string, { card: HTMLElement; pick: HTMLButtonElement }>();
   const igViews = new IntersectionObserver(entries => {
@@ -109,6 +112,16 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   const deckRow = el('div', 'l-row');
   deckRow.append(chips<'dark' | 'light'>({ label: 'Deck theme', value: d.deckTheme as 'dark' | 'light', options: [{ value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }], onChange: v => { (d as Record<string, unknown>).deckTheme = v; } }).el);
   const actions = el('div', 'l-row');
+  const shuffleBtn = button({ label: 'Shuffle', onClick: () => {
+    if (!brandSlide) return;
+    const nextVariant = (brandSlide.variant + 1) % 3;
+    const assets = collectAssets();
+    const cssC = cap?.site?.colors?.map(c => c.hex) ?? [];
+    const bfC = cap?.brandfetch?.colors?.map(c => c.hex) ?? [];
+    const best = allLogos()[0];
+    brandSlide = createSlide(assets, best?.dataUri ?? best?.url ?? '', best?.kind === 'svg', cssC, bfC, nextVariant);
+    render();
+  }});
   const deckBtn = button({ label: 'Build deck', onClick: () => void buildDeckNow() });
   const saveLibBtn = button({ label: 'Save to Library', onClick: async () => {
     if (!cap) { emit('toast', 'Capture a brand first'); return; }
@@ -121,7 +134,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
     emit('toast', 'Saved to Library');
   }});
   const obsBtn = button({ label: 'Write observations', onClick: () => void observe() });
-  actions.append(deckBtn, saveLibBtn, obsBtn);
+  actions.append(shuffleBtn, deckBtn, saveLibBtn, obsBtn);
   // Typed only when neither Brandfetch nor the site links an Instagram account (or the one found fails).
   const igField = field({ label: 'Instagram handle', value: '', placeholder: '@handle', onChange: v => void setHandle(v) });
   capSec.body.append(capStats.el, igField.el, deckRow, actions, capNote);
@@ -173,7 +186,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
     controller?.abort(); controller = new AbortController();
     const signal = controller.signal;
     palettes.cancelPending();
-    cap = null; capError = null; capturing = true; timeline = null; timelineError = null; obs = null; obsState = 'idle'; obsError = null; quotaSpent = false;
+    cap = null; capError = null; capturing = true; timeline = null; timelineError = null; obs = null; obsState = 'idle'; obsError = null; quotaSpent = false; brandSlide = null;
     social = null; socialError = null; picks = []; picksTouched = false; rendered = []; renderedLogos = []; logosTouched = false;
     ig = null; igError = null; igFrom = null; igName = null; igLoading = false; igNodes.forEach(n => igViews.unobserve(n.card)); igNodes.clear();
     shots.clear(); pickedLogos.clear();
@@ -349,6 +362,36 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
     return sw.reduce((s, x) => s + ((declaredMatch(x.hex)?.de ?? 9) <= (d.declaredMatch as number) ? x.share : 0), 0);
   }
 
+  /* ---------------- slide ---------------- */
+  function collectAssets(): AssetCandidate[] {
+    const assets: AssetCandidate[] = [];
+    for (const l of allLogos()) {
+      if (l.url) assets.push({ url: l.url, thumbUrl: l.dataUri || l.url, width: null, height: null, priority: 0, type: 'logo', isTransparent: l.kind === 'svg' || l.kind === 'brandfetch' });
+    }
+    if (ig?.posts) {
+      for (const p of ig.posts) {
+        const src = p.type === 'video' ? p.poster : p.type === 'carousel' ? p.slides[0]?.src : p.src;
+        if (src) assets.push({ url: igSrc(src), thumbUrl: igSrc(src), width: null, height: null, priority: 1, type: 'instagram' });
+      }
+    }
+    if (social?.youtube?.videos) {
+      for (const v of social.youtube.videos) {
+        for (const st of v.stills) {
+          assets.push({ url: stillSrc(st), thumbUrl: stillSrc(st), width: null, height: null, priority: 2, type: 'youtube' });
+        }
+      }
+    }
+    for (const img of siteImages()) {
+      assets.push({ url: siteSrc(img.url), thumbUrl: siteSrc(img.url), width: img.w ?? null, height: null, priority: 3, type: 'brand' });
+    }
+    for (const [, shot] of shots) {
+      if (shot.status === 'done' && shot.url) {
+        assets.push({ url: shot.url, thumbUrl: shot.url, width: shot.w ?? null, height: shot.h ?? null, priority: 4, type: 'screenshot' });
+      }
+    }
+    return assets;
+  }
+
   /* ---------------- render ---------------- */
   let raf = 0;
   function render() { cancelAnimationFrame(raf); raf = requestAnimationFrame(paint); }
@@ -376,7 +419,35 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
       ? `Resolved "${cap.query}" to ${cap.company.name}${cap.company.description ? `, ${cap.company.description}` : ''} via Wikidata.`
       : `Wikidata lists no website for "${cap.query}"; found ${new URL(cap.company.website).hostname}, whose title names it.`));
 
-    report.replaceChildren(head, shotsSection(), imagerySection(), paletteSection(), typeSection(), logoSection(), timelineSection(), obsSection());
+    // Generate brand slide from captured data
+    const slideAssets = collectAssets();
+    const bestLogo = allLogos()[0];
+    const cssColors = cap.site.colors.map(c => c.hex);
+    const bfColors = cap.brandfetch?.colors?.map(c => c.hex) ?? [];
+    const logoUrl = bestLogo?.dataUri ?? bestLogo?.url ?? '';
+    const logoIsLight = bestLogo?.kind === 'svg';
+
+    if (logoUrl || slideAssets.length) {
+      brandSlide = createSlide(slideAssets, logoUrl, logoIsLight, cssColors, bfColors, brandSlide?.variant ?? 0);
+    }
+
+    const slideContainer = el('div', 'ab__slide-wrap');
+    if (brandSlide) {
+      const slideEl = renderSlideDOM(brandSlide);
+      slideContainer.style.cssText = 'margin-bottom: var(--space-6); overflow: hidden;';
+      const scaleWrap = el('div', 'ab__slide-scale');
+      scaleWrap.style.cssText = 'transform-origin: top left; width: 1920px;';
+      scaleWrap.appendChild(slideEl);
+      slideContainer.appendChild(scaleWrap);
+      requestAnimationFrame(() => {
+        const containerW = slideContainer.clientWidth || report.clientWidth || 800;
+        const scale = containerW / 1920;
+        scaleWrap.style.transform = `scale(${scale})`;
+        slideContainer.style.height = `${1080 * scale}px`;
+      });
+    }
+
+    report.replaceChildren(head, slideContainer);
   }
 
   function block(title: string, aside?: string) {
