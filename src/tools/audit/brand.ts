@@ -2,11 +2,10 @@
    candidates, desktop and mobile captures with their measured palette, a Wayback timeline, optional
    Brandfetch assets and generated observations; then a deck in Bento. */
 import type { MountContext, MountResult } from '../types';
-import { PaletteQueue, fetchCatalog, type BrandFeatures } from './api';
+import { PaletteQueue, fetchCatalog, proxied, type BrandFeatures } from './api';
 import { ApiError, captureBrand, downscale, fetchInstagram, fetchRendered, fetchShot, igHandle, igSrc, logoFromUrl, fetchSocial, fetchTimeline, requestObservations, type BrandCapture, type IgPost, type Instagram, type LogoCandidate, type SiteCapture, type Observations, type Social, type Timeline } from './brand-api';
 import { buildBrandDeck, type DeckImage } from './brand-deck';
-import { createSlide, type AssetCandidate, type BrandSlide } from './brand-slide';
-import { renderSlideDOM } from './brand-slide-render';
+import { buildPalette } from './brand-slide';
 import { DECK_MIME } from '../bento/model';
 import { deltaE, hexToOklab, kmeans, rgbToOklab, type Lab, type Swatch } from '../../lib/color';
 import { button, chips, field, note, section, select, slider, statList } from '../../ui/primitives';
@@ -52,13 +51,18 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   /** Imagery picked for the board: `ig:<post>`, `yt:<video>:<still>` or `site:<index>`, in pick order. */
   let picks: string[] = [];
   let picksTouched = false;
+  /** Brand Library: content filter and selection for deck building. */
+  type ContentFilter = 'all' | 'instagram' | 'youtube' | 'brand' | 'video';
+  let contentFilter: ContentFilter = 'all';
+  const selected = new Map<string, number>(); // asset ID → selection order number (1-based)
+  let currentLogoIdx = 0;
+  let brandPalette: string[] = [];
   /** Instagram: the handle (from Brandfetch's links, the site's, or typed), its profile and posts. */
   let ig: Instagram | null = null;
   let igLoading = false;
   let igError: string | null = null;
   let igFrom: 'Brandfetch' | 'site' | 'typed' | null = null;
   let igName: string | null = null;
-  let brandSlide: BrandSlide | null = null;
   /** Instagram tiles are kept across repaints so their videos keep playing. */
   const igNodes = new Map<string, { card: HTMLElement; pick: HTMLButtonElement }>();
   const igViews = new IntersectionObserver(entries => {
@@ -89,6 +93,82 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
     minShare: d.minSwatchShare as number, minSwatches: d.minSwatches as number, cacheHours: d.cacheHours as number,
   }, 2);
 
+  /* ---------------- content items ---------------- */
+  interface ContentItem {
+    id: string;
+    url: string;
+    thumbUrl: string;
+    source: 'instagram' | 'youtube' | 'brand';
+    isVideo: boolean;
+    carouselCount?: number;
+    carouselFrames?: Array<{ type: string; src: string; poster?: string }>;
+    videoUrl?: string;
+  }
+  function getContentItems(): ContentItem[] {
+    const items: ContentItem[] = [];
+    const logoUrls = new Set(allLogos().map(l => l.url).filter(Boolean));
+    if (ig?.posts) {
+      for (const p of ig.posts) {
+        if (!p.src) continue;
+        items.push({
+          id: `ig:${p.id}`,
+          url: p.src,
+          thumbUrl: p.poster ?? p.src,
+          source: 'instagram',
+          isVideo: p.type === 'video',
+          carouselCount: p.slides?.length || undefined,
+          carouselFrames: p.slides?.map(s => ({ type: s.type, src: s.src, poster: s.poster ?? undefined })),
+          videoUrl: p.type === 'video' ? p.src : undefined,
+        });
+      }
+    }
+    if (social?.youtube?.videos) {
+      for (const v of social.youtube.videos) {
+        const thumb = v.stills[0];
+        if (!thumb) continue;
+        items.push({
+          id: `yt:${v.id}`,
+          url: stillSrc(thumb),
+          thumbUrl: stillSrc(thumb),
+          source: 'youtube',
+          isVideo: false,
+        });
+      }
+    }
+    for (const img of siteImages()) {
+      if (logoUrls.has(img.url)) continue;
+      if (img.w != null && img.w < 100) continue;
+      items.push({
+        id: `site:${img.url}`,
+        url: img.url,
+        thumbUrl: img.url,
+        source: 'brand',
+        isVideo: false,
+      });
+    }
+    return items;
+  }
+  function toggleSelection(id: string) {
+    if (selected.has(id)) {
+      const removed = selected.get(id)!;
+      selected.delete(id);
+      for (const [k, v] of selected) { if (v > removed) selected.set(k, v - 1); }
+    } else {
+      selected.set(id, selected.size + 1);
+    }
+    renderContentGrid();
+    renderInspector();
+    autoSave();
+  }
+  let saveDebounce = 0;
+  function autoSave() {
+    clearTimeout(saveDebounce);
+    saveDebounce = window.setTimeout(() => {
+      settings.set('brandKit', { logoIdx: currentLogoIdx, palette: brandPalette });
+      settings.set('selections', [...selected.entries()]);
+    }, 500);
+  }
+
   /* ---------------- stage ---------------- */
   const root = el('div', 'au');
   const bar = el('form', 'au__bar'); bar.setAttribute('role', 'search');
@@ -105,52 +185,120 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   stage.appendChild(root);
   bar.addEventListener('submit', e => { e.preventDefault(); void run(q.value); });
 
+  /* ---------------- content grid (stable across repaints) ---------------- */
+  const contentGrid = el('div', 'ab__content-grid');
+  const filterChipsEl = chips<ContentFilter>({
+    value: contentFilter,
+    options: [
+      { value: 'all', label: 'All' },
+      { value: 'instagram', label: 'Instagram' },
+      { value: 'youtube', label: 'YouTube' },
+      { value: 'brand', label: 'Brand imagery' },
+      { value: 'video', label: 'Video' },
+    ],
+    onChange: v => { contentFilter = v as ContentFilter; renderContentGrid(); },
+  });
+  function renderContentGrid() {
+    const items = getContentItems();
+    const filtered = contentFilter === 'all' ? items
+      : contentFilter === 'video' ? items.filter(i => i.isVideo)
+      : items.filter(i => i.source === contentFilter);
+
+    contentGrid.replaceChildren(...filtered.map(item => {
+      const card = el('div', 'ab__content-card');
+      const img = document.createElement('img');
+      img.className = 'ab__content-img';
+      img.src = item.thumbUrl;
+      img.loading = 'lazy';
+      img.alt = '';
+      img.addEventListener('error', () => { if (!img.src.includes('/api/img')) img.src = proxied(item.thumbUrl); }, { once: true });
+
+      if (item.isVideo) {
+        const play = el('div', 'ab__content-play');
+        play.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
+        card.appendChild(play);
+      }
+      if (item.carouselCount && item.carouselCount > 1) {
+        const count = el('div', 'ab__content-carousel');
+        count.textContent = `1/${item.carouselCount}`;
+        card.appendChild(count);
+      }
+
+      const selBtn = el('button', 'ab__content-sel') as HTMLButtonElement;
+      selBtn.type = 'button';
+      const selNum = selected.get(item.id);
+      if (selNum != null) {
+        selBtn.textContent = String(selNum);
+        selBtn.classList.add('is-selected');
+      } else {
+        selBtn.textContent = '+';
+      }
+      selBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleSelection(item.id);
+      });
+
+      // Video hover preview
+      if (item.isVideo && item.videoUrl) {
+        let video: HTMLVideoElement | null = null;
+        card.addEventListener('mouseenter', () => {
+          if (video) return;
+          video = document.createElement('video');
+          video.src = proxied(item.videoUrl!);
+          video.muted = true;
+          video.loop = true;
+          video.playsInline = true;
+          video.className = 'ab__content-video';
+          card.insertBefore(video, img);
+          img.style.display = 'none';
+          void video.play().catch(() => {});
+        });
+        card.addEventListener('mouseleave', () => {
+          if (video) { video.pause(); video.remove(); video = null; img.style.display = ''; }
+        });
+      }
+
+      card.append(img, selBtn);
+      return card;
+    }));
+
+    if (!filtered.length) {
+      const empty = el('div', 'au__empty');
+      empty.textContent = contentFilter === 'all' ? 'No content captured yet.' : `No ${contentFilter} content.`;
+      contentGrid.replaceChildren(empty);
+    }
+  }
+
   /* ---------------- inspector ---------------- */
-  const capSec = section('Capture');
+  const selSec = section('Selection');
+  const selCount = el('div', 'ab__sel-count');
+  const buildSlideBtn = button({ label: 'Build slide', primary: true, onClick: () => {
+    if (!selected.size) { emit('toast', 'Select at least one image'); return; }
+    emit('toast', `${selected.size} images ready for slide`);
+    // Phase 2: will open Deck with brand slide preset
+  }});
+  const actions = el('div', 'l-row');
+  actions.append(selCount, buildSlideBtn);
+  selSec.body.append(actions);
+
+  const srcSec = section('Sources');
+  srcSec.el.classList.add('l-section--advanced');
+  srcSec.el.querySelector('.l-section__title')!.addEventListener('click', () => srcSec.el.classList.toggle('is-open'));
   const capStats = statList();
   const capNote = note('');
-  const deckRow = el('div', 'l-row');
-  deckRow.append(chips<'dark' | 'light'>({ label: 'Deck theme', value: d.deckTheme as 'dark' | 'light', options: [{ value: 'dark', label: 'Dark' }, { value: 'light', label: 'Light' }], onChange: v => { (d as Record<string, unknown>).deckTheme = v; } }).el);
-  const actions = el('div', 'l-row');
-  const shuffleBtn = button({ label: 'Shuffle', onClick: () => {
-    if (!brandSlide) return;
-    const nextVariant = (brandSlide.variant + 1) % 3;
-    const assets = collectAssets();
-    const cssC = cap?.site?.colors?.map(c => c.hex) ?? [];
-    const bfC = cap?.brandfetch?.colors?.map(c => c.hex) ?? [];
-    const best = allLogos()[0];
-    brandSlide = createSlide(assets, best?.dataUri ?? best?.url ?? '', best?.kind === 'svg', cssC, bfC, nextVariant);
-    render();
-  }});
-  const deckBtn = button({ label: 'Build deck', onClick: () => void buildDeckNow() });
-  const saveLibBtn = button({ label: 'Save to Library', onClick: async () => {
-    if (!cap) { emit('toast', 'Capture a brand first'); return; }
-    const { supabase } = await import('../../lib/supabase');
-    if (!supabase) { emit('toast', 'Sign in to save'); return; }
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { emit('toast', 'Sign in to save'); return; }
-    const { cloudSaveItem } = await import('../../lib/cloud-library');
-    await cloudSaveItem(user.id, { type: 'brand-audit', name: brandName(cap) || query || 'Brand audit', toolId: 'brand-audit', data: { domain: cap.domain, query, capturedAt: cap.capturedAt } });
-    emit('toast', 'Saved to Library');
-  }});
-  const obsBtn = button({ label: 'Write observations', onClick: () => void observe() });
-  actions.append(shuffleBtn, deckBtn, saveLibBtn, obsBtn);
   // Typed only when neither Brandfetch nor the site links an Instagram account (or the one found fails).
   const igField = field({ label: 'Instagram handle', value: '', placeholder: '@handle', onChange: v => void setHandle(v) });
-  capSec.body.append(capStats.el, igField.el, deckRow, actions, capNote);
-
-  const advSec = section('Advanced');
-  advSec.el.classList.add('l-section--advanced');
-  advSec.el.querySelector('.l-section__title')!.addEventListener('click', () => advSec.el.classList.toggle('is-open'));
   const screenshotPreset = select<'both' | 'desktop'>({ label: 'Screenshots', value: (d.mobileWidth as number) > 0 ? 'both' : 'desktop', options: [{ value: 'both', label: 'Desktop + Mobile' }, { value: 'desktop', label: 'Desktop only' }], onChange: v => { (d as Record<string, unknown>).mobileWidth = v === 'both' ? 390 : 0; } });
-  advSec.body.append(
+  srcSec.body.append(
+    capStats.el, igField.el,
     screenshotPreset.el,
     slider({ label: 'Timeline snapshots', min: 1, max: 16, value: d.timelineSnapshots as number, onChange: v => { (d as Record<string, unknown>).timelineSnapshots = v; } }).el,
     slider({ label: 'Timeline span', min: 1, max: 30, value: d.timelineSpan as number, unit: ' years', onChange: v => { (d as Record<string, unknown>).timelineSpan = v; } }).el,
     slider({ label: 'YouTube videos', min: 1, max: 12, value: d.boardVideos as number, onChange: v => { (d as Record<string, unknown>).boardVideos = v; } }).el,
+    capNote,
   );
 
-  inspector.append(...[modeEl, capSec.el, advSec.el].filter(Boolean) as HTMLElement[]);
+  inspector.append(...[modeEl, selSec.el, srcSec.el].filter(Boolean) as HTMLElement[]);
 
   function renderInspector() {
     const s = cap?.site;
@@ -168,8 +316,10 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
       ['Brandfetch', !features?.brandfetch ? 'Needs BRANDFETCH_KEY' : cap?.brandfetch ? `${cap.brandfetch.logos.length} logos · ${cap.brandfetch.colors.length} colors` : cap?.brandfetchError ? 'Error' : '—'],
       ['Observations', !features?.observations ? 'Needs ANTHROPIC_API_KEY' : obsState === 'loading' ? 'Writing…' : obs ? `${obs.observations.length} generated` : obsState === 'error' ? 'Error' : '—'],
     ]);
-    deckBtn.classList.toggle('l-btn--primary', !!cap);
-    obsBtn.style.display = features?.observations ? '' : 'none';
+    selCount.textContent = selected.size ? `${selected.size} selected` : 'Select images below';
+    selCount.style.color = selected.size ? 'var(--accent)' : 'var(--text-3)';
+    buildSlideBtn.disabled = !selected.size;
+    buildSlideBtn.className = selected.size ? 'l-btn l-btn--primary' : 'l-btn';
     igField.el.style.display = cap && !igLoading && (!igName || igError) ? '' : 'none';
     if (document.activeElement !== igField.input) igField.input.value = igName ? `@${igName}` : '';
     capNote.textContent = [
@@ -186,10 +336,10 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
     controller?.abort(); controller = new AbortController();
     const signal = controller.signal;
     palettes.cancelPending();
-    cap = null; capError = null; capturing = true; timeline = null; timelineError = null; obs = null; obsState = 'idle'; obsError = null; quotaSpent = false; brandSlide = null;
+    cap = null; capError = null; capturing = true; timeline = null; timelineError = null; obs = null; obsState = 'idle'; obsError = null; quotaSpent = false;
     social = null; socialError = null; picks = []; picksTouched = false; rendered = []; renderedLogos = []; logosTouched = false;
     ig = null; igError = null; igFrom = null; igName = null; igLoading = false; igNodes.forEach(n => igViews.unobserve(n.card)); igNodes.clear();
-    shots.clear(); pickedLogos.clear();
+    shots.clear(); pickedLogos.clear(); selected.clear(); contentFilter = 'all';
     render();
     try {
       cap = await captureBrand(query, { merge: d.cssColorMerge as number, top: d.cssColorTop as number, cacheHours: d.cacheHours as number }, signal);
@@ -362,36 +512,6 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
     return sw.reduce((s, x) => s + ((declaredMatch(x.hex)?.de ?? 9) <= (d.declaredMatch as number) ? x.share : 0), 0);
   }
 
-  /* ---------------- slide ---------------- */
-  function collectAssets(): AssetCandidate[] {
-    const assets: AssetCandidate[] = [];
-    for (const l of allLogos()) {
-      if (l.url) assets.push({ url: l.url, thumbUrl: l.dataUri || l.url, width: null, height: null, priority: 0, type: 'logo', isTransparent: l.kind === 'svg' || l.kind === 'brandfetch' });
-    }
-    if (ig?.posts) {
-      for (const p of ig.posts) {
-        const src = p.type === 'video' ? p.poster : p.type === 'carousel' ? p.slides[0]?.src : p.src;
-        if (src) assets.push({ url: igSrc(src), thumbUrl: igSrc(src), width: null, height: null, priority: 1, type: 'instagram' });
-      }
-    }
-    if (social?.youtube?.videos) {
-      for (const v of social.youtube.videos) {
-        for (const st of v.stills) {
-          assets.push({ url: stillSrc(st), thumbUrl: stillSrc(st), width: null, height: null, priority: 2, type: 'youtube' });
-        }
-      }
-    }
-    for (const img of siteImages()) {
-      assets.push({ url: siteSrc(img.url), thumbUrl: siteSrc(img.url), width: img.w ?? null, height: null, priority: 3, type: 'brand' });
-    }
-    for (const [, shot] of shots) {
-      if (shot.status === 'done' && shot.url) {
-        assets.push({ url: shot.url, thumbUrl: shot.url, width: shot.w ?? null, height: shot.h ?? null, priority: 4, type: 'screenshot' });
-      }
-    }
-    return assets;
-  }
-
   /* ---------------- render ---------------- */
   let raf = 0;
   function render() { cancelAnimationFrame(raf); raf = requestAnimationFrame(paint); }
@@ -419,35 +539,41 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
       ? `Resolved "${cap.query}" to ${cap.company.name}${cap.company.description ? `, ${cap.company.description}` : ''} via Wikidata.`
       : `Wikidata lists no website for "${cap.query}"; found ${new URL(cap.company.website).hostname}, whose title names it.`));
 
-    // Generate brand slide from captured data
-    const slideAssets = collectAssets();
-    const bestLogo = allLogos()[0];
-    const cssColors = cap.site.colors.map(c => c.hex);
-    const bfColors = cap.brandfetch?.colors?.map(c => c.hex) ?? [];
-    const logoUrl = bestLogo?.dataUri ?? bestLogo?.url ?? '';
-    const logoIsLight = bestLogo?.kind === 'svg';
-
-    if (logoUrl || slideAssets.length) {
-      brandSlide = createSlide(slideAssets, logoUrl, logoIsLight, cssColors, bfColors, brandSlide?.variant ?? 0);
-    }
-
-    const slideContainer = el('div', 'ab__slide-wrap');
-    if (brandSlide) {
-      const slideEl = renderSlideDOM(brandSlide);
-      slideContainer.style.cssText = 'margin-bottom: var(--space-6); overflow: hidden;';
-      const scaleWrap = el('div', 'ab__slide-scale');
-      scaleWrap.style.cssText = 'transform-origin: top left; width: 1920px;';
-      scaleWrap.appendChild(slideEl);
-      slideContainer.appendChild(scaleWrap);
-      requestAnimationFrame(() => {
-        const containerW = slideContainer.clientWidth || report.clientWidth || 800;
-        const scale = containerW / 1920;
-        scaleWrap.style.transform = `scale(${scale})`;
-        slideContainer.style.height = `${1080 * scale}px`;
+    // Brand kit strip
+    const kit = el('div', 'ab__kit');
+    const kitLogoWrap = el('div', 'ab__kit-logo');
+    const logos = allLogos().sort((a, b) => logoRank(a) - logoRank(b));
+    if (logos.length) {
+      const logo = logos[currentLogoIdx % logos.length];
+      const logoImg = document.createElement('img');
+      logoImg.className = 'ab__kit-logo-img';
+      logoImg.src = logo.dataUri ?? logo.url;
+      logoImg.alt = 'Brand logo';
+      logoImg.title = `Click to switch (${(currentLogoIdx % logos.length) + 1}/${logos.length})`;
+      logoImg.style.cursor = 'pointer';
+      logoImg.addEventListener('click', () => {
+        currentLogoIdx = (currentLogoIdx + 1) % logos.length;
+        render();
       });
+      kitLogoWrap.appendChild(logoImg);
+    } else {
+      kitLogoWrap.textContent = 'No logo found';
+      kitLogoWrap.style.color = 'var(--text-3)';
     }
+    brandPalette = buildPalette(
+      cap.site.colors.map(c => c.hex),
+      cap.brandfetch?.colors?.map(c => c.hex) ?? []
+    );
+    const kitPalette = el('div', 'ab__kit-palette');
+    for (const hex of brandPalette) {
+      const stripe = el('div', 'ab__kit-stripe');
+      stripe.style.background = hex;
+      kitPalette.appendChild(stripe);
+    }
+    kit.append(kitLogoWrap, kitPalette);
 
-    report.replaceChildren(head, slideContainer);
+    renderContentGrid();
+    report.replaceChildren(head, kit, filterChipsEl.el, contentGrid);
   }
 
   function block(title: string, aside?: string) {
@@ -882,6 +1008,12 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   }
 
   /* ---------------- boot ---------------- */
+  // Restore saved selections and brand kit
+  const savedSel = settings.get<[string, number][]>('selections', []);
+  for (const [k, v] of savedSel) selected.set(k, v);
+  const savedKit = settings.get<{ logoIdx: number; palette: string[] } | null>('brandKit', null);
+  if (savedKit) { currentLogoIdx = savedKit.logoIdx; brandPalette = savedKit.palette; }
+
   render();
   // Phase B: section renderers kept for the editing stage inspector
   const sections = { shotsSection, paletteSection, typeSection, logoSection, imagerySection, timelineSection, obsSection };
