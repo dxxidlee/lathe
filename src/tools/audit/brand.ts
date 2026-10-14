@@ -3,7 +3,7 @@
    Brandfetch assets and generated observations; then a deck in Bento. */
 import type { MountContext, MountResult } from '../types';
 import { PaletteQueue, fetchCatalog, proxied, type BrandFeatures } from './api';
-import { ApiError, captureBrand, downscale, fetchInstagram, fetchRendered, fetchShot, igHandle, igSrc, logoFromUrl, fetchSocial, fetchTimeline, requestObservations, type BrandCapture, type IgPost, type Instagram, type LogoCandidate, type SiteCapture, type Observations, type Social, type Timeline } from './brand-api';
+import { ApiError, captureBrand, downscale, fetchInstagram, fetchMoreInstagram, fetchRendered, fetchShot, igHandle, igSrc, logoFromUrl, fetchSocial, fetchTimeline, requestObservations, type BrandCapture, type IgPost, type Instagram, type LogoCandidate, type SiteCapture, type Observations, type Social, type Timeline } from './brand-api';
 import { buildBrandDeck, type DeckImage } from './brand-deck';
 import { buildPalette } from './brand-slide';
 import { DECK_MIME } from '../bento/model';
@@ -63,6 +63,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   let igError: string | null = null;
   let igFrom: 'Brandfetch' | 'site' | 'typed' | null = null;
   let igName: string | null = null;
+  let nextIgCursor: string | null = null;
   /** Instagram tiles are kept across repaints so their videos keep playing. */
   const igNodes = new Map<string, { card: HTMLElement; pick: HTMLButtonElement }>();
   const igViews = new IntersectionObserver(entries => {
@@ -72,6 +73,14 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
       if (e.isIntersecting && igTabActive) { if (!v.src && v.dataset.src) v.src = v.dataset.src; void v.play().catch(() => {}); } else v.pause();
     }
   }, { root: null, rootMargin: '25% 0%' });
+  /** IntersectionObserver for autoplay on content grid videos. */
+  const contentVideoObserver = new IntersectionObserver(entries => {
+    for (const e of entries) {
+      const v = e.target as HTMLVideoElement;
+      if (e.isIntersecting) void v.play().catch(() => {});
+      else v.pause();
+    }
+  }, { rootMargin: '50px' });
   let igTabActive = true;
   const offActivate = onActivate(active => {
     igTabActive = active;
@@ -204,7 +213,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
       : contentFilter === 'video' ? items.filter(i => i.isVideo)
       : items.filter(i => i.source === contentFilter);
 
-    contentGrid.replaceChildren(...filtered.map(item => {
+    const cards = filtered.map(item => {
       const card = el('div', 'ab__content-card');
       const img = document.createElement('img');
       img.className = 'ab__content-img';
@@ -218,7 +227,37 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
         play.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>';
         card.appendChild(play);
       }
-      if (item.carouselCount && item.carouselCount > 1) {
+
+      // Carousel frame stepper
+      let countEl: HTMLElement | null = null;
+      if (item.carouselFrames && item.carouselFrames.length > 1) {
+        let frameIdx = 0;
+        countEl = el('div', 'ab__content-carousel');
+        countEl.textContent = `1/${item.carouselFrames.length}`;
+        card.appendChild(countEl);
+
+        const prevBtn = el('button', 'ab__carousel-prev') as HTMLButtonElement;
+        prevBtn.type = 'button';
+        prevBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>';
+        prevBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          frameIdx = (frameIdx - 1 + item.carouselFrames!.length) % item.carouselFrames!.length;
+          img.src = igSrc(item.carouselFrames![frameIdx].src);
+          countEl!.textContent = `${frameIdx + 1}/${item.carouselFrames!.length}`;
+        });
+
+        const nextBtn = el('button', 'ab__carousel-next') as HTMLButtonElement;
+        nextBtn.type = 'button';
+        nextBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>';
+        nextBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          frameIdx = (frameIdx + 1) % item.carouselFrames!.length;
+          img.src = igSrc(item.carouselFrames![frameIdx].src);
+          countEl!.textContent = `${frameIdx + 1}/${item.carouselFrames!.length}`;
+        });
+
+        card.append(prevBtn, nextBtn);
+      } else if (item.carouselCount && item.carouselCount > 1) {
         const count = el('div', 'ab__content-carousel');
         count.textContent = `1/${item.carouselCount}`;
         card.appendChild(count);
@@ -238,34 +277,54 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
         toggleSelection(item.id);
       });
 
-      // Video hover preview
+      // Video autoplay (muted, looped, play only when visible)
       if (item.isVideo && item.videoUrl) {
-        let video: HTMLVideoElement | null = null;
-        card.addEventListener('mouseenter', () => {
-          if (video) return;
-          video = document.createElement('video');
-          video.src = proxied(item.videoUrl!);
-          video.muted = true;
-          video.loop = true;
-          video.playsInline = true;
-          video.className = 'ab__content-video';
-          card.insertBefore(video, img);
-          img.style.display = 'none';
-          void video.play().catch(() => {});
-        });
-        card.addEventListener('mouseleave', () => {
-          if (video) { video.pause(); video.remove(); video = null; img.style.display = ''; }
-        });
+        const video = document.createElement('video');
+        video.src = proxied(item.videoUrl);
+        video.muted = true;
+        video.loop = true;
+        video.playsInline = true;
+        video.className = 'ab__content-video';
+        video.poster = item.thumbUrl;
+        card.append(video, selBtn);
+        contentVideoObserver.observe(video);
+      } else {
+        card.append(img, selBtn);
       }
-
-      card.append(img, selBtn);
       return card;
-    }));
+    });
+
+    // Load more button for Instagram pagination
+    const loadMoreRow = el('div', 'ab__load-more');
+    const loadMoreBtn = el('button', 'l-btn') as HTMLButtonElement;
+    loadMoreBtn.type = 'button';
+    loadMoreBtn.textContent = 'Load more';
+    loadMoreBtn.addEventListener('click', async () => {
+      if (!nextIgCursor || !ig) return;
+      loadMoreBtn.textContent = 'Loading\u2026';
+      loadMoreBtn.disabled = true;
+      try {
+        const data = await fetchMoreInstagram(ig.username, nextIgCursor, controller?.signal ?? undefined);
+        if (data.posts?.length) {
+          ig.posts.push(...data.posts);
+          nextIgCursor = data.nextCursor ?? null;
+          renderContentGrid();
+        } else {
+          nextIgCursor = null;
+        }
+      } catch { /* ignore */ }
+      loadMoreBtn.textContent = 'Load more';
+      loadMoreBtn.disabled = false;
+    });
+    loadMoreRow.hidden = !nextIgCursor;
+    loadMoreRow.appendChild(loadMoreBtn);
 
     if (!filtered.length) {
       const empty = el('div', 'au__empty');
       empty.textContent = contentFilter === 'all' ? 'No content captured yet.' : `No ${contentFilter} content.`;
       contentGrid.replaceChildren(empty);
+    } else {
+      contentGrid.replaceChildren(...cards, loadMoreRow);
     }
   }
 
@@ -338,7 +397,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
     palettes.cancelPending();
     cap = null; capError = null; capturing = true; timeline = null; timelineError = null; obs = null; obsState = 'idle'; obsError = null; quotaSpent = false;
     social = null; socialError = null; picks = []; picksTouched = false; rendered = []; renderedLogos = []; logosTouched = false;
-    ig = null; igError = null; igFrom = null; igName = null; igLoading = false; igNodes.forEach(n => igViews.unobserve(n.card)); igNodes.clear();
+    ig = null; igError = null; igFrom = null; igName = null; igLoading = false; nextIgCursor = null; igNodes.forEach(n => igViews.unobserve(n.card)); igNodes.clear();
     shots.clear(); pickedLogos.clear(); selected.clear(); contentFilter = 'all';
     render();
     try {
@@ -375,8 +434,11 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
     igName = typed ?? fromBf ?? fromSite;
     igFrom = typed ? 'typed' : fromBf ? 'Brandfetch' : fromSite ? 'site' : null;
     if (!igName) { render(); return; }
-    igLoading = true; igError = null; render();
-    try { ig = await fetchInstagram(igName, signal); }
+    igLoading = true; igError = null; nextIgCursor = null; render();
+    try {
+      ig = await fetchInstagram(igName, signal);
+      nextIgCursor = ig.nextCursor ?? null;
+    }
     catch (e) { if (signal.aborted) return; ig = null; igError = e instanceof Error ? e.message : String(e); }
     igLoading = false;
     if (signal.aborted) return;
@@ -405,7 +467,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
     const name = /\.[a-z]{2,}(\/|$)/i.test(query) ? clean(brandName(cap)) : clean(query);
     const few = (cap.site.images ?? []).length < 4;
     const [so, re] = await Promise.allSettled([
-      fetchSocial(name, cap.site.social?.youtube, { videos: d.boardVideos as number, cacheHours: d.cacheHours as number }, signal),
+      fetchSocial(name, cap.site.social?.youtube, { videos: 100, cacheHours: d.cacheHours as number }, signal),
       few ? fetchRendered(cap.site.url, d.cacheHours as number, signal) : Promise.resolve({ images: [], logos: [] }),
     ]);
     if (signal.aborted) return;
@@ -1022,7 +1084,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   void fetchCatalog().then(c => { features = c.brand; render(); if (query) void run(query); });
 
   return {
-    unmount() { controller?.abort(); igViews.disconnect(); palettes.destroy(); cancelAnimationFrame(raf); urls.forEach(u => URL.revokeObjectURL(u)); offActivate(); },
+    unmount() { controller?.abort(); igViews.disconnect(); contentVideoObserver.disconnect(); palettes.destroy(); cancelAnimationFrame(raf); urls.forEach(u => URL.revokeObjectURL(u)); offActivate(); },
     export: () => void buildDeckNow(),
   };
 }

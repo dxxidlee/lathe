@@ -49,7 +49,7 @@ export interface IgPost {
   likes: number | null; comments: number | null; timestamp: string; score: number;
 }
 export interface Instagram {
-  username: string; posts: IgPost[]; fetchedAt: string; mock?: boolean;
+  username: string; posts: IgPost[]; fetchedAt: string; mock?: boolean; nextCursor?: string | null;
   profile: { username: string; name: string | null; biography: string | null; picture: string | null; followers: number | null; mediaCount: number | null };
 }
 
@@ -166,6 +166,10 @@ export async function fetchInstagram(handle: string, signal?: AbortSignal): Prom
   const out = await getJson<Instagram>(`/api/ig/${encodeURIComponent(handle)}`, signal);
   if (!out.mock) await cacheSet(key, out, 3600_000);
   return out;
+}
+/** Fetch more Instagram posts using a pagination cursor. */
+export async function fetchMoreInstagram(handle: string, after: string, signal?: AbortSignal): Promise<{ posts: Instagram['posts']; nextCursor: string | null }> {
+  return getJson(`/api/ig/${encodeURIComponent(handle)}?after=${encodeURIComponent(after)}`, signal);
 }
 /** Instagram media through Lathe's proxy (CDN links expire and refuse hotlinking); sample files are local. */
 export const igSrc = (url: string) => url.startsWith('/') ? url : `/api/ig-media?url=${encodeURIComponent(url)}`;

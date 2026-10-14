@@ -4,8 +4,9 @@
    INSTAGRAM_USER_ID). The token stays on the server: it is never logged, echoed or put in an error. */
 
 const GRAPH = 'https://graph.facebook.com/v21.0';
+const MEDIA_FIELDS = 'id,media_type,media_url,thumbnail_url,permalink,caption,like_count,comments_count,timestamp,children{media_type,media_url,thumbnail_url}';
 const FIELDS = 'username,name,biography,profile_picture_url,followers_count,media_count,'
-  + 'media.limit(30){id,media_type,media_url,thumbnail_url,permalink,caption,like_count,comments_count,timestamp,children{media_type,media_url,thumbnail_url}}';
+  + `media.limit(30){${MEDIA_FIELDS}}`;
 const TTL = 3600_000;
 
 /** Instagram usernames: letters, numbers, periods and underscores, at most 30. */
@@ -77,10 +78,31 @@ export async function businessDiscovery(username, { token, userId }) {
     username: b.username,
     profile: { username: b.username, name: b.name ?? null, biography: b.biography ?? null, picture: b.profile_picture_url ?? null, followers: b.followers_count ?? null, mediaCount: b.media_count ?? null },
     posts: /** @type {Post[]} */ ((b.media?.data ?? []).map(normalizePost).filter(Boolean)),
+    nextCursor: b.media?.paging?.cursors?.after ?? null,
     fetchedAt: new Date().toISOString(),
   };
   cache.set(username, { at: Date.now(), data });
   return data;
+}
+
+/**
+ * Fetch more posts for a business account using pagination cursor.
+ * @param {string} username @param {string} after @param {{ token: string, userId: string }} auth
+ * @returns {Promise<{ posts: Post[], nextCursor: string | null }>}
+ */
+export async function fetchMorePosts(username, after, { token, userId }) {
+  const fields = `business_discovery.username(${username}){media.limit(30).after(${after}){${MEDIA_FIELDS}}}`;
+  /** @type {Response} */ let r;
+  try {
+    r = await fetch(`${GRAPH}/${encodeURIComponent(userId)}?fields=${encodeURIComponent(fields)}&access_token=${encodeURIComponent(token)}`,
+      { headers: { Accept: 'application/json' }, signal: AbortSignal.timeout(20000) });
+  } catch { throw new IgError('Instagram did not answer in time', 504, 'timeout'); }
+  const j = /** @type {any} */ (await r.json().catch(() => null));
+  if (!r.ok || j?.error) throw graphError(j?.error, username, r.status);
+  const media = j?.business_discovery?.media;
+  const posts = /** @type {Post[]} */ ((media?.data ?? []).map(normalizePost).filter(Boolean));
+  const nextCursor = media?.paging?.cursors?.after ?? null;
+  return { posts, nextCursor };
 }
 
 /**

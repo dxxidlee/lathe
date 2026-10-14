@@ -213,5 +213,15 @@ button.ab-pick__n { border: 0; cursor: pointer; font: inherit; font-size: var(--
 @media (hover: none) { .ab__content-sel { opacity: 1; } }
 @media (max-width: 767px) { .ab__content-grid { columns: 2; column-gap: var(--space-2); } }
 
+/* Carousel navigation */
+.ab__carousel-prev, .ab__carousel-next { position: absolute; top: 50%; transform: translateY(-50%); width: 28px; height: 28px; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.7); color: var(--text-1); border: none; border-radius: 50%; cursor: pointer; z-index: 1; opacity: 0; transition: opacity 150ms; }
+.ab__content-card:hover .ab__carousel-prev, .ab__content-card:hover .ab__carousel-next { opacity: 1; }
+.ab__carousel-prev { left: var(--space-2); }
+.ab__carousel-next { right: var(--space-2); }
+@media (hover: none) { .ab__carousel-prev, .ab__carousel-next { opacity: 1; } }
+
+/* Load more */
+.ab__load-more { display: flex; justify-content: center; padding: var(--space-4) 0; }
+
 /* Selection count */
 .ab__sel-count { font-variant-numeric: tabular-nums; padding: var(--space-2) 0; }
