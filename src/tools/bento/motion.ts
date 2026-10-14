@@ -42,7 +42,7 @@ export async function videoToGif(
   let duration = Math.min(video.duration || 4, 4);
   if (duration < 0.5) duration = Math.min(video.duration, 2);
 
-  const height = Math.round(vh * width / vw);
+  let height = Math.round(vh * width / vw);
 
   // Capture poster (first frame)
   const posterCanvas = document.createElement('canvas');
@@ -56,15 +56,16 @@ export async function videoToGif(
   await new Promise<void>(r => { video.onseeked = () => r(); });
 
   const frameCanvas = document.createElement('canvas');
-  frameCanvas.width = width; frameCanvas.height = height;
   const fctx = frameCanvas.getContext('2d', { willReadFrequently: true })!;
 
-  const totalFrames = Math.max(1, Math.round(duration * fps));
-  const delay = Math.round(1000 / fps);
-
-  // Try encoding; if result is too large, reduce fps then width
+  // Try encoding; if result is too large, reduce fps then duration then width
   let blob: Blob | null = null;
   for (let attempt = 0; attempt < 3; attempt++) {
+    height = Math.round(vh * width / vw);
+    frameCanvas.width = width; frameCanvas.height = height;
+    const totalFrames = Math.max(1, Math.round(duration * fps));
+    const delay = Math.round(1000 / fps);
+
     const gif = new GIF({
       workers: 2, quality: 10, width, height,
       workerScript: gifWorkerUrl, repeat: 0,
@@ -85,10 +86,9 @@ export async function videoToGif(
     });
 
     if (blob.size <= MAX_GIF_BYTES) break;
-    // Too large: reduce fps first, then width
     if (fps > 8) { fps = 8; continue; }
     if (duration > 2) { duration = 2; continue; }
-    width = Math.round(width * 0.75); break;
+    width = Math.round(width * 0.75);
   }
 
   video.src = '';
@@ -98,7 +98,7 @@ export async function videoToGif(
 
   return {
     gif: blob, poster, width, height,
-    frames: totalFrames, duration,
+    frames: Math.max(1, Math.round(duration * fps)), duration,
   };
 }
 
