@@ -41,6 +41,11 @@ export const tool: LatheTool = {
     let cur = Math.min(settings.get('slide', 0), deck.slides.length - 1);
     let sel: string | null = null;
 
+    /* ---- undo / redo (per-deck, full-snapshot) ---- */
+    type UndoEntry = { snapshot: string; cur: number; sel: string | null };
+    const undoStack: UndoEntry[] = [], redoStack: UndoEntry[] = [];
+    let lastSnap = JSON.stringify(deck);
+
     const views = () => allSlides(deck, cfg);
     const isCredits = (i: number) => i >= deck.slides.length;
     const save = () => { settings.set('deck', deck); settings.set('slide', cur); };
@@ -260,8 +265,35 @@ export const tool: LatheTool = {
     }
 
     function commit(relayout = false) {
+      undoStack.push({ snapshot: lastSnap, cur, sel });
+      redoStack.length = 0;
+      if (undoStack.length > 50) undoStack.shift();
+      applyCommit(relayout);
+    }
+    function applyCommit(relayout = false) {
       if (relayout && !isCredits(cur) && !deck.slides[cur]?.brand) deck.slides[cur] = layoutSlide(deck.slides[cur]);
       save(); render();
+      lastSnap = JSON.stringify(deck);
+    }
+    function undo() {
+      const entry = undoStack.pop();
+      if (!entry) return;
+      redoStack.push({ snapshot: JSON.stringify(deck), cur, sel });
+      deck = JSON.parse(entry.snapshot);
+      cur = Math.min(entry.cur, deck.slides.length - 1);
+      sel = entry.sel;
+      titleField.input.value = deck.title; themeChips.set(deck.theme);
+      applyCommit();
+    }
+    function redo() {
+      const entry = redoStack.pop();
+      if (!entry) return;
+      undoStack.push({ snapshot: JSON.stringify(deck), cur, sel });
+      deck = JSON.parse(entry.snapshot);
+      cur = Math.min(entry.cur, deck.slides.length - 1);
+      sel = entry.sel;
+      titleField.input.value = deck.title; themeChips.set(deck.theme);
+      applyCommit();
     }
 
     function moveSlide(dir: number) {
@@ -434,7 +466,7 @@ export const tool: LatheTool = {
         }
         render(); return;
       }
-      if (d0.mode === 'resize') { if (d0.moved) save(); return; }
+      if (d0.mode === 'resize') { if (d0.moved) commit(); return; }
       d0.el.style.transform = ''; d0.el.classList.remove('is-dragging');
       if (!d0.moved) return;
       d0.el.style.visibility = 'hidden';
@@ -446,6 +478,10 @@ export const tool: LatheTool = {
 
     const onKey = (e: KeyboardEvent) => {
       if (!stage.closest('[data-active-tab]')) return;
+      if ((e.metaKey || e.ctrlKey) && !e.altKey) {
+        if (e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); return; }
+        if ((e.key === 'z' && e.shiftKey) || e.key === 'y') { e.preventDefault(); redo(); return; }
+      }
       if (typing(e.target) || !sel || isCredits(cur) || e.metaKey || e.ctrlKey) return;
       if (e.key === 'Escape') {
         if (cropSlot) return; // let escCrop handle it
@@ -536,7 +572,8 @@ export const tool: LatheTool = {
           if (!deck.slides.length) deck.slides.push({ id: uid('s'), tiles: [], variant: 0 });
           cur = 0; sel = null;
           titleField.input.value = deck.title; themeChips.set(deck.theme);
-          commit();
+          undoStack.length = 0; redoStack.length = 0;
+          applyCommit();
           emit('toast', `Loaded “${deck.title}”: ${deck.slides.length} slides`);
         } catch { emit('toast', 'That file is not a deck'); }
         return;
