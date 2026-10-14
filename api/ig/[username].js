@@ -6,7 +6,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { json, rateLimit } from '../_lib/http.js';
-import { businessDiscovery, cleanHandle, IgError } from '../_lib/instagram.js';
+import { businessDiscovery, cleanHandle, fetchMorePosts, IgError } from '../_lib/instagram.js';
 
 const HOUR = 'public, max-age=3600, s-maxage=3600';
 
@@ -24,7 +24,9 @@ export async function GET(request) {
   }
   if (!userId) return json({ error: 'Instagram needs INSTAGRAM_USER_ID as well as the token', code: 'no_user_id' }, { status: 503 });
   await rateLimit('instagram', 30);
+  const after = new URL(request.url).searchParams.get('after');
   try {
+    if (after) return json(await fetchMorePosts(username, after, { token, userId }), { cache: HOUR });
     return json(await businessDiscovery(username, { token, userId }), { cache: HOUR });
   } catch (e) {
     if (e instanceof IgError) return json({ error: e.message, code: e.code }, { status: e.status });
