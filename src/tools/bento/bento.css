@@ -45,4 +45,8 @@
 .bt__thumb.is-active { outline: calc(1px * 2) solid var(--accent); }
 .bt__num { position: absolute; left: var(--space-1); bottom: var(--space-1); padding: 0 var(--space-1); background: rgba(0,0,0,0.64); color: var(--text-1); font-size: var(--text-meta); font-variant-numeric: tabular-nums; border-radius: var(--radius-control); }
 .bt__tile.is-cropping { outline: 2px solid var(--accent) !important; cursor: grab !important; }
+.bt__guides { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.bt__guide { position: absolute; background: var(--accent); }
+.bt__guide--v { top: 0; bottom: 0; width: 1px; }
+.bt__guide--h { left: 0; right: 0; height: 1px; }
 .bt__span { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); }

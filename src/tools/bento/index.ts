@@ -3,7 +3,7 @@
 import type { Asset, LatheTool } from '../types';
 import { defaults } from './defaults';
 import { COLS, DECK_MIME, ROWS, emptyDeck, parseDeck, uid, type Deck, type Tile, type TileType } from './model';
-import { BRAND_SLIDE_MIME, type BrandSlide, getTemplate as getBrandTemplate, SLIDE_W as B_SW, SLIDE_H as B_SH } from '../audit/brand-slide';
+import { BRAND_SLIDE_MIME, type BrandSlide, getTemplate as getBrandTemplate, resolveSlotRect, SLIDE_W as B_SW, SLIDE_H as B_SH, GUTTER_FX, GUTTER_FY } from '../audit/brand-slide';
 import { ensureLayout, layoutSlide, reshuffle, variantsFor } from './layout';
 import { allSlides, drawSlide, type DrawConfig } from './draw';
 import { slideSvg } from './render-svg';
@@ -12,6 +12,7 @@ import { proxied } from './images';
 import { advancedSection, button, chips, field, note, section, select, slider, textarea } from '../../ui/primitives';
 import { assetUrl } from '../../lib/assets';
 import { saveExport } from '../../lib/download';
+import { buildBoundaries, boundariesForHandle, computeResize, applyResize, snapTargetsFor, boundaryAtPoint, type TileRect, type Boundary, type HandleDir } from './resize';
 import './bento.css';
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || 'deck';
@@ -64,7 +65,8 @@ export const tool: LatheTool = {
     const overlay = document.createElement('div'); overlay.className = 'bt__overlay';
     const emptyEl = document.createElement('div'); emptyEl.className = 'bt__empty';
     emptyEl.textContent = 'Drop images here, send an Audit collection, or add tiles from the inspector.';
-    slideEl.append(svgHost, overlay, emptyEl);
+    const guides = document.createElement('div'); guides.className = 'bt__guides';
+    slideEl.append(svgHost, overlay, guides, emptyEl);
     main.appendChild(slideEl);
     const strip = document.createElement('div'); strip.className = 'bt__strip';
     root.append(main, strip);
@@ -208,13 +210,15 @@ export const tool: LatheTool = {
         // Clickable overlays on each brand tile
         const template = getBrandTemplate(slide.brand!.variant);
         overlay.replaceChildren(...template.map(slot => {
+          const sd = slide.brand!.slots.find(s => s.name === slot.name);
+          const r = resolveSlotRect(slot, sd?.rect);
           const el = document.createElement('div');
           el.className = `bt__tile${sel === slot.name ? ' is-selected' : ''}${cropSlot === slot.name ? ' is-cropping' : ''}`;
           el.dataset.id = slot.name;
-          el.style.left = `${slot.x / B_SW * 100}%`;
-          el.style.top = `${slot.y / B_SH * 100}%`;
-          el.style.width = `${slot.w / B_SW * 100}%`;
-          el.style.height = `${slot.h / B_SH * 100}%`;
+          el.style.left = `${r.x / B_SW * 100}%`;
+          el.style.top = `${r.y / B_SH * 100}%`;
+          el.style.width = `${r.w / B_SW * 100}%`;
+          el.style.height = `${r.h / B_SH * 100}%`;
           el.style.position = 'absolute';
           el.setAttribute('aria-label', `${slot.role} tile: ${slot.name}`);
           if (slot.role === 'logo' || slot.role === 'palette') {
@@ -223,7 +227,7 @@ export const tool: LatheTool = {
             lk.textContent = slot.role === 'logo' ? 'Logo' : 'Palette';
             el.appendChild(lk);
           }
-          if (sel === slot.name) addSelectionChrome(el, slot.w, slot.h);
+          if (sel === slot.name) addSelectionChrome(el, Math.round(r.w), Math.round(r.h));
           return el;
         }));
         emptyEl.hidden = true;
@@ -412,6 +416,21 @@ export const tool: LatheTool = {
 
     /* ---------------- pointer: select, swap, resize ---------------- */
     let drag: { id: string; mode: 'move' | 'resize'; x0: number; y0: number; el: HTMLElement; moved: boolean } | null = null;
+    let bResize: {
+      handle: HandleDir; bx: Boundary | null; by: Boundary | null;
+      orig: Map<string, TileRect>; x0: number; y0: number;
+      snapX: number[]; snapY: number[]; startAr: number; moved: boolean;
+    } | null = null;
+
+    function brandTileRects(brand: BrandSlide): TileRect[] {
+      const tmpl = getBrandTemplate(brand.variant);
+      return tmpl.map(s => {
+        const sd = brand.slots.find(d => d.name === s.name);
+        const r = sd?.rect;
+        return r ? { name: s.name, x: r.x, y: r.y, w: r.w, h: r.h } : { name: s.name, x: s.x / B_SW, y: s.y / B_SH, w: s.w / B_SW, h: s.h / B_SH };
+      });
+    }
+
     const cellAt = (cx: number, cy: number) => {
       const r = slideEl.getBoundingClientRect();
       const fx = (cx - r.left) / r.width * cfg.slideW, fy = (cy - r.top) / r.height * cfg.slideH;
@@ -425,9 +444,25 @@ export const tool: LatheTool = {
       if (sel !== id) { sel = id; render(); }
       if (deck.slides[cur]?.brand) {
         if (cropSlot) return;
+        const handle = (e.target as HTMLElement).dataset.handle as HandleDir | undefined;
+        if (handle) {
+          const brand = deck.slides[cur].brand!;
+          const rects = brandTileRects(brand);
+          const boundaries = buildBoundaries(rects, GUTTER_FX, GUTTER_FY);
+          const { bx, by } = boundariesForHandle(id, handle, boundaries);
+          const orig = new Map(rects.map(t => [t.name, { ...t }]));
+          const tile = orig.get(id)!;
+          const xTargets: number[] = [0.5], yTargets: number[] = [0.5];
+          for (const b of boundaries) (b.axis === 'x' ? xTargets : yTargets).push(b.pos);
+          bResize = { handle, bx, by, orig, x0: e.clientX, y0: e.clientY, snapX: xTargets, snapY: yTargets, startAr: tile.w / tile.h, moved: false };
+          document.addEventListener('pointermove', onBrandResize);
+          document.addEventListener('pointerup', onBrandResizeUp);
+          return;
+        }
         const tmpl = getBrandTemplate(deck.slides[cur].brand!.variant);
         const sd = tmpl.find(s => s.name === id);
-        if (!sd || sd.role === 'logo' || sd.role === 'palette') return;
+        if (!sd) return;
+        if (sd.role === 'logo' || sd.role === 'palette') return;
         const fresh = overlay.querySelector<HTMLElement>(`.bt__tile[data-id="${id}"]`)!;
         drag = { id, mode: 'move', x0: e.clientX, y0: e.clientY, el: fresh, moved: false };
         fresh.setPointerCapture?.(e.pointerId);
@@ -487,6 +522,90 @@ export const tool: LatheTool = {
       d0.el.style.visibility = '';
       const a = slide.tiles.find(x => x.id === d0.id), b = under && slide.tiles.find(x => x.id === under.dataset.id);
       if (a && b && a !== b) { [a.rect, b.rect] = [b.rect, a.rect]; commit(); } else render();
+    };
+
+    /* ---- brand tile resize handlers ---- */
+    const onBrandResize = (e: PointerEvent) => {
+      if (!bResize) return;
+      const slideRect = slideEl.getBoundingClientRect();
+      const rawDx = (e.clientX - bResize.x0) / slideRect.width;
+      const rawDy = (e.clientY - bResize.y0) / slideRect.height;
+      if (!bResize.moved && Math.hypot(rawDx, rawDy) < 0.002) return;
+      bResize.moved = true;
+      const tiles = new Map(bResize.orig);
+      // work on copies
+      const work = new Map<string, TileRect>();
+      for (const [k, v] of tiles) work.set(k, { ...v });
+      const snapTx = 8 / slideRect.width;
+      const snapTy = 8 / slideRect.height;
+      const res = computeResize(work, bResize.bx, bResize.by, rawDx, rawDy, 0.06, 0.06, bResize.snapX, snapTx, e.shiftKey, bResize.startAr, bResize.snapY, snapTy);
+      applyResize(work, bResize.bx, bResize.by, res.dx, res.dy);
+      // Update overlay tiles visually
+      for (const [name, t] of work) {
+        const oel = overlay.querySelector<HTMLElement>(`.bt__tile[data-id="${name}"]`);
+        if (oel) {
+          oel.style.left = `${t.x * 100}%`; oel.style.top = `${t.y * 100}%`;
+          oel.style.width = `${t.w * 100}%`; oel.style.height = `${t.h * 100}%`;
+        }
+        // Update brand DOM tiles
+        if (brandDomEl) {
+          const btel = brandDomEl.querySelector<HTMLElement>(`[data-slot="${name}"]`);
+          if (btel) { btel.style.left = `${t.x * B_SW}px`; btel.style.top = `${t.y * B_SH}px`; btel.style.width = `${t.w * B_SW}px`; btel.style.height = `${t.h * B_SH}px`; }
+        }
+      }
+      // Guide lines
+      guides.innerHTML = '';
+      if (res.snapX !== null) {
+        const g = document.createElement('div'); g.className = 'bt__guide bt__guide--v';
+        g.style.left = `${res.snapX * 100}%`;
+        guides.appendChild(g);
+      }
+      if (res.snapY !== null) {
+        const g = document.createElement('div'); g.className = 'bt__guide bt__guide--h';
+        g.style.top = `${res.snapY * 100}%`;
+        guides.appendChild(g);
+      }
+      // Update dimension pill
+      const selTile = work.get(sel ?? '');
+      if (selTile) {
+        const dim = overlay.querySelector('.bt__dim');
+        if (dim) dim.textContent = `${Math.round(selTile.w * B_SW)} × ${Math.round(selTile.h * B_SH)}`;
+      }
+    };
+    const onBrandResizeUp = () => {
+      if (!bResize) return;
+      document.removeEventListener('pointermove', onBrandResize);
+      document.removeEventListener('pointerup', onBrandResizeUp);
+      guides.innerHTML = '';
+      if (!bResize.moved) { bResize = null; return; }
+      // Apply final positions to brand slot rects
+      const brand = deck.slides[cur].brand!;
+      const slideRect = slideEl.getBoundingClientRect();
+      const rawDx = 0, rawDy = 0; // recompute from orig
+      const work = new Map<string, TileRect>();
+      for (const [k, v] of bResize.orig) work.set(k, { ...v });
+      // Replay the last pointer position's delta
+      // Actually, apply the visual state: read from overlay elements
+      const template = getBrandTemplate(brand.variant);
+      for (const slot of template) {
+        const oel = overlay.querySelector<HTMLElement>(`.bt__tile[data-id="${slot.name}"]`);
+        if (!oel) continue;
+        const fx = parseFloat(oel.style.left) / 100;
+        const fy = parseFloat(oel.style.top) / 100;
+        const fw = parseFloat(oel.style.width) / 100;
+        const fh = parseFloat(oel.style.height) / 100;
+        const orig = bResize.orig.get(slot.name);
+        if (orig && (Math.abs(fx - orig.x) > 0.0001 || Math.abs(fy - orig.y) > 0.0001 || Math.abs(fw - orig.w) > 0.0001 || Math.abs(fh - orig.h) > 0.0001)) {
+          const sd = brand.slots.find(s => s.name === slot.name);
+          if (sd) sd.rect = { x: fx, y: fy, w: fw, h: fh };
+          else {
+            // logo/palette: store rect on the template slot via a new slot entry
+            brand.slots.push({ name: slot.name, assetUrl: null, assetThumbUrl: null, fit: 'cover', cropX: 0.5, cropY: 0.3, cropZoom: 1, removedBg: false, focalX: 0.5, focalY: 0.3, rect: { x: fx, y: fy, w: fw, h: fh } });
+          }
+        }
+      }
+      bResize = null;
+      commit();
     };
 
     const onKey = (e: KeyboardEvent) => {
@@ -642,7 +761,7 @@ export const tool: LatheTool = {
     render();
 
     return {
-      unmount() { off(); ro.disconnect(); if (cropCleanup) cropCleanup(); document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); document.removeEventListener('keydown', onKey); if (drag) drag = null; },
+      unmount() { off(); ro.disconnect(); if (cropCleanup) cropCleanup(); if (bResize) { document.removeEventListener('pointermove', onBrandResize); document.removeEventListener('pointerup', onBrandResizeUp); bResize = null; } document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerup', onUp); document.removeEventListener('keydown', onKey); if (drag) drag = null; },
       export: () => void run('pptx'),
     };
   },

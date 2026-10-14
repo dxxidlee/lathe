@@ -30,6 +30,7 @@ export interface BrandSlide {
     cropX: number; cropY: number; cropZoom: number;
     removedBg: boolean;
     focalX: number; focalY: number; // 0-1, for object-position
+    rect?: { x: number; y: number; w: number; h: number }; // fractional 0-1 override
   }>;
   motion: { assetUrl: string; gifUrl: string | null } | null;
 }
@@ -68,6 +69,18 @@ export function getTemplate(variant: number): SlotRect[] {
   // Variant 2: swap top and bottom row content assignments
   return BASE_SLOTS;
 }
+
+/** Resolve slot positions: use slot.rect (fractional) override when present, else template pixels. */
+export function resolveSlotRect(
+  tmpl: SlotRect,
+  slotRect: { x: number; y: number; w: number; h: number } | undefined,
+): { x: number; y: number; w: number; h: number } {
+  if (slotRect) return { x: slotRect.x * SLIDE_W, y: slotRect.y * SLIDE_H, w: slotRect.w * SLIDE_W, h: slotRect.h * SLIDE_H };
+  return { x: tmpl.x, y: tmpl.y, w: tmpl.w, h: tmpl.h };
+}
+
+export const GUTTER_FX = GUTTER / SLIDE_W;
+export const GUTTER_FY = GUTTER / SLIDE_H;
 
 // --- Palette logic ---
 

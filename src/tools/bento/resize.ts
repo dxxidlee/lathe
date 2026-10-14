@@ -131,10 +131,14 @@ export function computeResize(
   minW: number,
   minH: number,
   snapTargets: number[],
-  snapThreshold: number,
+  snapThresholdX: number,
   shiftLock: boolean,
   startAspect: number,
+  snapTargetsY?: number[],
+  snapThresholdY?: number,
 ): ResizeResult {
+  const stY = snapTargetsY ?? snapTargets;
+  const stTY = snapThresholdY ?? snapThresholdX;
   let dx = rawDx, dy = rawDy;
 
   // Clamp dx
@@ -174,7 +178,7 @@ export function computeResize(
   if (bx) {
     const newPos = bx.pos + dx;
     for (const s of snapTargets) {
-      if (Math.abs(newPos - s) < snapThreshold) {
+      if (Math.abs(newPos - s) < snapThresholdX) {
         const snapDx = s - bx.pos;
         let ok = true;
         for (const n of bx.before) { if (tiles.get(n)!.w + snapDx - dx < minW) ok = false; }
@@ -185,8 +189,8 @@ export function computeResize(
   }
   if (by) {
     const newPos = by.pos + dy;
-    for (const s of snapTargets) {
-      if (Math.abs(newPos - s) < snapThreshold) {
+    for (const s of stY) {
+      if (Math.abs(newPos - s) < stTY) {
         const snapDy = s - by.pos;
         let ok = true;
         for (const n of by.before) { if (tiles.get(n)!.h + snapDy - dy < minH) ok = false; }
