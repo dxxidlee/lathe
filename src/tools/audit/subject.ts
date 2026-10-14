@@ -601,13 +601,14 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, setting
         loading.textContent = 'Extracting\u2026';
         palRow.appendChild(loading);
       }
-      const palLabel = document.createElement('div');
-      palLabel.className = 'l-stat';
-      const pl = document.createElement('span'); pl.className = 'l-stat__label'; pl.textContent = 'Palette';
-      const pv = document.createElement('span'); pv.className = 'l-stat__value';
-      pv.appendChild(palRow);
-      palLabel.append(pl, pv);
-      meta.appendChild(palLabel);
+      const palBlock = document.createElement('div');
+      palBlock.className = 'au-detail__pal-block';
+      const palTitle = document.createElement('div');
+      palTitle.className = 'au-detail__pal-title';
+      palTitle.textContent = 'Palette';
+      palBlock.appendChild(palTitle);
+      palBlock.appendChild(palRow);
+      meta.appendChild(palBlock);
     }
 
     const addBtn = document.createElement('button');

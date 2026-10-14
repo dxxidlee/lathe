@@ -12,7 +12,10 @@ export function TopBar() {
   const shell = useShell();
   const mod = modKey();
   const activeEntry = findTool(shell.activeTabId);
-  const activeLabel = shell.activeTabId === 'make' ? 'Make a tool' : shell.activeTabId === 'library' ? 'Library' : activeEntry?.name ?? shell.activeTabId;
+  const activeLabel = shell.activeTabId === 'make' ? 'Make a tool'
+    : shell.activeTabId === 'library' ? 'Library'
+    : shell.activeTabId.startsWith('board-') ? (shell.tabLabels[shell.activeTabId] ? `Board \u00b7 ${shell.tabLabels[shell.activeTabId]}` : 'Board')
+    : activeEntry?.name ?? shell.activeTabId;
   return (
     <header className="topbar">
       <button type="button" className="topbar__rail-toggle" onClick={shell.isMobile ? shell.toggleMenu : shell.toggleRail}

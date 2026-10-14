@@ -1,7 +1,7 @@
 import {
   Search, Globe, LayoutGrid, Pipette, Contrast, Download,
   Image, Type, Bookmark, Grid3X3, Waves, Play, Paintbrush,
-  Folder, Scissors, Pen,
+  Folder, Scissors, Pen, LayoutPanelLeft,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 
@@ -22,6 +22,7 @@ export const TOOL_ICONS: Record<string, LucideIcon> = {
   'library': Folder,
   'cutout': Scissors,
   'vectorize': Pen,
+  'board': LayoutPanelLeft,
 };
 
 export function toolIcon(id: string): LucideIcon | null {
