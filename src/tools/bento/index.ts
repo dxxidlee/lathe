@@ -3,6 +3,7 @@
 import type { Asset, LatheTool } from '../types';
 import { defaults } from './defaults';
 import { COLS, DECK_MIME, ROWS, emptyDeck, parseDeck, uid, type Deck, type Tile, type TileType } from './model';
+import { BRAND_SLIDE_MIME, type BrandSlide } from '../audit/brand-slide';
 import { ensureLayout, layoutSlide, reshuffle, variantsFor } from './layout';
 import { allSlides, drawSlide, type DrawConfig } from './draw';
 import { slideSvg } from './render-svg';
@@ -21,7 +22,7 @@ export const tool: LatheTool = {
   name: 'Deck',
   group: 'Workbench',
   defaults,
-  accepts: ['image/*', DECK_MIME, 'application/json'],
+  accepts: ['image/*', DECK_MIME, BRAND_SLIDE_MIME, 'application/json'],
 
   mount({ defaults: d, stage, inspector, statusbar, assets, settings, emit }) {
     const cfg: DrawConfig = {
@@ -155,33 +156,64 @@ export const tool: LatheTool = {
     inspector.append(deckSec.el, slideSec.el, addSec.el, tileSec.el, advSec.el, outSec.el);
 
     /* ---------------- render ---------------- */
+    let brandDomEl: HTMLElement | null = null; // cached brand slide DOM for the current slide
     function render() {
       const vs = views();
       if (cur >= vs.length) cur = vs.length - 1;
       const slide = vs[cur];
-      const drawing = drawSlide(slide, deck, cfg);
-      svgHost.innerHTML = slideSvg(drawing, cfg, p => href(p.src, p.thumb), { idPrefix: 'p' });
       const credits = isCredits(cur);
-      emptyEl.hidden = slide.tiles.length > 0;
-      overlay.replaceChildren(...(credits ? [] : drawing.tileBoxes.map(b => {
-        const t = slide.tiles.find(x => x.id === b.id)!;
-        const el = document.createElement('div');
-        el.className = `bt__tile${t.id === sel ? ' is-selected' : ''}${t.locked ? ' is-locked' : ''}`;
-        el.dataset.id = t.id;
-        el.style.left = `${b.x / cfg.slideW * 100}%`; el.style.top = `${b.y / cfg.slideH * 100}%`;
-        el.style.width = `${b.w / cfg.slideW * 100}%`; el.style.height = `${b.h / cfg.slideH * 100}%`;
-        el.setAttribute('aria-label', `${t.type} tile`);
-        if (t.locked) { const lk = document.createElement('span'); lk.className = 'bt__lock'; lk.textContent = 'Locked'; el.appendChild(lk); }
-        if (t.id === sel) { const h = document.createElement('div'); h.className = 'bt__handle'; h.dataset.handle = '1'; h.setAttribute('aria-label', 'Resize'); el.appendChild(h); }
-        return el;
-      })));
+      const isBrand = !!slide.brand;
+
+      // Clean up previous brand DOM if switching away
+      if (brandDomEl) { brandDomEl.remove(); brandDomEl = null; }
+
+      if (isBrand) {
+        // Render brand slide via its own pixel-precise DOM renderer, scaled to fit
+        import('../audit/brand-slide-render').then(({ renderSlideDOM }) => {
+          const SW = 1920, SH = 1080;
+          svgHost.innerHTML = '';
+          brandDomEl = renderSlideDOM(slide.brand!);
+          const containerW = svgHost.clientWidth || slideEl.clientWidth || 800;
+          const containerH = svgHost.clientHeight || slideEl.clientHeight || 450;
+          const scale = Math.min(containerW / SW, containerH / SH);
+          brandDomEl.style.cssText += `transform-origin:top left;transform:scale(${scale});`;
+          svgHost.appendChild(brandDomEl);
+        });
+        overlay.replaceChildren();
+        emptyEl.hidden = true;
+      } else {
+        const drawing = drawSlide(slide, deck, cfg);
+        svgHost.innerHTML = slideSvg(drawing, cfg, p => href(p.src, p.thumb), { idPrefix: 'p' });
+        emptyEl.hidden = slide.tiles.length > 0;
+        overlay.replaceChildren(...(credits ? [] : drawing.tileBoxes.map(b => {
+          const t = slide.tiles.find(x => x.id === b.id)!;
+          const el = document.createElement('div');
+          el.className = `bt__tile${t.id === sel ? ' is-selected' : ''}${t.locked ? ' is-locked' : ''}`;
+          el.dataset.id = t.id;
+          el.style.left = `${b.x / cfg.slideW * 100}%`; el.style.top = `${b.y / cfg.slideH * 100}%`;
+          el.style.width = `${b.w / cfg.slideW * 100}%`; el.style.height = `${b.h / cfg.slideH * 100}%`;
+          el.setAttribute('aria-label', `${t.type} tile`);
+          if (t.locked) { const lk = document.createElement('span'); lk.className = 'bt__lock'; lk.textContent = 'Locked'; el.appendChild(lk); }
+          if (t.id === sel) { const h = document.createElement('div'); h.className = 'bt__handle'; h.dataset.handle = '1'; h.setAttribute('aria-label', 'Resize'); el.appendChild(h); }
+          return el;
+        })));
+      }
       // filmstrip
       strip.replaceChildren(...vs.map((s, i) => {
         const b = document.createElement('button');
         b.type = 'button'; b.className = `bt__thumb${i === cur ? ' is-active' : ''}`;
-        b.setAttribute('aria-label', isCredits(i) ? `Credits slide ${i + 1}` : `Slide ${i + 1}`);
-        b.innerHTML = slideSvg(drawSlide(s, deck, cfg), cfg, p => href(p.src, p.thumb), { idPrefix: `t${i}` });
-        const n = document.createElement('span'); n.className = 'bt__num'; n.textContent = isCredits(i) ? `${i + 1} · auto` : String(i + 1);
+        b.setAttribute('aria-label', isCredits(i) ? `Credits slide ${i + 1}` : s.brand ? `Brand slide ${i + 1}` : `Slide ${i + 1}`);
+        if (s.brand) {
+          // Brand slide thumbnail: render DOM at small scale
+          import('../audit/brand-slide-render').then(({ renderSlideDOM }) => {
+            const dom = renderSlideDOM(s.brand!);
+            dom.style.cssText += 'width:100%;height:100%;';
+            b.insertBefore(dom, b.firstChild);
+          });
+        } else {
+          b.innerHTML = slideSvg(drawSlide(s, deck, cfg), cfg, p => href(p.src, p.thumb), { idPrefix: `t${i}` });
+        }
+        const n = document.createElement('span'); n.className = 'bt__num'; n.textContent = isCredits(i) ? `${i + 1} · auto` : s.brand ? `${i + 1} · brand` : String(i + 1);
         b.appendChild(n);
         b.addEventListener('click', () => { cur = i; sel = null; save(); render(); });
         return b;
@@ -189,6 +221,7 @@ export const tool: LatheTool = {
       // inspector state
       const vcount = variantsFor(slide.tiles.length).length;
       slideInfo.textContent = credits ? 'Credits are generated from every image’s credit and update on their own.'
+        : isBrand ? `Slide ${cur + 1} of ${deck.slides.length} · brand board`
         : `Slide ${cur + 1} of ${deck.slides.length} · ${slide.tiles.length} tiles · layout ${slide.variant % Math.max(1, vcount) + 1} of ${vcount}`;
       deckInfo.textContent = `${deck.slides.length} slides + ${vs.length - deck.slides.length} credits`;
       renderTileEditor();
@@ -196,7 +229,7 @@ export const tool: LatheTool = {
     }
 
     function commit(relayout = false) {
-      if (relayout && !isCredits(cur)) deck.slides[cur] = layoutSlide(deck.slides[cur]);
+      if (relayout && !isCredits(cur) && !deck.slides[cur]?.brand) deck.slides[cur] = layoutSlide(deck.slides[cur]);
       save(); render();
     }
 
@@ -368,6 +401,30 @@ export const tool: LatheTool = {
           commit();
           emit('toast', `Loaded “${deck.title}”: ${deck.slides.length} slides`);
         } catch { emit('toast', 'That file is not a deck'); }
+        return;
+      }
+      if (a.type === BRAND_SLIDE_MIME || /\.brand-slide\.json$/i.test(a.name)) {
+        try {
+          const slide = JSON.parse(await a.blob.text()) as BrandSlide;
+          const { brandSlideToDecSlide } = await import('./brand-layout');
+          const newSlide = brandSlideToDecSlide(slide);
+
+          deck.theme = slide.theme;
+          deck.slides.push(newSlide);
+          cur = deck.slides.length - 1;
+          sel = null;
+          if (deck.title === 'Untitled deck') {
+            deck.title = (settings.get('brandName', 'Brand') as string) + ' audit';
+          }
+          titleField.input.value = deck.title;
+          themeChips.set(deck.theme);
+          commit();
+          const filled = slide.slots.filter(s => s.assetUrl).length;
+          emit('toast', `Brand slide: ${filled} images, ${slide.palette.length} colors`);
+        } catch (e) {
+          console.error('[deck] brand slide error', e);
+          emit('toast', 'Could not read brand slide');
+        }
         return;
       }
       if (a.type.startsWith('image/')) { addImageAsset(a); return; }

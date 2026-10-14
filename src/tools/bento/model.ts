@@ -40,7 +40,7 @@ export interface Tile {
   sample?: string;
 }
 
-export interface Slide { id: string; tiles: Tile[]; variant: number }
+export interface Slide { id: string; tiles: Tile[]; variant: number; brand?: import('../audit/brand-slide').BrandSlide }
 
 export interface Deck { version: 1; title: string; theme: 'dark' | 'light'; slides: Slide[] }
 
@@ -66,6 +66,7 @@ export function parseDeck(raw: unknown): Deck | null {
     slides: d.slides.filter(s => s && Array.isArray(s.tiles)).map(s => ({
       id: s.id || uid('s'), variant: Number.isInteger(s.variant) ? s.variant : 0,
       tiles: s.tiles.filter(t => t && typeof t.type === 'string').map(t => ({ ...t, id: t.id || uid() })),
+      ...(s.brand ? { brand: s.brand } : {}),
     })),
   };
 }

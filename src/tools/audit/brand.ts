@@ -5,7 +5,7 @@ import type { MountContext, MountResult } from '../types';
 import { PaletteQueue, fetchCatalog, proxied, type BrandFeatures } from './api';
 import { ApiError, captureBrand, downscale, fetchInstagram, fetchMoreInstagram, fetchRendered, fetchShot, igHandle, igSrc, logoFromUrl, fetchSocial, fetchTimeline, requestObservations, type BrandCapture, type IgPost, type Instagram, type LogoCandidate, type SiteCapture, type Observations, type Social, type Timeline } from './brand-api';
 import { buildBrandDeck, type DeckImage } from './brand-deck';
-import { buildPalette } from './brand-slide';
+import { BRAND_SLIDE_MIME, buildPalette, createSlide, type AssetCandidate } from './brand-slide';
 import { DECK_MIME } from '../bento/model';
 import { deltaE, hexToOklab, kmeans, rgbToOklab, type Lab, type Swatch } from '../../lib/color';
 import { button, chips, field, note, section, select, slider, statList } from '../../ui/primitives';
@@ -348,10 +348,42 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   /* ---------------- inspector ---------------- */
   const selSec = section('Selection');
   const selCount = el('div', 'ab__sel-count');
-  const buildSlideBtn = button({ label: 'Build slide', primary: true, onClick: () => {
+  const buildSlideBtn = button({ label: 'Build slide', primary: true, onClick: async () => {
     if (!selected.size) { emit('toast', 'Select at least one image'); return; }
-    emit('toast', `${selected.size} images ready for slide`);
-    // Phase 2: will open Deck with brand slide preset
+    if (!cap) { emit('toast', 'Capture a brand first'); return; }
+
+    const items = getContentItems();
+    const selectedItems = [...selected.entries()]
+      .sort((a, b) => a[1] - b[1])
+      .map(([id]) => items.find(i => i.id === id))
+      .filter(Boolean);
+
+    const candidates: AssetCandidate[] = selectedItems.map((item, i) => ({
+      url: item!.url,
+      thumbUrl: item!.thumbUrl,
+      width: null,
+      height: null,
+      priority: i,
+      type: item!.source as AssetCandidate['type'],
+      isTransparent: false,
+    }));
+
+    const logos = allLogos().sort((a, b) => logoRank(a) - logoRank(b));
+    const logo = logos[currentLogoIdx % logos.length];
+    const logoUrl = logo?.dataUri ?? logo?.url ?? '';
+    const logoIsLight = logo?.kind === 'svg';
+
+    const slide = createSlide(
+      candidates, logoUrl, logoIsLight,
+      cap.site.colors.map((c: any) => c.hex),
+      cap.brandfetch?.colors?.map((c: any) => c.hex) ?? [],
+    );
+
+    const slideData = JSON.stringify(slide);
+    const blob = new Blob([slideData], { type: BRAND_SLIDE_MIME });
+    const name = brandName(cap).replace(/[^a-z0-9.-]/gi, '-') || 'brand';
+    const a = await assets.add(blob, { name: `${name}.brand-slide.json`, source: 'tool', origin: 'brand-audit' });
+    emit('send', a, 'deck');
   }});
   const actions = el('div', 'l-row');
   actions.append(selCount, buildSlideBtn);
