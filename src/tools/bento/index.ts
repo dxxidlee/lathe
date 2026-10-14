@@ -12,7 +12,7 @@ import { proxied } from './images';
 import { advancedSection, button, chips, field, note, section, select, slider, textarea } from '../../ui/primitives';
 import { assetUrl } from '../../lib/assets';
 import { saveExport } from '../../lib/download';
-import { buildBoundaries, boundariesForHandle, computeResize, applyResize, snapTargetsFor, boundaryAtPoint, type TileRect, type Boundary, type HandleDir } from './resize';
+import { buildBoundaries, boundariesForHandle, computeResize, applyResize, boundaryAtPoint, type TileRect, type Boundary, type HandleDir } from './resize';
 import './bento.css';
 
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 48) || 'deck';
@@ -525,7 +525,6 @@ export const tool: LatheTool = {
       if (!hit) return;
       e.preventDefault();
       const orig = new Map(rects.map(t => [t.name, { ...t }]));
-      const tile = orig.values().next().value!;
       const xTargets: number[] = [0.5], yTargets: number[] = [0.5];
       for (const b of boundaries) (b.axis === 'x' ? xTargets : yTargets).push(b.pos);
       bResize = {
@@ -643,10 +642,6 @@ export const tool: LatheTool = {
       if (!bResize.moved) { bResize = null; return; }
       // Apply final positions to brand slot rects
       const brand = deck.slides[cur].brand!;
-      const slideRect = slideEl.getBoundingClientRect();
-      const rawDx = 0, rawDy = 0; // recompute from orig
-      const work = new Map<string, TileRect>();
-      for (const [k, v] of bResize.orig) work.set(k, { ...v });
       // Replay the last pointer position's delta
       // Actually, apply the visual state: read from overlay elements
       const template = getBrandTemplate(brand.variant);
