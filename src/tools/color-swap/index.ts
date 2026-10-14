@@ -4,6 +4,7 @@
 import type { LatheTool } from '../types';
 import { defaults } from './defaults';
 import { UIController } from './ui.js';
+import { button } from '../../ui/primitives';
 import './color-swap.css';
 
 export const tool: LatheTool = {
@@ -32,6 +33,19 @@ export const tool: LatheTool = {
     // Export dialog starts from the manifest's choices.
     const set = (id: string, v: unknown) => { const el = (stage.querySelector('#' + id) ?? inspector.querySelector('#' + id)) as HTMLInputElement | HTMLSelectElement | null; if (!el) return; if (el instanceof HTMLInputElement && el.type === 'checkbox') el.checked = !!v; else el.value = String(v); };
     set('expRes', d.exportResolution); set('expFps', d.exportFps); set('expQual', d.exportQuality); set('expAudio', d.exportAudio);
+
+    // Save to Library button in the inspector
+    const saveSec = inspector.querySelector('[data-sec="presetio"] .section-body');
+    if (saveSec) saveSec.appendChild(button({ label: 'Save to Library', onClick: async () => {
+      const { supabase } = await import('../../lib/supabase');
+      if (!supabase) { emit('toast', 'Sign in to save'); return; }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { emit('toast', 'Sign in to save'); return; }
+      const { cloudSaveItem } = await import('../../lib/cloud-library');
+      const snap = settings.get('state', null) as any;
+      await cloudSaveItem(user.id, { type: 'palette', name: `Recolor · ${snap?.palette?.colors?.length ?? 0} colors`, toolId: 'recolor', data: snap });
+      emit('toast', 'Saved to Library');
+    }}));
 
     const off = assets.onChange(e => { if (e.type === 'load' && e.target === 'recolor') void ui.loadAsset(e.asset); });
     // Reopen the last image or video (after a reload, or a remount from a Defaults edit).
