@@ -3,7 +3,7 @@
    the Graph API's Business Discovery (INSTAGRAM_ACCESS_TOKEN, a never-expiring Page token, asking as
    INSTAGRAM_USER_ID). The token stays on the server: it is never logged, echoed or put in an error. */
 
-const GRAPH = 'https://graph.facebook.com/v26.0';
+const GRAPH = 'https://graph.facebook.com/v21.0';
 const FIELDS = 'username,name,biography,profile_picture_url,followers_count,media_count,'
   + 'media.limit(30){id,media_type,media_url,thumbnail_url,permalink,caption,like_count,comments_count,timestamp,children{media_type,media_url,thumbnail_url}}';
 const TTL = 3600_000;
