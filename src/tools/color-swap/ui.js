@@ -7,6 +7,7 @@
 import { MAX_COLORS, MAX_RULES, MAX_CLUST, MAX_PRESERVE, ColorMath, ROLES, ROLE_INDEX, SETTING_DEFS, PRESETS,
   PaletteManager, RecolorRenderer, ColorAnalyzer, VideoController, MappingManager, ExportManager } from './engine.js';
 import { INSPECTOR_HTML, STAGE_HTML } from './markup.js';
+import { slider as latheSlider } from '../../ui/primitives';
 /* ============================================================
    UIController — wires DOM to the engine
    ============================================================ */
@@ -100,44 +101,36 @@ export class UIController {
     const $ = this.$;
     const host = $('settingsList');
     host.innerHTML = '';
+    this._settingsSliders = {};
     this.defs.forEach(def => {
-      const wrap = document.createElement('div');
-      wrap.className = 'ctrl';
       const id = 'set_'+def.key;
-      wrap.innerHTML = `
-        <div class="ctrl-top">
-          <label class="ctrl-name" for="${id}" title="Double-click to reset">${def.label}</label>
-          <span class="ctrl-val" id="${id}_v">${Math.round(def.def*100)}</span>
-          <span class="tip" tabindex="0" role="note" data-tip="${def.tip}">?</span>
-        </div>
-        <input type="range" id="${id}" min="0" max="100" step="1" value="${Math.round(def.def*100)}"
-               aria-label="${def.label}">`;
-      host.appendChild(wrap);
-      const slider = wrap.querySelector('input');
-      const readout = wrap.querySelector('.ctrl-val');
-      const label = wrap.querySelector('.ctrl-name');
-      slider.addEventListener('input', () => {
-        this.settings[def.key] = slider.value/100;
-        readout.textContent = slider.value;
-        this.renderer.resetHistory();
-        this.persist();
+      const s = latheSlider({
+        label: def.label, min: 0, max: 100, value: Math.round(def.def*100),
+        onChange: v => {
+          this.settings[def.key] = v/100;
+          this.renderer.resetHistory();
+          this.persist();
+        },
       });
-      label.addEventListener('dblclick', e => {
+      s.el.id = id;
+      s.el.title = def.tip || '';
+      s.el.querySelector('.l-slider__label')?.addEventListener('dblclick', e => {
         e.preventDefault();
         this.settings[def.key] = def.def;
-        slider.value = Math.round(def.def*100);
-        readout.textContent = slider.value;
+        s.input.value = String(Math.round(def.def*100));
+        s.input.dispatchEvent(new Event('input'));
         this.renderer.resetHistory();
         this.persist();
         this.toast(def.label + ' reset');
       });
+      this._settingsSliders[def.key] = s;
+      host.appendChild(s.el);
     });
   }
   syncSettingsUI(){
-    const $ = this.$;
     this.defs.forEach(d => {
-      const s = $('set_'+d.key), v = $('set_'+d.key+'_v');
-      if(s && v){ s.value = Math.round(this.settings[d.key]*100); v.textContent = s.value; }
+      const s = this._settingsSliders?.[d.key];
+      if(s){ s.input.value = String(Math.round(this.settings[d.key]*100)); s.input.dispatchEvent(new Event('input')); }
     });
   }
 
