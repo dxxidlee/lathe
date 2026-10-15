@@ -55,9 +55,29 @@ export function ToolHost({ entry, active = true, deckId }: { entry: ToolEntry; a
     (async () => {
       try {
         if (resetPending.current) { resetPending.current = false; await resetTool(entry.id); }
+        const settingsKey = deckId ? `deck-${deckId}` : entry.id;
         const [tool, settings, savedEdits, applied] = await Promise.all([
-          entry.load!(), loadSettings(deckId ? `deck-${deckId}` : entry.id), loadEdits(entry.id), loadApplied(entry.id), loadAssets(),
+          entry.load!(), loadSettings(settingsKey), loadEdits(entry.id), loadApplied(entry.id), loadAssets(),
         ]);
+        // For deck-{id} tabs: if settings are empty, load deck data from the cloud library
+        if (deckId && !settings.get('deck', null)) {
+          try {
+            const { supabase } = await import('../lib/supabase');
+            if (supabase) {
+              const { data: { user } } = await supabase.auth.getUser();
+              if (user) {
+                const { cloudLoadLibrary } = await import('../lib/cloud-library');
+                const lib = await cloudLoadLibrary(user.id);
+                const item = lib.find(i => i.id === deckId);
+                if (item?.data) {
+                  const d = item.data as any;
+                  delete d.thumbnail;
+                  settings.set('deck', d);
+                }
+              }
+            }
+          } catch { /* proceed with empty deck */ }
+        }
         if (cancelled) return;
         // Drop edits for keys the manifest no longer has.
         const known = new Set(tool.defaults.map(d => d.key));

@@ -123,7 +123,9 @@ export async function renderSlideCanvas(slide: BrandSlide, scale = 2): Promise<H
       if (slide.logo.assetUrl) {
         try {
           const img = await loadImg(slide.logo.assetUrl);
-          const iw = r.w * 0.6, ih = r.h * 0.6;
+          const maxW = r.w * 0.6, maxH = r.h * 0.6;
+          const s = Math.min(maxW / img.width, maxH / img.height);
+          const iw = img.width * s, ih = img.height * s;
           const ix = r.x + (r.w - iw) / 2, iy = r.y + (r.h - ih) / 2;
           ctx.drawImage(img, ix, iy, iw, ih);
         } catch { /* skip */ }

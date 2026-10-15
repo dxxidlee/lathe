@@ -262,7 +262,11 @@ export async function brandSlideToPptx(
       if (brand.logo.assetUrl) {
         const data = await loadDataUrl(brand.logo.assetUrl, assets);
         if (data) {
-          const iw = w * 0.6, ih = h * 0.6;
+          const img = new Image(); img.src = data;
+          await img.decode().catch(() => {});
+          const maxW = w * 0.6, maxH = h * 0.6;
+          const sc = Math.min(maxW / (img.width || 1), maxH / (img.height || 1));
+          const iw = (img.width || maxW) * sc, ih = (img.height || maxH) * sc;
           s.addImage({ data: data.replace(/^data:/, ''), x: x + (w - iw) / 2, y: y + (h - ih) / 2, w: iw, h: ih });
         }
       }
@@ -320,7 +324,11 @@ export async function brandSlideToSvg(brand: BrandSlide, assets: AssetsAPI): Pro
       if (brand.logo.assetUrl) {
         const data = await loadDataUrl(brand.logo.assetUrl, assets);
         if (data) {
-          const iw = r.w * 0.6, ih = r.h * 0.6;
+          const img = new Image(); img.src = data;
+          await img.decode().catch(() => {});
+          const maxW = r.w * 0.6, maxH = r.h * 0.6;
+          const sc = Math.min(maxW / (img.width || 1), maxH / (img.height || 1));
+          const iw = (img.width || maxW) * sc, ih = (img.height || maxH) * sc;
           parts.push(`<image href="${data}" x="${r.x + (r.w - iw) / 2}" y="${r.y + (r.h - ih) / 2}" width="${iw}" height="${ih}"/>`);
         }
       }
