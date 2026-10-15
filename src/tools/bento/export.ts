@@ -242,8 +242,11 @@ async function renderTileImage(brand: BrandSlide, slotName: string, assets: Asse
   const img = new Image(); img.crossOrigin = 'anonymous'; img.src = dataUrl;
   await img.decode().catch(() => {});
   if (!img.width || !img.height) return null;
-  const cv = document.createElement('canvas'); cv.width = Math.round(r.w); cv.height = Math.round(r.h);
+  const scale = 2;
+  const cw = Math.round(r.w * scale), ch = Math.round(r.h * scale);
+  const cv = document.createElement('canvas'); cv.width = cw; cv.height = ch;
   const ctx = cv.getContext('2d')!;
+  ctx.scale(scale, scale);
   ctx.beginPath(); ctx.roundRect(0, 0, r.w, r.h, B_RAD); ctx.clip();
   if (sd?.fit === 'contain') {
     const s = Math.min(r.w / img.width, r.h / img.height);
@@ -291,14 +294,8 @@ export async function brandSlideToPptx(
       if (brand.logo.assetUrl) {
         const data = await loadDataUrl(brand.logo.assetUrl, assets);
         if (data) {
-          const img = new Image(); img.src = data;
-          await img.decode().catch(() => {});
-          if (img.width && img.height) {
-            const maxW = w * 0.6, maxH = h * 0.6;
-            const sc = Math.min(maxW / img.width, maxH / img.height);
-            const iw = img.width * sc, ih = img.height * sc;
-            s.addImage({ data: data.replace(/^data:/, ''), x: x + (w - iw) / 2, y: y + (h - ih) / 2, w: iw, h: ih });
-          }
+          const iw = w * 0.6, ih = h * 0.6;
+          s.addImage({ data, x: x + (w - iw) / 2, y: y + (h - ih) / 2, w: iw, h: ih, sizing: { type: 'contain', w: iw, h: ih } });
         }
       }
       continue;
@@ -307,7 +304,7 @@ export async function brandSlideToPptx(
     // Image / motion tile — renderTileImage handles gifUrl → posterUrl → assetUrl fallback
     if (sd?.assetUrl || sd?.gifUrl || (brand.motion?.slotName === slot.name)) {
       const data = await renderTileImage(brand, slot.name, assets);
-      if (data) s.addImage({ data: data.replace(/^data:/, ''), x, y, w, h });
+      if (data) s.addImage({ data, x, y, w, h });
     } else if (slot.hasTileBg) {
       s.addShape('rect', { x, y, w, h, fill: { color: brand.theme === 'dark' ? '141414' : 'F0F0F0' }, line: { type: 'none' }, rectRadius: rad });
     }
@@ -345,14 +342,8 @@ export async function brandSlideToSvg(brand: BrandSlide, assets: AssetsAPI): Pro
       if (brand.logo.assetUrl) {
         const data = await loadDataUrl(brand.logo.assetUrl, assets);
         if (data) {
-          const img = new Image(); img.src = data;
-          await img.decode().catch(() => {});
-          if (img.width && img.height) {
-            const maxW = r.w * 0.6, maxH = r.h * 0.6;
-            const sc = Math.min(maxW / img.width, maxH / img.height);
-            const iw = img.width * sc, ih = img.height * sc;
-            parts.push(`<image href="${data}" x="${r.x + (r.w - iw) / 2}" y="${r.y + (r.h - ih) / 2}" width="${iw}" height="${ih}"/>`);
-          }
+          const iw = r.w * 0.6, ih = r.h * 0.6;
+          parts.push(`<image href="${data}" x="${r.x + (r.w - iw) / 2}" y="${r.y + (r.h - ih) / 2}" width="${iw}" height="${ih}" preserveAspectRatio="xMidYMid meet"/>`);
         }
       }
       continue;
