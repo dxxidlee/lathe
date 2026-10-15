@@ -160,7 +160,7 @@ input[type="number"] { -moz-appearance: textfield; }
   padding: var(--space-2) var(--space-4);
   background: var(--accent); color: var(--accent-text);
   border-radius: var(--radius-control);
-  font-size: 12px; font-weight: var(--weight-medium);
+  font-size: var(--text-body); font-weight: var(--weight-medium);
 }
 
 .l-textarea {
@@ -221,8 +221,8 @@ input[type="number"] { -moz-appearance: textfield; }
   .l-stat { min-height: 44px; }
   input, textarea, select { font-size: max(1em, 16px); } /* catch inputs without .l-input */
 
-  /* Tabs always show close on mobile */
-  .tab__close { display: flex; }
+  /* Tabs: always show close on mobile, enlarge touch target */
+  .tab__close { display: flex; width: 44px; height: 44px; }
 }
 
 /* ---- Empty state ---- */
