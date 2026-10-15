@@ -241,6 +241,7 @@ async function renderTileImage(brand: BrandSlide, slotName: string, assets: Asse
   if (!dataUrl) return null;
   const img = new Image(); img.crossOrigin = 'anonymous'; img.src = dataUrl;
   await img.decode().catch(() => {});
+  if (!img.width || !img.height) return null;
   const cv = document.createElement('canvas'); cv.width = Math.round(r.w); cv.height = Math.round(r.h);
   const ctx = cv.getContext('2d')!;
   ctx.beginPath(); ctx.roundRect(0, 0, r.w, r.h, B_RAD); ctx.clip();
@@ -265,7 +266,8 @@ export async function brandSlideToPptx(
   pptx: any,
   assets: AssetsAPI,
 ): Promise<void> {
-  const template = getTemplate(brand.variant);
+  const removedSet = new Set(brand.removed ?? []);
+  const template = getTemplate(brand.variant).filter(s => !removedSet.has(s.name));
   const s = pptx.addSlide();
   const SW = 13.333, SH = 7.5;
   s.background = { color: brand.theme === 'dark' ? '000000' : 'FFFFFF' };
@@ -291,28 +293,19 @@ export async function brandSlideToPptx(
         if (data) {
           const img = new Image(); img.src = data;
           await img.decode().catch(() => {});
-          const maxW = w * 0.6, maxH = h * 0.6;
-          const sc = Math.min(maxW / (img.width || 1), maxH / (img.height || 1));
-          const iw = (img.width || maxW) * sc, ih = (img.height || maxH) * sc;
-          s.addImage({ data: data.replace(/^data:/, ''), x: x + (w - iw) / 2, y: y + (h - ih) / 2, w: iw, h: ih });
+          if (img.width && img.height) {
+            const maxW = w * 0.6, maxH = h * 0.6;
+            const sc = Math.min(maxW / img.width, maxH / img.height);
+            const iw = img.width * sc, ih = img.height * sc;
+            s.addImage({ data: data.replace(/^data:/, ''), x: x + (w - iw) / 2, y: y + (h - ih) / 2, w: iw, h: ih });
+          }
         }
       }
       continue;
     }
 
-    // Image / motion tile
-    const isMotion = brand.motion?.slotName === slot.name && brand.motion.gifUrl;
-    if (isMotion) {
-      try {
-        const r2 = await fetch(brand.motion!.gifUrl!);
-        const blob = await r2.blob();
-        const data = await new Promise<string>((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result as string); fr.onerror = rej; fr.readAsDataURL(blob); });
-        s.addImage({ data: data.replace(/^data:/, ''), x, y, w, h, rounding: true });
-      } catch { /* skip motion */ }
-      continue;
-    }
-
-    if (sd?.assetUrl) {
+    // Image / motion tile — renderTileImage handles gifUrl → posterUrl → assetUrl fallback
+    if (sd?.assetUrl || sd?.gifUrl || (brand.motion?.slotName === slot.name)) {
       const data = await renderTileImage(brand, slot.name, assets);
       if (data) s.addImage({ data: data.replace(/^data:/, ''), x, y, w, h });
     } else if (slot.hasTileBg) {
@@ -323,7 +316,8 @@ export async function brandSlideToPptx(
 
 /** Brand slide → SVG with editable structure: each tile as a <image> with rounded clipPath, palette as <rect>s. */
 export async function brandSlideToSvg(brand: BrandSlide, assets: AssetsAPI): Promise<string> {
-  const template = getTemplate(brand.variant);
+  const removedSet = new Set(brand.removed ?? []);
+  const template = getTemplate(brand.variant).filter(s => !removedSet.has(s.name));
   const parts: string[] = [`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${B_SW} ${B_SH}" width="${B_SW}" height="${B_SH}">`];
   parts.push(`<defs>`);
   for (const slot of template) {
@@ -353,10 +347,12 @@ export async function brandSlideToSvg(brand: BrandSlide, assets: AssetsAPI): Pro
         if (data) {
           const img = new Image(); img.src = data;
           await img.decode().catch(() => {});
-          const maxW = r.w * 0.6, maxH = r.h * 0.6;
-          const sc = Math.min(maxW / (img.width || 1), maxH / (img.height || 1));
-          const iw = (img.width || maxW) * sc, ih = (img.height || maxH) * sc;
-          parts.push(`<image href="${data}" x="${r.x + (r.w - iw) / 2}" y="${r.y + (r.h - ih) / 2}" width="${iw}" height="${ih}"/>`);
+          if (img.width && img.height) {
+            const maxW = r.w * 0.6, maxH = r.h * 0.6;
+            const sc = Math.min(maxW / img.width, maxH / img.height);
+            const iw = img.width * sc, ih = img.height * sc;
+            parts.push(`<image href="${data}" x="${r.x + (r.w - iw) / 2}" y="${r.y + (r.h - ih) / 2}" width="${iw}" height="${ih}"/>`);
+          }
         }
       }
       continue;

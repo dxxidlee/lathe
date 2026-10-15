@@ -16,7 +16,6 @@ const fail = (status, msg) => new Response(msg, { status, headers: { 'content-ty
 async function fetchImage(raw) {
   /** @type {URL} */ let target;
   try { target = new URL(raw || ''); } catch { return fail(400, 'Bad url'); }
-  try { await assertPublic(target); } catch (e) { return fail(403, e instanceof Error ? e.message : 'Blocked'); }
   for (let hop = 0; hop < 4; hop++) {
     try { await assertPublic(target); } catch (e) { return fail(403, e instanceof Error ? e.message : 'Blocked'); }
     let res;
