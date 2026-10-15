@@ -4,21 +4,10 @@
    redirects are followed manually and re-checked; responses must be images under 4 MB (Vercel caps
    function responses at 4.5 MB). When `url` is refused or too large, the first `fallback` that works
    (each also checked; the parameter may repeat) is served instead, with `x-lathe-fallback: 1`. */
-import { SOURCES } from './_lib/sources/index.js';
 import { uaFor } from './_lib/http.js';
+import { assertPublic } from './_lib/safefetch.js';
 
 export const MAX_BYTES = 4 * 1024 * 1024;
-// Brand mode adds YouTube's still images (thumbnails and auto-captured frames).
-const HOSTS = [
-  ...SOURCES.flatMap(s => s.imageHosts),
-  'i.ytimg.com',
-  // Brand audit sources: Instagram CDN, Brandfetch, web.archive.org
-  'cdninstagram.com', 'fbcdn.net', 'scontent.cdninstagram.com',
-  'web.archive.org', 'brandfetch.io', 'asset.brandfetch.io', 'logo.clearbit.com',
-];
-
-/** @param {string} host */
-const allowed = host => HOSTS.some(h => host === h || host.endsWith('.' + h));
 
 /** @param {number} status @param {string} msg */
 const fail = (status, msg) => new Response(msg, { status, headers: { 'content-type': 'text/plain', 'cache-control': 'no-store' } });
@@ -27,8 +16,9 @@ const fail = (status, msg) => new Response(msg, { status, headers: { 'content-ty
 async function fetchImage(raw) {
   /** @type {URL} */ let target;
   try { target = new URL(raw || ''); } catch { return fail(400, 'Bad url'); }
+  try { await assertPublic(target); } catch (e) { return fail(403, e instanceof Error ? e.message : 'Blocked'); }
   for (let hop = 0; hop < 4; hop++) {
-    if (!/^https?:$/.test(target.protocol) || !allowed(target.hostname)) return fail(403, `Host not allowed: ${target.hostname}`);
+    try { await assertPublic(target); } catch (e) { return fail(403, e instanceof Error ? e.message : 'Blocked'); }
     let res;
     try {
       res = await fetch(target, { redirect: 'manual', headers: { 'User-Agent': uaFor(target), Accept: 'image/avif,image/webp,image/png,image/jpeg,*/*;q=0.8' }, signal: AbortSignal.timeout(25000) });
