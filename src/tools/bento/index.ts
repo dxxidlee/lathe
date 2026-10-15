@@ -451,7 +451,23 @@ export const tool: LatheTool = {
             }}),
           );
         } else {
-          tileBody.append(note('Empty slot — drop an image.'));
+          tileBody.append(note('Drop an image or pick from the tray.'));
+          const pool = document.createElement('div');
+          pool.className = 'bt__pool';
+          for (const a of assets.list().filter(a => a.type.startsWith('image/'))) {
+            const thumb = document.createElement('img');
+            thumb.src = assetUrl(a); thumb.alt = a.name; thumb.className = 'bt__pool-thumb';
+            thumb.title = a.name;
+            thumb.addEventListener('click', () => {
+              let sd = slotData;
+              if (!sd) { sd = { name: sel!, assetUrl: null, assetThumbUrl: null, fit: 'cover', cropX: 0.5, cropY: 0.3, cropZoom: 1, removedBg: false, focalX: 0.5, focalY: 0.3 }; brand.slots.push(sd); }
+              sd.assetUrl = `asset:${a.id}`;
+              sd.assetThumbUrl = assetUrl(a);
+              commit();
+            });
+            pool.appendChild(thumb);
+          }
+          if (pool.children.length) tileBody.append(pool);
         }
         tileBody.append(button({ label: 'Remove tile', onClick: () => { if (sel) removeBrandTile(sel); } }));
         return;

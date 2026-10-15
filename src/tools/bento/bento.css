@@ -72,3 +72,6 @@
 .bt__guide--v { top: 0; bottom: 0; width: 1px; }
 .bt__guide--h { left: 0; right: 0; height: 1px; }
 .bt__span { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); }
+.bt__pool { display: grid; grid-template-columns: repeat(auto-fill, minmax(48px, 1fr)); gap: var(--space-2); margin-top: var(--space-2); }
+.bt__pool-thumb { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: var(--radius-control); cursor: pointer; border: 1px solid var(--border); }
+.bt__pool-thumb:hover { border-color: var(--accent); }

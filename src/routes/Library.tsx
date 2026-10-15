@@ -69,6 +69,29 @@ function BoardCard({ board, onOpen, onShare, onDelete }: { board: Board; onOpen:
 }
 
 /* ---- Deck card ---- */
+function DeckCover({ deck }: { deck: any }) {
+  const slide = deck?.slides?.[0];
+  const brand = slide?.brand;
+  if (brand?.palette?.length) {
+    const bg = deck?.theme === 'light' ? '#fff' : '#000';
+    const logoBg = brand.logo?.bgColor || '#222';
+    return (
+      <div style={{ width: '100%', height: '100%', background: bg, display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gridTemplateRows: '1fr 1fr', gap: 2, padding: 2, borderRadius: 'var(--radius-control)', overflow: 'hidden' }}>
+        <div style={{ background: '#141414', borderRadius: 2, gridRow: '1/3' }} />
+        <div style={{ background: logoBg, borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Layers size={16} strokeWidth={1.5} style={{ color: bg === '#000' ? '#fff' : '#000', opacity: 0.5 }} />
+        </div>
+        <div style={{ display: 'flex', borderRadius: 2, overflow: 'hidden' }}>
+          {brand.palette.slice(0, 4).map((c: string, i: number) => <div key={i} style={{ flex: 1, background: c }} />)}
+        </div>
+        <div style={{ background: '#141414', borderRadius: 2 }} />
+        <div style={{ background: '#141414', borderRadius: 2 }} />
+      </div>
+    );
+  }
+  return <div className="lib__board-empty" style={{ background: deck?.theme === 'light' ? '#fff' : '#000' }}><Layers size={32} strokeWidth={1} style={{ color: 'var(--text-3)' }} /></div>;
+}
+
 function DeckCard({ item, onOpen, onRename, onDelete }: { item: LibraryItem; onOpen: () => void; onRename: (name: string) => void; onDelete: () => void }) {
   const deck = item.data as any;
   const slideCount = deck?.slides?.length ?? 0;
@@ -76,9 +99,7 @@ function DeckCard({ item, onOpen, onRename, onDelete }: { item: LibraryItem; onO
   return (
     <div className="lib__board">
       <div className="lib__board-cover lib__board-cover--1" onClick={onOpen}>
-        <div className="lib__board-empty" style={{ background: deck?.theme === 'light' ? '#fff' : '#000' }}>
-          <Layers size={32} strokeWidth={1} style={{ color: 'var(--text-3)' }} />
-        </div>
+        <DeckCover deck={deck} />
       </div>
       <div className="lib__board-info">
         <span className="lib__board-name" onClick={onOpen}>{item.name}</span>
