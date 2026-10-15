@@ -186,18 +186,43 @@ export const pxSize = (cfg: DrawConfig) => ({ w: Math.round(cfg.slideW * PX_PER_
 import { getTemplate, resolveSlotRect, SLIDE_W as B_SW, SLIDE_H as B_SH, RADIUS as B_RAD, type BrandSlide } from '../audit/brand-slide';
 import { renderSlideCanvas } from '../audit/brand-slide-render';
 
-async function loadDataUrl(src: string, assets: AssetsAPI, thumb?: string | null): Promise<string | null> {
-  const isAsset = src.startsWith('asset:');
-  const blobUrl = isAsset ? (() => { const a = assets.get(src.slice(6)); return a ? URL.createObjectURL(a.blob) : null; })() : null;
-  const url = blobUrl ?? `/api/img?url=${encodeURIComponent(thumb || src)}`;
-  if (!url) return null;
+async function fetchAsDataUrl(url: string): Promise<string | null> {
   try {
     const r = await fetch(url);
     if (!r.ok) return null;
     const blob = await r.blob();
     return await new Promise<string>((res, rej) => { const fr = new FileReader(); fr.onload = () => res(fr.result as string); fr.onerror = rej; fr.readAsDataURL(blob); });
   } catch { return null; }
-  finally { if (blobUrl) URL.revokeObjectURL(blobUrl); }
+}
+
+async function loadDataUrl(src: string, assets: AssetsAPI, thumb?: string | null): Promise<string | null> {
+  if (src.startsWith('data:')) return src;
+  if (src.startsWith('blob:')) return fetchAsDataUrl(src);
+  if (src.startsWith('asset:')) {
+    const a = assets.get(src.slice(6));
+    if (!a) return null;
+    const u = URL.createObjectURL(a.blob);
+    try { return await fetchAsDataUrl(u); } finally { URL.revokeObjectURL(u); }
+  }
+  // Remote URL: try the image proxy first, then direct fetch with the proxy path
+  const proxied = `/api/img?url=${encodeURIComponent(thumb || src)}`;
+  const result = await fetchAsDataUrl(proxied);
+  if (result) return result;
+  // Proxy failed (host not allowed) — try loading via an Image element which uses browser cache
+  try {
+    const img = new Image(); img.crossOrigin = 'anonymous'; img.src = thumb || src;
+    await img.decode();
+    const cv = document.createElement('canvas'); cv.width = img.width; cv.height = img.height;
+    cv.getContext('2d')!.drawImage(img, 0, 0);
+    return cv.toDataURL('image/png');
+  } catch { /* try proxied version */ }
+  try {
+    const img = new Image(); img.crossOrigin = 'anonymous'; img.src = `/api/img?url=${encodeURIComponent(src)}`;
+    await img.decode();
+    const cv = document.createElement('canvas'); cv.width = img.width; cv.height = img.height;
+    cv.getContext('2d')!.drawImage(img, 0, 0);
+    return cv.toDataURL('image/png');
+  } catch { return null; }
 }
 
 /** Render a brand slide tile image to a data URL with rounded corners baked in. */
@@ -207,8 +232,10 @@ async function renderTileImage(brand: BrandSlide, slotName: string, assets: Asse
   if (!slotDef) return null;
   const sd = brand.slots.find(s => s.name === slotName);
   const r = resolveSlotRect(slotDef, sd?.rect);
-  const isMotion = brand.motion?.slotName === slotName && brand.motion.gifUrl;
-  const src = isMotion ? brand.motion!.gifUrl! : (sd?.assetThumbUrl || sd?.assetUrl);
+  // For motion tiles: try GIF URL, then poster, then the original asset
+  const gifUrl = sd?.gifUrl || (brand.motion?.slotName === slotName ? brand.motion.gifUrl : null);
+  const posterUrl = sd?.posterUrl || (brand.motion?.slotName === slotName ? brand.motion.posterUrl : null);
+  const src = gifUrl || posterUrl || sd?.assetThumbUrl || sd?.assetUrl;
   if (!src) return null;
   const dataUrl = await loadDataUrl(src, assets);
   if (!dataUrl) return null;

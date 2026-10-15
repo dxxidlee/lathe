@@ -9,7 +9,13 @@ import { uaFor } from './_lib/http.js';
 
 export const MAX_BYTES = 4 * 1024 * 1024;
 // Brand mode adds YouTube's still images (thumbnails and auto-captured frames).
-const HOSTS = [...SOURCES.flatMap(s => s.imageHosts), 'i.ytimg.com'];
+const HOSTS = [
+  ...SOURCES.flatMap(s => s.imageHosts),
+  'i.ytimg.com',
+  // Brand audit sources: Instagram CDN, Brandfetch, web.archive.org
+  'cdninstagram.com', 'fbcdn.net', 'scontent.cdninstagram.com',
+  'web.archive.org', 'brandfetch.io', 'asset.brandfetch.io', 'logo.clearbit.com',
+];
 
 /** @param {string} host */
 const allowed = host => HOSTS.some(h => host === h || host.endsWith('.' + h));
