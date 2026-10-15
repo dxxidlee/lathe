@@ -358,7 +358,7 @@ export async function brandSlideToSvg(brand: BrandSlide, assets: AssetsAPI): Pro
       continue;
     }
 
-    if (sd?.assetUrl) {
+    if (sd?.assetUrl || sd?.gifUrl || (brand.motion?.slotName === slot.name)) {
       const data = await renderTileImage(brand, slot.name, assets);
       if (data) parts.push(`<image clip-path="url(#clip-${slot.name})" href="${data}" x="${r.x}" y="${r.y}" width="${r.w}" height="${r.h}"/>`);
     } else if (slot.hasTileBg) {
