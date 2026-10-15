@@ -152,10 +152,32 @@ export const tool: LatheTool = {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { emit('toast', 'Sign in to save'); return; }
       const { cloudSaveItem, cloudUpdateItem } = await import('../../lib/cloud-library');
+      // Capture thumbnail of the first slide
+      let thumbnail: string | undefined;
+      try {
+        const firstSlide = deck.slides[0];
+        if (firstSlide?.brand) {
+          const { renderSlideCanvas } = await import('../audit/brand-slide-render');
+          const cv = await renderSlideCanvas(firstSlide.brand, 0.25);
+          thumbnail = cv.toDataURL('image/png');
+        } else if (firstSlide) {
+          const drawing = drawSlide(firstSlide, deck, cfg);
+          const svg = slideSvg(drawing, cfg, p => href(p.src, p.thumb), { idPrefix: 'lib' });
+          const blob = new Blob([svg], { type: 'image/svg+xml' });
+          const url = URL.createObjectURL(blob);
+          const img = new Image(); img.src = url;
+          await img.decode().catch(() => {});
+          const cv = document.createElement('canvas'); cv.width = 480; cv.height = 270;
+          cv.getContext('2d')!.drawImage(img, 0, 0, 480, 270);
+          URL.revokeObjectURL(url);
+          thumbnail = cv.toDataURL('image/png');
+        }
+      } catch { /* thumbnail is optional */ }
+      const saveData = { ...deck, thumbnail };
       if (deck.libraryId) {
-        await cloudUpdateItem(user.id, deck.libraryId, { name: deck.title, data: deck });
+        await cloudUpdateItem(user.id, deck.libraryId, { name: deck.title, data: saveData });
       } else {
-        const id = await cloudSaveItem(user.id, { type: 'deck', name: deck.title || 'Untitled deck', toolId: 'deck', data: deck });
+        const id = await cloudSaveItem(user.id, { type: 'deck', name: deck.title || 'Untitled deck', toolId: 'deck', data: saveData });
         if (id) deck.libraryId = id;
       }
       emit('toast', 'Saved to Library');
