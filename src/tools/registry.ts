@@ -19,6 +19,8 @@ export interface ToolEntry {
   custom?: boolean;
   /** Mobile support: 'full' = fully usable, 'view' = read-only, 'desktop' = hidden on mobile. */
   mobile?: 'full' | 'view' | 'desktop';
+  /** Hidden from rail, Cmd+K, and keyboard shortcuts. Reachable only via direct URL. */
+  hidden?: boolean;
   load?: () => Promise<LatheTool>;
 }
 
@@ -87,7 +89,7 @@ export const TOOLS: ToolEntry[] = [
     load: () => import('./kinetic-type').then(m => m.tool),
   },
   {
-    id: 'recolor', name: 'Recolor', group: 'Offcuts', milestone: 3, mobile: 'desktop', accepts: ['image/*', 'video/*'],
+    id: 'recolor', name: 'Recolor', group: 'Offcuts', milestone: 3, mobile: 'desktop', hidden: true, accepts: ['image/*', 'video/*'],
     blurb: 'Recolor images and video to a target palette.',
     load: () => import('./color-swap').then(m => m.tool),
   },
@@ -142,7 +144,7 @@ export function toolsByGroup(): { group: ToolGroup; tools: ToolEntry[] }[] {
 }
 
 /** Keyboard 1–9 follow rail order (Workbench 6 + Drawer 3). */
-export const numberedTools = () => TOOLS.slice(0, 9);
+export const numberedTools = () => TOOLS.filter(t => !t.hidden).slice(0, 9);
 
 /** All tools including hidden and user-generated ones. */
 export const allTools = () => [...TOOLS, ...HIDDEN_TOOLS, ...customEntries];

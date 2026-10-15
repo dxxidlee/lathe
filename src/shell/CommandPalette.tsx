@@ -40,7 +40,7 @@ export function CommandPalette() {
     // Old names that alias to each current tool id, for search
     const aliasesFor = (id: string) =>
       Object.entries(ID_ALIASES).filter(([, v]) => v === id).map(([k]) => k);
-    const all = [...allTools(), ...HIDDEN_TOOLS.filter(h => !allTools().some(t => t.id === h.id))];
+    const all = [...allTools(), ...HIDDEN_TOOLS.filter(h => !allTools().some(t => t.id === h.id))].filter(t => !t.hidden);
     return [
       ...all.map((t, i) => ({
         id: `tool:${t.id}`, label: t.name,

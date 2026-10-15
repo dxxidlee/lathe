@@ -229,3 +229,24 @@ export function select<V extends string>(o: { label: string; options: Opt<V>[]; 
   el.append(lab, sel);
   return { el, input: sel, set(v: V) { sel.value = v; }, setOptions: fill };
 }
+
+/** Empty state: centered icon + message + optional primary action. */
+export function emptyState(o: { icon?: string; message: string; action?: string; onClick?: () => void }) {
+  const el = h('div', 'l-empty');
+  if (o.icon) { const ic = h('div', 'l-empty__icon'); ic.innerHTML = o.icon; el.appendChild(ic); }
+  el.appendChild(h('p', 'l-empty__msg', o.message));
+  if (o.action && o.onClick) {
+    const btn = h('button', 'l-btn l-btn--primary l-empty__btn', o.action);
+    btn.type = 'button';
+    btn.addEventListener('click', o.onClick);
+    el.appendChild(btn);
+  }
+  return el;
+}
+
+/** Loading skeleton: pulsing placeholder rectangles. */
+export function skeleton(count = 6) {
+  const el = h('div', 'l-skeleton');
+  for (let i = 0; i < count; i++) el.appendChild(h('div', 'l-skeleton__item'));
+  return el;
+}

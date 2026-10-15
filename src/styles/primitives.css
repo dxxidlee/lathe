@@ -224,3 +224,25 @@ input[type="number"] { -moz-appearance: textfield; }
   /* Tabs always show close on mobile */
   .tab__close { display: flex; }
 }
+
+/* ---- Empty state ---- */
+.l-empty {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: var(--space-3); padding: var(--space-8); text-align: center;
+  position: absolute; inset: 0;
+}
+.l-empty__icon { color: var(--text-3); }
+.l-empty__icon svg { width: 48px; height: 48px; stroke-width: 1; }
+.l-empty__msg { margin: 0; color: var(--text-3); font-size: var(--text-body); max-width: 280px; }
+.l-empty__btn { margin-top: var(--space-2); }
+
+/* ---- Loading skeleton ---- */
+.l-skeleton {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: var(--space-3);
+  padding: var(--space-6);
+}
+.l-skeleton__item {
+  aspect-ratio: 1; border-radius: var(--radius-control);
+  background: var(--fill-1); animation: l-pulse 1.5s ease-in-out infinite;
+}
+@keyframes l-pulse { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
