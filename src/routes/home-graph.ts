@@ -19,12 +19,13 @@ const f = (n: number) => Math.round(n * 10) / 10;
 const pt = (p: P) => `${f(p.x)} ${f(p.y)}`;
 const pol = (deg: number, r: number, o: P = C): P => ({ x: o.x + Math.cos(deg * Math.PI / 180) * r, y: o.y + Math.sin(deg * Math.PI / 180) * r });
 
-/** Chevron arrowhead at `tip`, pointing away from `from`. */
+/** Chevron arrowhead at `tip`, pointing away from `from`, with a tail that overlaps the route. */
 function arrow(tip: P, from: P, size = 11): string {
   const a = Math.atan2(tip.y - from.y, tip.x - from.x);
   const l = { x: tip.x - Math.cos(a - 0.5) * size, y: tip.y - Math.sin(a - 0.5) * size };
   const r = { x: tip.x - Math.cos(a + 0.5) * size, y: tip.y - Math.sin(a + 0.5) * size };
-  return `M${pt(l)} L${pt(tip)} L${pt(r)}`;
+  const tail = { x: tip.x - Math.cos(a) * size * 0.8, y: tip.y - Math.sin(a) * size * 0.8 };
+  return `M${pt(tail)} L${pt(tip)} M${pt(l)} L${pt(tip)} L${pt(r)}`;
 }
 function circle(o: P, r: number) { return `M${f(o.x - r)} ${f(o.y)} a${r} ${r} 0 1 0 ${2 * r} 0 a${r} ${r} 0 1 0 ${-2 * r} 0`; }
 
