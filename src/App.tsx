@@ -18,8 +18,10 @@ import { Library } from './routes/Library';
 import { SharedBoard } from './routes/SharedBoard';
 import { BoardView } from './routes/BoardView';
 import { AuthModal } from './shell/AuthModal';
+import { MobileNav } from './shell/MobileNav';
 import { useEffect, useState } from 'react';
 import './styles/auth.css';
+import './styles/mobile-nav.css';
 
 function AuthModalOverlay() {
   const shell = useShell();
@@ -104,6 +106,7 @@ function ToolView() {
       </div>
       <Tray />
       <StatusBar />
+      <MobileNav />
       {drop.over && (
         <div className="dropzone" aria-hidden="true">
           <span>{activeEntry?.load ? `Drop to load into ${activeEntry.name}` : 'Drop to add to the tray'}</span>

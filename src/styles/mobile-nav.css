@@ -1,0 +1,63 @@
+/* Bottom navigation bar — mobile only (below 768px) */
+
+.mnav {
+  display: none; /* desktop: hidden */
+}
+
+@media (max-width: 767px) {
+  .mnav {
+    display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: var(--z-sheet);
+    height: calc(48px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    background: var(--bg); border-top: 1px solid var(--border);
+    align-items: center; justify-content: space-around;
+    transition: transform 200ms ease;
+  }
+  .mnav.is-hidden { transform: translateY(100%); }
+
+  .mnav__item {
+    flex: 1; display: flex; align-items: center; justify-content: center;
+    height: 48px; border: none; background: none; color: var(--text-2);
+    cursor: pointer; position: relative; padding: 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .mnav__item:active { color: var(--text-1); }
+  .mnav__item.is-active { color: var(--text-1); }
+  .mnav__item svg { width: 20px; height: 20px; }
+  /* Logomark smaller */
+  .mnav__item:first-child svg { width: 18px; height: 18px; }
+
+  .mnav__badge {
+    position: absolute; top: 6px; right: calc(50% - 16px);
+    min-width: 16px; height: 16px; padding: 0 4px;
+    background: var(--accent); color: var(--accent-text);
+    font-size: 10px; font-weight: var(--weight-medium); line-height: 16px;
+    border-radius: 8px; text-align: center; font-variant-numeric: tabular-nums;
+  }
+
+  .mnav__avatar {
+    width: 28px; height: 28px; border-radius: 50%;
+    background: var(--fill-2); color: var(--text-1);
+    font-size: 11px; font-weight: var(--weight-medium);
+    display: flex; align-items: center; justify-content: center;
+    flex: 0 0 auto; margin: 0 auto;
+  }
+
+  .mnav__login {
+    font-size: var(--text-meta); font-weight: var(--weight-medium);
+  }
+
+  /* Hide top bar on mobile */
+  .topbar { display: none !important; }
+
+  /* Content bottom padding so nothing hides behind nav */
+  .shell { padding-bottom: calc(48px + env(safe-area-inset-bottom, 0px)); }
+
+  /* Bottom sheet sits above the nav */
+  .bottom-sheet {
+    bottom: calc(48px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+  .bottom-sheet.is-expanded {
+    bottom: 0 !important; /* full/half covers nav */
+  }
+}
