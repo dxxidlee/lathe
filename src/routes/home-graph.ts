@@ -56,19 +56,19 @@ const route = (r: { line: string; end: P; from: P }, label: P, anchor: Route['an
   ({ line: r.line, head: arrow(r.end, r.from), label, anchor, baseline });
 
 const PLACED: Record<string, Route> = {
-  'subject-audit': route(ray(pol(-135, 150), pol(-135, 330)), { x: 352, y: 196 }, 'end'),
-  'brand-audit': route(ray(pol(-45, 150), pol(-45, 310)), { x: 828, y: 216 }, 'start'),
-  'reference': route(cubic({ x: 600, y: 266 }, { x: 612, y: 190 }, { x: 650, y: 150 }, { x: 702, y: 140 }), { x: 714, y: 140 }, 'start'),
-  'contrast': route(arc(CA, -160, -52), { x: 776, y: 232 }, 'start'),
-  palette: route(cubic(pol(22, CA.r), { x: 930, y: 470 }, { x: 960, y: 260 }, { x: 1052, y: 258 }), { x: 1064, y: 258 }, 'start'),
-  'recolor': route(arc(CB, -40, -10), { x: 856, y: 392 }, 'start'),
-  'gradient': route(cubic({ x: 616, y: 462 }, { x: 1180, y: 600 }, { x: 1140, y: 830 }, { x: 880, y: 805 }), { x: 866, y: 805 }, 'end'),
-  dither: route(ray(pol(45, 290), pol(45, 345)), { x: 853, y: 708 }, 'start'),
-  specimen: route(ray(pol(135, 290), pol(135, 345)), { x: 347, y: 708 }, 'end'),
-  deck: route(arc(CA, 196, 158), { x: 340, y: 560 }, 'end'),
-  'kinetic-type': route(cubic({ x: 470, y: 560 }, { x: 330, y: 640 }, { x: 170, y: 560 }, { x: 205, y: 430 }), { x: 205, y: 416 }, 'middle', 'auto'),
-  'logo-export': route(arc(CB, 200, 166), { x: 384, y: 360 }, 'end'),
-  'icons': route(ray({ x: SQ.x0, y: SQ.y0 }, { x: SQ.x0, y: 165 }), { x: SQ.x0, y: 152 }, 'middle', 'auto'),
+  'subject-audit': route(ray(pol(-135, 150), pol(-135, 340)), { x: 330, y: 180 }, 'end'),
+  'brand-audit': route(ray(pol(-45, 150), pol(-45, 320)), { x: 848, y: 200 }, 'start'),
+  'reference': route(cubic({ x: 600, y: 266 }, { x: 612, y: 180 }, { x: 660, y: 130 }, { x: 720, y: 120 }), { x: 732, y: 120 }, 'start'),
+  'contrast': route(arc(CA, -160, -52), { x: 790, y: 218 }, 'start'),
+  palette: route(cubic(pol(22, CA.r), { x: 930, y: 470 }, { x: 980, y: 240 }, { x: 1072, y: 240 }), { x: 1084, y: 240 }, 'start'),
+  'recolor': route(arc(CB, -40, -10), { x: 870, y: 392 }, 'start'),
+  'gradient': route(cubic({ x: 616, y: 462 }, { x: 1180, y: 600 }, { x: 1140, y: 840 }, { x: 880, y: 820 }), { x: 866, y: 834 }, 'end', 'hanging'),
+  dither: route(ray(pol(45, 290), pol(45, 355)), { x: 870, y: 720 }, 'start'),
+  specimen: route(ray(pol(135, 290), pol(135, 355)), { x: 330, y: 720 }, 'end'),
+  deck: route(arc(CA, 200, 152), { x: 310, y: 570 }, 'end'),
+  'kinetic-type': route(cubic({ x: 470, y: 560 }, { x: 330, y: 640 }, { x: 150, y: 560 }, { x: 180, y: 420 }), { x: 168, y: 406 }, 'end', 'auto'),
+  'logo-export': route(arc(CB, 204, 170), { x: 370, y: 340 }, 'end'),
+  'icons': route(ray({ x: SQ.x0, y: SQ.y0 }, { x: SQ.x0 - 20, y: 145 }), { x: SQ.x0 - 20, y: 130 }, 'middle', 'auto'),
 };
 
 export function routesFor(ids: string[]): Route[] {
