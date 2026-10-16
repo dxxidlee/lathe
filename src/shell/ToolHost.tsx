@@ -28,7 +28,9 @@ export function ToolHost({ entry, active = true, deckId }: { entry: ToolEntry; a
   editsRef.current = edits;
   const activeCbsRef = useRef(new Set<(a: boolean) => void>());
   const activeRef = useRef(active);
+  const userRef = useRef(shell.user);
 
+  useEffect(() => { userRef.current = shell.user; }, [shell.user]);
   useEffect(() => {
     activeRef.current = active;
     activeCbsRef.current.forEach(cb => cb(active));
@@ -92,11 +94,16 @@ export function ToolHost({ entry, active = true, deckId }: { entry: ToolEntry; a
           activeCbsRef.current.add(cb);
           return () => activeCbsRef.current.delete(cb);
         };
+        const requireAuth = (action: () => void): boolean => {
+          if (userRef.current) return false;
+          shell.showAuthModal(action);
+          return true;
+        };
         const ctx: MountContext = {
           defaults: values, changedDefaults: changed,
           stage, inspector, assets, settings, emit,
           statusbar: { set: info => shell.setStatus(info, entry.id), clear: () => shell.setStatus({}, entry.id) },
-          onActivate,
+          onActivate, requireAuth,
         };
         shell.resetToolRef.current = () => onResetTool();
         result = tool.mount(ctx);
@@ -210,6 +217,7 @@ export function useStageDrop(entry: ToolEntry | undefined) {
         if (!hasPayload(e)) return;
         e.preventDefault();
         depth.current = 0; setOver(false);
+        if (!shell.user) { shell.showAuthModal(); return; }
         const id = e.dataTransfer.getData(ASSET_MIME);
         let first: Asset | undefined = id ? assets.get(id) : undefined;
         if (!first) {

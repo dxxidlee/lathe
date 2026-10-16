@@ -55,6 +55,17 @@
   cursor: pointer; display: flex; align-items: center; justify-content: center;
 }
 .topbar__avatar:hover { background: var(--accent); color: var(--accent-text); }
+.topbar__user-menu {
+  position: absolute; top: 100%; right: 0; margin-top: var(--space-2);
+  min-width: 200px; background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-control); padding: var(--space-2); z-index: var(--z-menu);
+}
+.topbar__user-email { padding: var(--space-2) var(--space-3); color: var(--text-2); font-size: var(--text-meta); overflow: hidden; text-overflow: ellipsis; }
+.topbar__user-menu button {
+  display: block; width: 100%; text-align: left; padding: var(--space-2) var(--space-3);
+  background: none; border: none; color: var(--text-1); font: inherit; cursor: pointer; border-radius: var(--radius-control);
+}
+.topbar__user-menu button:hover { background: var(--fill-1); }
 
 /* ---- Tab bar ---- */
 .tab-bar { flex: 1; min-width: 0; display: flex; overflow-x: auto; scrollbar-width: thin; height: var(--tab-h); }

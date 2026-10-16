@@ -1,4 +1,4 @@
-import { createElement } from 'react';
+import { createElement, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PanelLeft, Menu } from 'lucide-react';
 import { Wordmark } from '../brand/Wordmark';
@@ -7,6 +7,22 @@ import { modKey } from '../lib/format';
 import { TabBar } from './TabBar';
 import { signOut } from '../lib/auth';
 import { findTool } from '../tools/registry';
+
+function UserMenu({ user }: { user: { email?: string | null } }) {
+  const [open, setOpen] = useState(false);
+  const initial = (user.email?.[0] ?? '?').toUpperCase();
+  return (
+    <div className="topbar__user" style={{ position: 'relative' }}>
+      <button type="button" className="topbar__avatar" onClick={() => setOpen(o => !o)} title="Account">{initial}</button>
+      {open && (
+        <div className="topbar__user-menu">
+          <div className="topbar__user-email">{user.email}</div>
+          <button type="button" onClick={() => { setOpen(false); void signOut(); }}>Sign out</button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function TopBar() {
   const shell = useShell();
@@ -37,16 +53,12 @@ export function TopBar() {
         <span className="l-kbd">{mod}K</span>
       </button>
       {shell.user ? (
-        <div className="topbar__user">
-          <button type="button" className="topbar__avatar" title={shell.user.email ?? 'Account'} onClick={() => void signOut()}>
-            {(shell.user.email?.[0] ?? '?').toUpperCase()}
-          </button>
-        </div>
+        <UserMenu user={shell.user} />
       ) : (
         <button type="button" className="l-btn" onClick={() => shell.showAuthModal()}>Log in</button>
       )}
       <div className="topbar__actions">
-        <button type="button" className="l-btn" onClick={shell.runExport} title={`Export (${mod}E)`}>Export</button>
+        <button type="button" className="l-btn" onClick={() => { if (!shell.user) { shell.showAuthModal(shell.runExport); return; } shell.runExport(); }} title={`Export (${mod}E)`}>Export</button>
       </div>
       {shell.isMobile && (
         <button type="button" className="topbar__menu-btn" onClick={shell.toggleMenu}>
