@@ -54,10 +54,16 @@ export async function getSession(): Promise<Session | null> {
   return data.session;
 }
 
-export function onAuthChange(cb: (user: AuthUser) => void): () => void {
+export function onAuthChange(cb: (user: AuthUser, event?: string) => void): () => void {
   if (!supabase) return () => {};
-  const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-    cb(session?.user ?? null);
+  const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    cb(session?.user ?? null, event);
   });
   return () => subscription.unsubscribe();
+}
+
+export async function updatePassword(password: string): Promise<{ error: string | null }> {
+  if (!supabase) return { error: 'Auth is not configured' };
+  const { error } = await supabase.auth.updateUser({ password });
+  return { error: error?.message ?? null };
 }

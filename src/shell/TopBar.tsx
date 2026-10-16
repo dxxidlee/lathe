@@ -9,6 +9,7 @@ import { signOut } from '../lib/auth';
 import { findTool } from '../tools/registry';
 
 function UserMenu({ user }: { user: { email?: string | null } }) {
+  const shell = useShell();
   const [open, setOpen] = useState(false);
   const initial = (user.email?.[0] ?? '?').toUpperCase();
   return (
@@ -17,6 +18,7 @@ function UserMenu({ user }: { user: { email?: string | null } }) {
       {open && (
         <div className="topbar__user-menu">
           <div className="topbar__user-email">{user.email}</div>
+          <button type="button" onClick={() => { setOpen(false); shell.showAuthModal(undefined, 'set-password'); }}>Change password</button>
           <button type="button" onClick={() => { setOpen(false); void signOut(); }}>Sign out</button>
         </div>
       )}

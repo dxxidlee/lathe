@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import { X, Eye, EyeOff } from 'lucide-react';
-import { signInWithEmail, signUpWithEmail, resetPassword } from '../lib/auth';
+import { signInWithEmail, signUpWithEmail, resetPassword, updatePassword } from '../lib/auth';
 // import { signInWithProvider } from '../lib/auth'; // uncomment when OAuth buttons return
 
-type View = 'login' | 'signup' | 'forgot';
+type View = 'login' | 'signup' | 'forgot' | 'set-password';
 
-export function AuthModal({ onClose, onSuccess }: { onClose: () => void; onSuccess?: () => void }) {
-  const [view, setView] = useState<View>('login');
+export function AuthModal({ onClose, onSuccess, initialView }: { onClose: () => void; onSuccess?: () => void; initialView?: string }) {
+  const [view, setView] = useState<View>((initialView as View) || 'login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPw, setConfirmPw] = useState('');
@@ -67,14 +67,28 @@ export function AuthModal({ onClose, onSuccess }: { onClose: () => void; onSucce
     if (e) { setError(e); setLoading(false); }
   }; */
 
+  const handleSetPassword = async () => {
+    const errs: Record<string, string> = {};
+    if (password.length < 6) errs.password = 'At least 6 characters';
+    if (password !== confirmPw) errs.confirm = 'Passwords don\'t match';
+    setFieldErrors(errs);
+    if (Object.keys(errs).length) return;
+    setLoading(true); setError('');
+    const { error: e } = await updatePassword(password);
+    setLoading(false);
+    if (e) { setError(e); return; }
+    onSuccess?.();
+    onClose();
+  };
+
   const switchView = (v: View) => { setView(v); setError(''); setFieldErrors({}); setResetSent(false); };
 
   return (
     <div className="auth-backdrop" onClick={e => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="auth-modal" role="dialog" aria-modal="true" aria-label={view === 'login' ? 'Log in' : view === 'signup' ? 'Sign up' : 'Reset password'}>
+      <div className="auth-modal" role="dialog" aria-modal="true" aria-label={view === 'set-password' ? 'Set a new password' : view === 'login' ? 'Log in' : view === 'signup' ? 'Sign up' : 'Reset password'}>
         <div className="auth-head">
-          <h2>{view === 'login' ? 'Log in' : view === 'signup' ? 'Sign up' : 'Reset password'}</h2>
-          <button type="button" className="auth-close" onClick={onClose} aria-label="Close"><X size={18} strokeWidth={1.5} /></button>
+          <h2>{view === 'set-password' ? 'Set a new password' : view === 'login' ? 'Log in' : view === 'signup' ? 'Sign up' : 'Reset password'}</h2>
+          {view !== 'set-password' && <button type="button" className="auth-close" onClick={onClose} aria-label="Close"><X size={18} strokeWidth={1.5} /></button>}
         </div>
 
         <div className="auth-body">
@@ -82,13 +96,15 @@ export function AuthModal({ onClose, onSuccess }: { onClose: () => void; onSucce
 
           {error && <p className="auth-error">{error}</p>}
 
-          {/* Email field */}
-          <div className="auth-field">
-            <label htmlFor="auth-email">Email</label>
-            <input id="auth-email" type="email" value={email} onChange={e => setEmail(e.target.value)}
-              autoComplete="email" autoFocus placeholder="you@example.com" />
-            {fieldErrors.email && <span className="auth-field-error">{fieldErrors.email}</span>}
-          </div>
+          {/* Email field — hidden in set-password view */}
+          {view !== 'set-password' && (
+            <div className="auth-field">
+              <label htmlFor="auth-email">Email</label>
+              <input id="auth-email" type="email" value={email} onChange={e => setEmail(e.target.value)}
+                autoComplete="email" autoFocus placeholder="you@example.com" />
+              {fieldErrors.email && <span className="auth-field-error">{fieldErrors.email}</span>}
+            </div>
+          )}
 
           {view === 'forgot' && (
             <>
@@ -96,6 +112,36 @@ export function AuthModal({ onClose, onSuccess }: { onClose: () => void; onSucce
                 ? <p className="auth-success">Check your email for a reset link.</p>
                 : <button type="button" className="auth-primary" onClick={() => void handleForgot()} disabled={loading}>{loading ? 'Sending...' : 'Send reset link'}</button>}
               <p className="auth-switch"><button type="button" onClick={() => switchView('login')}>Back to log in</button></p>
+            </>
+          )}
+
+          {view === 'set-password' && (
+            <>
+              <div className="auth-field">
+                <label htmlFor="auth-new-pw">New password</label>
+                <div className="auth-pw-wrap">
+                  <input id="auth-new-pw" type={showPw ? 'text' : 'password'} value={password}
+                    onChange={e => setPassword(e.target.value)} autoComplete="new-password" autoFocus />
+                  <button type="button" className="auth-eye" onClick={() => setShowPw(!showPw)} aria-label={showPw ? 'Hide' : 'Show'}>
+                    {showPw ? <EyeOff size={16} strokeWidth={1.5} /> : <Eye size={16} strokeWidth={1.5} />}
+                  </button>
+                </div>
+                {fieldErrors.password && <span className="auth-field-error">{fieldErrors.password}</span>}
+              </div>
+              <div className="auth-field">
+                <label htmlFor="auth-confirm-new">Confirm password</label>
+                <div className="auth-pw-wrap">
+                  <input id="auth-confirm-new" type={showConfirm ? 'text' : 'password'} value={confirmPw}
+                    onChange={e => setConfirmPw(e.target.value)} autoComplete="new-password" />
+                  <button type="button" className="auth-eye" onClick={() => setShowConfirm(!showConfirm)} aria-label={showConfirm ? 'Hide' : 'Show'}>
+                    {showConfirm ? <EyeOff size={16} strokeWidth={1.5} /> : <Eye size={16} strokeWidth={1.5} />}
+                  </button>
+                </div>
+                {fieldErrors.confirm && <span className="auth-field-error">{fieldErrors.confirm}</span>}
+              </div>
+              <button type="button" className="auth-primary" onClick={() => void handleSetPassword()} disabled={loading}>
+                {loading ? 'Saving...' : 'Save password'}
+              </button>
             </>
           )}
 
@@ -112,7 +158,7 @@ export function AuthModal({ onClose, onSuccess }: { onClose: () => void; onSucce
             </div>
           )}
 
-          {view !== 'forgot' && (
+          {view !== 'forgot' && view !== 'set-password' && (
             <>
               <div className="auth-field">
                 <label htmlFor="auth-pw">Password</label>

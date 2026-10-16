@@ -23,7 +23,7 @@ import './styles/auth.css';
 
 function AuthModalOverlay() {
   const shell = useShell();
-  return <AuthModal onClose={() => shell.hideAuthModal()} onSuccess={() => { shell.authCallback.current?.(); shell.hideAuthModal(); }} />;
+  return <AuthModal onClose={() => shell.hideAuthModal()} onSuccess={() => { shell.authCallback.current?.(); shell.hideAuthModal(); }} initialView={shell.authModalView ?? undefined} />;
 }
 
 function ToolView() {

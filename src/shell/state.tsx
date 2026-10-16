@@ -53,7 +53,8 @@ interface ShellState {
   setTabLabel: (tabId: string, label: string) => void;
   user: AuthUser;
   authModalOpen: boolean;
-  showAuthModal: (cb?: () => void) => void;
+  authModalView: string | null;
+  showAuthModal: (cb?: () => void, view?: string) => void;
   hideAuthModal: () => void;
   authCallback: React.MutableRefObject<(() => void) | null>;
 }
@@ -73,9 +74,10 @@ export function ShellProvider({ children }: { children: ReactNode }) {
     setTabLabelsRaw(prev => prev[tabId] === label ? prev : { ...prev, [tabId]: label });
   }, []);
   const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalView, setAuthModalView] = useState<string | null>(null);
   const authCallback = useRef<(() => void) | null>(null);
-  const showAuthModal = useCallback((cb?: () => void) => { authCallback.current = cb ?? null; setAuthModalOpen(true); }, []);
-  const hideAuthModal = useCallback(() => { setAuthModalOpen(false); authCallback.current = null; }, []);
+  const showAuthModal = useCallback((cb?: () => void, view?: string) => { authCallback.current = cb ?? null; setAuthModalView(view ?? null); setAuthModalOpen(true); }, []);
+  const hideAuthModal = useCallback(() => { setAuthModalOpen(false); setAuthModalView(null); authCallback.current = null; }, []);
   const statusMap = useRef(new Map<string, StatusInfo>());
   const [status, setStatusRaw] = useState<StatusInfo>({});
   const activeTabRef = useRef(activeTabId);
@@ -106,7 +108,10 @@ export function ShellProvider({ children }: { children: ReactNode }) {
       prefsLoaded.current = true;
     });
     getUser().then(u => { setUser(u); setAuthUser(u?.id ?? null); setBoardUser(u?.id ?? null); });
-    return onAuthChange(u => { setUser(u); setAuthUser(u?.id ?? null); setBoardUser(u?.id ?? null); });
+    return onAuthChange((u, event) => {
+      setUser(u); setAuthUser(u?.id ?? null); setBoardUser(u?.id ?? null);
+      if (event === 'PASSWORD_RECOVERY') showAuthModal(undefined, 'set-password');
+    });
   }, []);
 
   useEffect(() => {
@@ -227,7 +232,7 @@ export function ShellProvider({ children }: { children: ReactNode }) {
     tabs, activeTabId, openTab, closeTab, reorderTabs, nextTab, prevTab,
     tabLabels, setTabLabel,
     user,
-    authModalOpen, showAuthModal, hideAuthModal, authCallback,
+    authModalOpen, authModalView, showAuthModal, hideAuthModal, authCallback,
   }), [railOpen, toggleRail, trayOpen, paletteOpen, sheetOpen, status, toasts, toast, runExport,
        isMobile, menuOpen, toggleMenu, tabSwitcherOpen, inspectorExpanded,
        tabs, activeTabId, openTab, closeTab, reorderTabs, nextTab, prevTab, tabLabels, user, authModalOpen]);
