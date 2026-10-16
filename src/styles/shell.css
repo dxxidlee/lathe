@@ -31,23 +31,23 @@
   background: var(--bg);
   border-bottom: 1px solid var(--border);
 }
-.topbar__rail-toggle {
+/* Logomark = tools menu toggle */
+.topbar__mark {
+  border: none; background: transparent; color: var(--text-1); cursor: pointer;
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-control); flex-shrink: 0; padding: 0;
+}
+.topbar__mark svg { width: 18px; height: 18px; }
+.topbar__mark:hover, .topbar__mark.is-open { background: var(--fill-2); }
+/* Right cluster */
+.topbar__right { display: flex; align-items: center; gap: var(--space-2); margin-left: auto; }
+.topbar__icon-btn {
   border: none; background: transparent; color: var(--text-3); cursor: pointer;
-  width: var(--control-h); height: var(--control-h); display: flex; align-items: center; justify-content: center;
-  border-radius: var(--radius-control); flex-shrink: 0;
+  width: 32px; height: 32px; display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-control); flex-shrink: 0; padding: 0;
 }
-.topbar__rail-toggle:hover { color: var(--text-1); background: var(--fill-1); }
-.topbar__brand { color: var(--text-1); text-decoration: none; font-size: 20px; display: inline-flex; }
-.topbar__brand:hover { color: var(--accent); }
-.topbar__search {
-  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
-  height: var(--control-h); padding: 0 var(--space-1) 0 var(--space-2);
-  border: 1px solid var(--border); border-radius: var(--radius-control);
-  background: transparent; color: var(--text-3); font-size: var(--text-meta);
-}
-.topbar__search:hover { color: var(--text-2); border-color: var(--text-3); }
-.topbar__search .l-kbd { height: calc(var(--control-h) - var(--space-2)); min-width: 0; border: 0; background: var(--fill-1); }
-.topbar__actions { display: flex; justify-content: flex-end; gap: var(--space-2); }
+.topbar__icon-btn:hover { color: var(--text-1); background: var(--fill-1); }
+.topbar__icon-btn.is-active { color: var(--text-1); background: var(--fill-2); }
 .topbar__user { display: flex; align-items: center; }
 .topbar__avatar {
   width: 28px; height: 28px; border-radius: 50%; border: none;
@@ -357,8 +357,7 @@
 
   /* Top bar: compact */
   .topbar { padding: 0 var(--space-2); gap: var(--space-2); }
-  .topbar__search { display: none; } /* search is in the menu on mobile */
-  .topbar__actions { display: none; } /* export is in inspector sheet */
+  .topbar__right .topbar__icon-btn:not(:last-child) { display: none; } /* search in menu on mobile; keep library + avatar */
   .tab-bar { display: none; } /* tabs replaced by tool name + switcher */
 
   /* Mobile tool name in topbar (shown via JS) */
