@@ -177,7 +177,7 @@ Each tool ships `defaults.ts`:
 
 `.env.local` with placeholders for every key above. App works with zero keys; each key unlocks its source.
 
-**Auth**: Email+password, Google OAuth, GitHub OAuth via Supabase. Email confirmation is disabled for now (Supabase's built-in SMTP has a low hourly cap that could fail during demos). Before a real public launch, add custom SMTP in Supabase Dashboard → Settings → Auth → SMTP Settings (e.g. Resend, Postmark, or AWS SES) and re-enable email confirmation.
+**Auth**: Email+password via Supabase. Google and GitHub OAuth are configured in Supabase but hidden in the UI — re-enable them in `src/shell/AuthModal.tsx` only after a custom domain is set so the Google consent screen shows "Lathe" instead of a Vercel preview URL. Email confirmation is disabled for now (Supabase's built-in SMTP has a low hourly cap that could fail during demos). Before a real public launch, add custom SMTP in Supabase Dashboard → Settings → Auth → SMTP Settings (e.g. Resend, Postmark, or AWS SES) and re-enable email confirmation.
 
 ## Milestones
 
