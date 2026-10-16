@@ -344,29 +344,16 @@
 .lib__item-del:hover { color: var(--danger); }
 
 @media (max-width: 767px) {
-  /* Shell grid: single column, no inspector column */
+  /* Shell grid: single column, no top bar */
   .shell {
     height: 100dvh;
     grid-template-columns: 1fr;
-    grid-template-rows: var(--topbar-h) minmax(0, 1fr) auto;
+    grid-template-rows: minmax(0, 1fr) auto;
     grid-template-areas:
-      "top"
       "stage"
       "sheet";
   }
 
-  /* Top bar: compact */
-  .topbar { padding: 0 var(--space-2); gap: var(--space-2); }
-  .topbar__right .topbar__icon-btn:not(:last-child) { display: none; } /* search in menu on mobile; keep library + avatar */
-  .tab-bar { display: none; } /* tabs replaced by tool name + switcher */
-
-  /* Mobile tool name in topbar (shown via JS) */
-  .topbar__tool-name {
-    flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-    font-size: var(--text-body); font-weight: var(--weight-medium);
-    background: none; border: none; color: var(--text-1); text-align: left;
-    padding: 0 var(--space-2); cursor: pointer;
-  }
   .topbar__menu-btn {
     width: 44px; height: 44px; display: flex; align-items: center; justify-content: center;
     background: none; border: none; color: var(--text-2); cursor: pointer; flex-shrink: 0;
