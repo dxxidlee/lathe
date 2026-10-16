@@ -67,7 +67,7 @@ export function MobileNav() {
       {/* 5. Avatar / Log in */}
       {shell.user ? (
         <button type="button" className="mnav__item mnav__avatar" onClick={() => shell.showAuthModal(undefined, 'set-password')} aria-label="Account">
-          {(shell.user.email?.[0] ?? '?').toUpperCase()}
+          {shell.avatarUrl ? <img src={shell.avatarUrl} alt="" style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} /> : (shell.user.email?.[0] ?? '?').toUpperCase()}
         </button>
       ) : (
         <button type="button" className="mnav__item" onClick={() => shell.showAuthModal()} aria-label="Log in">
