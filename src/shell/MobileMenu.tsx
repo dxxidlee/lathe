@@ -75,6 +75,11 @@ export function MobileMenu() {
                 ))}
               </>
             )}
+
+            <div className="mobile-menu__divider" />
+            <button type="button" className="mobile-menu__item" onClick={() => open('make')}>
+              <span>Make a tool</span>
+            </button>
           </>
         )}
       </div>
