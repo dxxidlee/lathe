@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { FolderOpen, Layers, Search } from 'lucide-react';
 import { Mark } from '../brand/Wordmark';
 import { useShell } from './state';
-import { signOut } from '../lib/auth';
 
 export function MobileNav() {
   const shell = useShell();
@@ -11,9 +10,7 @@ export function MobileNav() {
   const [hidden, setHidden] = useState(false);
   const [kbOpen, setKbOpen] = useState(false);
   const lastY = useRef(0);
-  const barRef = useRef<HTMLElement>(null);
 
-  // Hide on scroll down, show on scroll up
   useEffect(() => {
     let ticking = false;
     const onScroll = () => {
@@ -31,14 +28,10 @@ export function MobileNav() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  // Hide when keyboard is open
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
-    const check = () => {
-      const ratio = vv.height / window.innerHeight;
-      setKbOpen(ratio < 0.75);
-    };
+    const check = () => setKbOpen(vv.height / window.innerHeight < 0.75);
     vv.addEventListener('resize', check);
     return () => vv.removeEventListener('resize', check);
   }, []);
@@ -47,22 +40,23 @@ export function MobileNav() {
   const tabCount = shell.tabs.length;
 
   return (
-    <nav ref={barRef} className={`mnav${hidden || kbOpen ? ' is-hidden' : ''}`} aria-label="Navigation">
-      {/* 1. Logomark — tools menu */}
-      <button type="button" className="mnav__item" onClick={() => shell.toggleMenu()} aria-label="Tools menu">
-        <Mark />
-      </button>
-
-      {/* 2. Library */}
+    <nav className={`mnav${hidden || kbOpen ? ' is-hidden' : ''}`} aria-label="Navigation">
+      {/* 1. Library */}
       <button type="button" className={`mnav__item${isLibrary ? ' is-active' : ''}`}
         onClick={() => { shell.openTab('library'); navigate('/t/library'); }} aria-label="Library">
         {createElement(FolderOpen, { size: 20, strokeWidth: 1.5 })}
       </button>
 
-      {/* 3. Tabs with count badge */}
-      <button type="button" className="mnav__item" onClick={() => shell.setTabSwitcherOpen(true)} aria-label={`${tabCount} tab${tabCount !== 1 ? 's' : ''} open`}>
+      {/* 2. Tabs with count */}
+      <button type="button" className="mnav__item" onClick={() => shell.setTabSwitcherOpen(true)}
+        aria-label={`${tabCount} tab${tabCount !== 1 ? 's' : ''} open`}>
         {createElement(Layers, { size: 20, strokeWidth: 1.5 })}
         {tabCount > 0 && <span className="mnav__badge">{tabCount}</span>}
+      </button>
+
+      {/* 3. Logomark — center, opens tools menu */}
+      <button type="button" className="mnav__item mnav__center" onClick={() => shell.toggleMenu()} aria-label="Tools">
+        <Mark />
       </button>
 
       {/* 4. Search */}
@@ -72,8 +66,8 @@ export function MobileNav() {
 
       {/* 5. Avatar / Log in */}
       {shell.user ? (
-        <button type="button" className="mnav__item mnav__avatar" onClick={() => void signOut()} aria-label="Sign out">
-          {(shell.user.email?.[0] ?? '?').toUpperCase()}
+        <button type="button" className="mnav__item mnav__avatar" onClick={() => shell.showAuthModal(undefined, 'set-password')} aria-label="Account">
+          {shell.avatarUrl ? <img src={shell.avatarUrl} alt="" style={{ width: 24, height: 24, borderRadius: '50%', objectFit: 'cover' }} /> : (shell.user.email?.[0] ?? '?').toUpperCase()}
         </button>
       ) : (
         <button type="button" className="mnav__item" onClick={() => shell.showAuthModal()} aria-label="Log in">

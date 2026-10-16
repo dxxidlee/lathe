@@ -11,7 +11,7 @@ export const defaults: DefaultsManifest = [
   { key: 'colorThreshold', label: 'Color match distance', value: 0.12, unit: 'ΔE OKLab', min: 0.01, max: 0.5, step: 0.01 },
   { key: 'colorMode', label: 'Color search', value: 'sort', options: ['sort', 'filter'] },
   { key: 'publicDomainOnly', label: 'Public domain only', value: false },
-  { key: 'aggregateSize', label: 'Collection palette size', value: 8, min: 3, max: 16, step: 1 },
+  { key: 'aggregateSize', label: 'Board palette size', value: 8, min: 3, max: 16, step: 1 },
   { key: 'imagesPerSlide', label: 'Images per deck slide', value: 4, min: 1, max: 8, step: 1 },
   { key: 'deckTheme', label: 'Deck theme', value: 'dark', options: ['dark', 'light'] },
   /* brand mode */

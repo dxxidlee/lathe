@@ -24,8 +24,7 @@
   .mnav__item:active { color: var(--text-1); }
   .mnav__item.is-active { color: var(--text-1); }
   .mnav__item svg { width: 20px; height: 20px; }
-  /* Logomark smaller */
-  .mnav__item:first-child svg { width: 18px; height: 18px; }
+  .mnav__center svg { width: 20px; height: 20px; }
 
   .mnav__badge {
     position: absolute; top: 6px; right: calc(50% - 16px);
@@ -36,11 +35,8 @@
   }
 
   .mnav__avatar {
-    width: 28px; height: 28px; border-radius: 50%;
-    background: var(--fill-2); color: var(--text-1);
+    /* Avatar is a .mnav__item — flex:1 from parent, content centered */
     font-size: 11px; font-weight: var(--weight-medium);
-    display: flex; align-items: center; justify-content: center;
-    flex: 0 0 auto; margin: 0 auto;
   }
 
   .mnav__login {

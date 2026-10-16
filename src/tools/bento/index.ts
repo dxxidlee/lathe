@@ -64,7 +64,7 @@ export const tool: LatheTool = {
     const svgHost = document.createElement('div'); svgHost.className = 'bt__svg';
     const overlay = document.createElement('div'); overlay.className = 'bt__overlay';
     const emptyEl = document.createElement('div'); emptyEl.className = 'bt__empty';
-    emptyEl.textContent = 'Drop images here, send an Audit collection, or add tiles from the inspector.';
+    emptyEl.textContent = 'Drop images here, send a board, or add tiles from the inspector.';
     const guides = document.createElement('div'); guides.className = 'bt__guides';
     slideEl.append(svgHost, overlay, guides, emptyEl);
     main.appendChild(slideEl);

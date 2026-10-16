@@ -52,6 +52,8 @@ interface ShellState {
   tabLabels: Record<string, string>;
   setTabLabel: (tabId: string, label: string) => void;
   user: AuthUser;
+  avatarUrl: string | null;
+  setAvatarUrl: (url: string | null) => void;
   authModalOpen: boolean;
   authModalView: string | null;
   showAuthModal: (cb?: () => void, view?: string) => void;
@@ -78,6 +80,7 @@ export function ShellProvider({ children }: { children: ReactNode }) {
   const authCallback = useRef<(() => void) | null>(null);
   const showAuthModal = useCallback((cb?: () => void, view?: string) => { authCallback.current = cb ?? null; setAuthModalView(view ?? null); setAuthModalOpen(true); }, []);
   const hideAuthModal = useCallback(() => { setAuthModalOpen(false); setAuthModalView(null); authCallback.current = null; }, []);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const statusMap = useRef(new Map<string, StatusInfo>());
   const [status, setStatusRaw] = useState<StatusInfo>({});
   const activeTabRef = useRef(activeTabId);
@@ -107,9 +110,14 @@ export function ShellProvider({ children }: { children: ReactNode }) {
       if (typeof p.activeTabId === 'string') setActiveTabId(p.activeTabId as string);
       prefsLoaded.current = true;
     });
-    getUser().then(u => { setUser(u); setAuthUser(u?.id ?? null); setBoardUser(u?.id ?? null); });
+    getUser().then(u => {
+      setUser(u); setAuthUser(u?.id ?? null); setBoardUser(u?.id ?? null);
+      if (u) import('../lib/avatar').then(m => m.getAvatarUrl(u.id)).then(setAvatarUrl);
+    });
     return onAuthChange((u, event) => {
       setUser(u); setAuthUser(u?.id ?? null); setBoardUser(u?.id ?? null);
+      if (u) import('../lib/avatar').then(m => m.getAvatarUrl(u.id)).then(setAvatarUrl);
+      else setAvatarUrl(null);
       if (event === 'PASSWORD_RECOVERY') showAuthModal(undefined, 'set-password');
     });
   }, []);
@@ -233,6 +241,7 @@ export function ShellProvider({ children }: { children: ReactNode }) {
     tabs, activeTabId, openTab, closeTab, reorderTabs, nextTab, prevTab,
     tabLabels, setTabLabel,
     user,
+    avatarUrl, setAvatarUrl,
     authModalOpen, authModalView, showAuthModal, hideAuthModal, authCallback,
   }), [railOpen, toggleRail, trayOpen, paletteOpen, sheetOpen, status, toasts, toast, runExport,
        isMobile, menuOpen, toggleMenu, tabSwitcherOpen, inspectorExpanded,

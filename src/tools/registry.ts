@@ -115,11 +115,11 @@ export const REVERSE_ALIASES: Record<string, string> = Object.fromEntries(
 
 /** Tools that don't appear in the rail but are reachable via Cmd+K. */
 export const HIDDEN_TOOLS: ToolEntry[] = [
-  { id: 'cutout', name: 'Cutout', group: 'Offcuts' as ToolGroup, blurb: 'In-browser background removal.', milestone: 7, mobile: 'desktop', accepts: ['image/png', 'image/jpeg', 'image/webp', 'image/avif', 'image/bmp', 'image/gif'], load: () => import('./cutout').then(m => m.tool) },
-  { id: 'vectorize', name: 'Vectorize', group: 'Offcuts' as ToolGroup, blurb: 'Raster to SVG.', milestone: 7, mobile: 'desktop', accepts: ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif', 'image/bmp'], load: () => import('./vectorize').then(m => m.tool) },
-  { id: 'grid', name: 'Grid', group: 'Drawer' as ToolGroup, blurb: 'Columns, gutters, baseline.', milestone: 8, mobile: 'desktop', load: () => import('./grid').then(m => m.tool) },
-  { id: 'resize', name: 'Resize', group: 'Workbench' as ToolGroup, blurb: 'One tagged SVG, every size.', milestone: 11, mobile: 'desktop', accepts: ['image/svg+xml', 'font/*', 'application/font-woff', 'application/x-font-ttf', 'application/x-font-otf', 'application/vnd.ms-opentype'], load: () => import('./resize').then(m => m.tool) },
-  { id: 'sandbox', name: 'Sandbox', group: 'Offcuts' as ToolGroup, blurb: 'Contract test: load, inspect, recolor the matte, export.', milestone: 1, dev: true, mobile: 'desktop', accepts: ['image/*'], load: () => import('./sandbox').then(m => m.tool) },
+  { id: 'cutout', name: 'Cutout', hidden: true, group: 'Offcuts' as ToolGroup, blurb: 'In-browser background removal.', milestone: 7, mobile: 'desktop', accepts: ['image/png', 'image/jpeg', 'image/webp', 'image/avif', 'image/bmp', 'image/gif'], load: () => import('./cutout').then(m => m.tool) },
+  { id: 'vectorize', name: 'Vectorize', hidden: true, group: 'Offcuts' as ToolGroup, blurb: 'Raster to SVG.', milestone: 7, mobile: 'desktop', accepts: ['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif', 'image/bmp'], load: () => import('./vectorize').then(m => m.tool) },
+  { id: 'grid', name: 'Grid', hidden: true, group: 'Drawer' as ToolGroup, blurb: 'Columns, gutters, baseline.', milestone: 8, mobile: 'desktop', load: () => import('./grid').then(m => m.tool) },
+  { id: 'resize', name: 'Resize', hidden: true, group: 'Workbench' as ToolGroup, blurb: 'One tagged SVG, every size.', milestone: 11, mobile: 'desktop', accepts: ['image/svg+xml', 'font/*', 'application/font-woff', 'application/x-font-ttf', 'application/x-font-otf', 'application/vnd.ms-opentype'], load: () => import('./resize').then(m => m.tool) },
+  { id: 'sandbox', name: 'Sandbox', hidden: true, group: 'Offcuts' as ToolGroup, blurb: 'Contract test: load, inspect, recolor the matte, export.', milestone: 1, dev: true, mobile: 'desktop', accepts: ['image/*'], load: () => import('./sandbox').then(m => m.tool) },
 ];
 
 export const findTool = (id: string | undefined): ToolEntry | undefined => {

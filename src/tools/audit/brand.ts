@@ -189,7 +189,8 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   const root = el('div', 'au');
   const bar = el('form', 'au__bar'); bar.setAttribute('role', 'search');
   const q = document.createElement('input');
-  Object.assign(q, { className: 'au__q', type: 'search', placeholder: 'stripe.com, or a company name', value: query });
+  const isMobile = window.matchMedia('(max-width: 767px)').matches;
+  Object.assign(q, { className: 'au__q', type: 'search', placeholder: isMobile ? 'Brand or domain' : 'stripe.com, or a company name', value: query });
   q.setAttribute('aria-label', 'Domain or company');
   const go = el('button', 'l-btn l-btn--primary au__go', 'Audit'); go.type = 'submit';
   bar.append(q, go);

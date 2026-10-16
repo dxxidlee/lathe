@@ -1,10 +1,10 @@
 import { createElement, useMemo, useRef, useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { allTools, isReady, ID_ALIASES, HIDDEN_TOOLS } from '../tools/registry';
-import { resetEverything } from '../lib/reset';
+// import { resetEverything } from '../lib/reset'; // moved to avatar menu
 import { useShell } from './state';
 import { Modal } from './Modal';
-import { modKey } from '../lib/format';
+// import { modKey } from '../lib/format';
 import { toolIcon } from './icons';
 import type { LucideIcon } from 'lucide-react';
 
@@ -34,13 +34,11 @@ export function CommandPalette() {
   const close = () => shell.setPaletteOpen(false);
 
   const commands = useMemo<Command[]>(() => {
-    const mod = modKey();
-    const open = (path: string) => () => { close(); navigate(path); };
     const openTool = (toolId: string) => () => { close(); shell.openTab(toolId); navigate(`/t/${toolId}`); };
     // Old names that alias to each current tool id, for search
     const aliasesFor = (id: string) =>
       Object.entries(ID_ALIASES).filter(([, v]) => v === id).map(([k]) => k);
-    const all = [...allTools(), ...HIDDEN_TOOLS.filter(h => !allTools().some(t => t.id === h.id))].filter(t => !t.hidden);
+    const all = [...allTools(), ...HIDDEN_TOOLS.filter(h => !allTools().some(t => t.id === h.id))].filter(t => !t.hidden && !t.dev);
     return [
       ...all.map((t, i) => ({
         id: `tool:${t.id}`, label: t.name,
@@ -50,18 +48,11 @@ export function CommandPalette() {
         _extra: aliasesFor(t.id).join(' '),
         icon: toolIcon(t.id),
       })),
-      { id: 'home', label: 'Go home', run: open('/') },
-      { id: 'make', label: 'Make a tool', run: openTool('make') },
       { id: 'library', label: 'Library', hint: 'Saved decks, audits, palettes', run: openTool('library') },
-      { id: 'export', label: 'Export', keys: `${mod}E`, run: () => { close(); shell.runExport(); } },
+      { id: 'make', label: 'Make a tool', run: openTool('make') },
       { id: 'nav', label: 'Toggle tool rail', run: () => { close(); shell.toggleNav(); } },
-      { id: 'tray', label: 'Toggle asset tray', run: () => { close(); shell.toggleTray(); } },
       { id: 'keys', label: 'Keyboard shortcuts', keys: '?', run: () => { close(); shell.setSheetOpen(true); } },
       { id: 'reset-tool', label: 'Reset this tool', hint: 'Its image, settings and edits', run: () => { close(); if (shell.resetToolRef.current) shell.resetToolRef.current(); else shell.toast('Open a tool to reset it'); } },
-      { id: 'reset-all', label: 'Reset everything', hint: 'Every tool, the tray and the cache', run: () => {
-        close();
-        if (window.confirm('Reset Lathe? This forgets every tool’s settings and edits and empties the tray. Files you downloaded stay on your computer.')) void resetEverything();
-      } },
     ];
   }, [navigate, shell.runExport]);
 

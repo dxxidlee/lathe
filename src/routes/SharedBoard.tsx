@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { getSharedBoard } from '../lib/boards';
-import { Wordmark } from '../brand/Wordmark';
+import { Mark } from '../brand/Wordmark';
 
 interface SharedItem {
   image_url: string;
@@ -73,7 +73,7 @@ export function SharedBoard() {
         ))}
       </div>
       <footer className="shared-board__footer">
-        <Link to="/" className="shared-board__lathe"><Wordmark /> <span>Made with Lathe</span></Link>
+        <Link to="/" className="shared-board__lathe"><Mark /> <span>Made with Lathe</span></Link>
       </footer>
     </div>
   );
