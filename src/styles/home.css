@@ -35,11 +35,13 @@
   vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round;
   transition: stroke-opacity 180ms ease, opacity 180ms ease;
 }
-.graph__line { stroke-opacity: 1; }
-.graph__line--dashed { stroke-dasharray: 9 7; stroke-opacity: 0.4; }
-.graph__mark { stroke-opacity: 1; }
+/* Structure: thin scaffold */
+.graph__line { stroke-opacity: 0.35; }
+.graph__line--dashed { stroke-dasharray: 9 7; stroke-opacity: 0.25; }
+.graph__mark { stroke-opacity: 0.8; }
 .graph__mark.graph__draw { animation-duration: 2200ms; }
-.graph__route { stroke-opacity: 1; }
+/* Routes: bold and clear */
+.graph__route { stroke-opacity: 1; stroke-width: calc(var(--stroke-thin) * 1.5); }
 
 /* Draw in: solid strokes trace their length; dashed axes are revealed by a tracing mask. */
 .graph__draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: graph-draw 1100ms cubic-bezier(.6, 0, .2, 1) forwards; }

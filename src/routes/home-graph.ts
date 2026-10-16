@@ -9,10 +9,10 @@ import { MARK_PATH } from '../brand/mark-path';
 
 export const VIEW = { w: 1200, h: 900 };
 type P = { x: number; y: number };
-const C: P = { x: 600, y: 455 };
-const SQ = { x0: 410, y0: 265, x1: 790, y1: 645 };          // the square
-const CA = { o: C, r: 262 };                                // outer circle
-const CB = { o: { x: 622, y: 438 } as P, r: 222 };          // offset circle
+const C: P = { x: 600, y: 450 };
+const SQ = { x0: 420, y0: 270, x1: 780, y1: 630 };          // tighter square
+const CA = { o: C, r: 240 };                                // outer circle — pulled in
+const CB = { o: { x: 618, y: 440 } as P, r: 200 };          // offset circle — smaller, less overlap
 export const MARK_R = 192;                                  // mark lobes just touch the square's sides
 
 const f = (n: number) => Math.round(n * 10) / 10;
@@ -38,8 +38,9 @@ export const STRUCTURE: Structure[] = [
   { d: circle(CA.o, CA.r) },
   { d: circle(CB.o, CB.r) },
   { d: MARK_PATH, mark: true },
-  { d: `M300 868 C 520 860, 760 760, 742 600 S 520 470, 470 560` },
-  { d: `M905 300 C 1040 230, 1110 330, 1030 400 S 760 470, 520 500 S 250 560, 300 690` },
+  // smoother sweeps — wide arcs, not tight knots
+  { d: `M240 840 C 480 830, 740 740, 760 580 S 600 420, 520 500` },
+  { d: `M960 260 C 1060 220, 1120 340, 1020 400 S 780 460, 560 480` },
 ];
 export const MARK_TRANSFORM = `translate(${C.x} ${C.y}) scale(${MARK_R / 1200}) translate(-1500 -1500)`;
 
@@ -56,19 +57,32 @@ const route = (r: { line: string; end: P; from: P }, label: P, anchor: Route['an
   ({ line: r.line, head: arrow(r.end, r.from), label, anchor, baseline });
 
 const PLACED: Record<string, Route> = {
-  'subject-audit': route(ray(pol(-135, 150), pol(-135, 340)), { x: 330, y: 180 }, 'end'),
-  'brand-audit': route(ray(pol(-45, 150), pol(-45, 320)), { x: 848, y: 200 }, 'start'),
-  'reference': route(cubic({ x: 600, y: 266 }, { x: 612, y: 180 }, { x: 660, y: 130 }, { x: 720, y: 120 }), { x: 732, y: 120 }, 'start'),
-  'contrast': route(arc(CA, -160, -52), { x: 790, y: 218 }, 'start'),
-  palette: route(cubic(pol(22, CA.r), { x: 930, y: 470 }, { x: 980, y: 240 }, { x: 1072, y: 240 }), { x: 1084, y: 240 }, 'start'),
-  'recolor': route(arc(CB, -40, -10), { x: 870, y: 392 }, 'start'),
-  'gradient': route(cubic({ x: 616, y: 462 }, { x: 1180, y: 600 }, { x: 1140, y: 840 }, { x: 880, y: 820 }), { x: 866, y: 834 }, 'end', 'hanging'),
-  dither: route(ray(pol(45, 290), pol(45, 355)), { x: 870, y: 720 }, 'start'),
-  specimen: route(ray(pol(135, 290), pol(135, 355)), { x: 330, y: 720 }, 'end'),
-  deck: route(arc(CA, 200, 152), { x: 310, y: 570 }, 'end'),
-  'kinetic-type': route(cubic({ x: 470, y: 560 }, { x: 330, y: 640 }, { x: 150, y: 560 }, { x: 180, y: 420 }), { x: 168, y: 406 }, 'end', 'auto'),
-  'logo-export': route(arc(CB, 204, 170), { x: 370, y: 340 }, 'end'),
-  'icons': route(ray({ x: SQ.x0, y: SQ.y0 }, { x: SQ.x0 - 20, y: 145 }), { x: SQ.x0 - 20, y: 130 }, 'middle', 'auto'),
+  // NW — ray along diagonal, label in clear NW pocket
+  'subject-audit': route(ray(pol(-135, 140), pol(-135, 330)), { x: 320, y: 172 }, 'end'),
+  // NE — ray along diagonal
+  'brand-audit': route(ray(pol(-45, 140), pol(-45, 310)), { x: 860, y: 192 }, 'start'),
+  // Up from mark, curving right — label above the circle
+  'reference': route(cubic({ x: 600, y: 260 }, { x: 610, y: 170 }, { x: 670, y: 120 }, { x: 740, y: 110 }), { x: 754, y: 110 }, 'start'),
+  // Long arc over the top — label right of the arc end
+  'contrast': route(arc(CA, -160, -55), { x: 800, y: 230 }, 'start'),
+  // Swoop far right — clear space
+  palette: route(cubic(pol(20, CA.r), { x: 920, y: 440 }, { x: 980, y: 230 }, { x: 1070, y: 230 }), { x: 1084, y: 230 }, 'start'),
+  // Short arc on offset circle right side
+  'recolor': route(arc(CB, -38, -8), { x: 840, y: 388 }, 'start'),
+  // Big loop to bottom right — label below
+  'gradient': route(cubic({ x: 616, y: 460 }, { x: 1100, y: 580 }, { x: 1080, y: 820 }, { x: 860, y: 810 }), { x: 846, y: 824 }, 'end', 'hanging'),
+  // SE diagonal
+  dither: route(ray(pol(45, 280), pol(45, 350)), { x: 870, y: 710 }, 'start'),
+  // SW diagonal
+  specimen: route(ray(pol(135, 280), pol(135, 350)), { x: 325, y: 710 }, 'end'),
+  // Arc down the left side of the outer circle
+  deck: route(arc(CA, 200, 155), { x: 305, y: 560 }, 'end'),
+  // Long sweep out far left — label in clear space
+  'kinetic-type': route(cubic({ x: 470, y: 550 }, { x: 320, y: 630 }, { x: 140, y: 550 }, { x: 170, y: 410 }), { x: 156, y: 396 }, 'end', 'auto'),
+  // Short arc on offset circle left side
+  'logo-export': route(arc(CB, 206, 172), { x: 366, y: 330 }, 'end'),
+  // Up from square corner — label above
+  'icons': route(ray({ x: SQ.x0, y: SQ.y0 }, { x: SQ.x0, y: 150 }), { x: SQ.x0, y: 134 }, 'middle', 'auto'),
 };
 
 export function routesFor(ids: string[]): Route[] {
