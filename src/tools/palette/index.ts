@@ -23,7 +23,7 @@ export const tool: LatheTool = {
   defaults,
   accepts: ['image/*'],
 
-  mount({ defaults: d, changedDefaults, stage, inspector, statusbar, assets, settings, emit }) {
+  mount({ defaults: d, changedDefaults, stage, inspector, statusbar, assets, settings, emit, requireAuth }) {
     if (changedDefaults.includes('swatchCount') || changedDefaults.includes('sampleSize') || changedDefaults.includes('iterations')) settings.remove('swatches');
     let swatches = settings.get<Sw[]>('swatches', []);
     let count = settings.get<number>('count', d.swatchCount as number);
@@ -77,7 +77,7 @@ export const tool: LatheTool = {
     fmts.forEach(([l, f], i) => outRow.append(button({ label: l, primary: i === 0, onClick: f })));
     const send = sendControl({ from: 'palette', type: () => (swatches.length ? 'text/plain' : null), get: () => hexListAsset(), emit });
     outSec.body.append(outRow, button({ label: 'Copy CSS', onClick: () => void navigator.clipboard.writeText(text('css')).then(() => emit('toast', 'CSS copied')) }),
-      button({ label: 'Save to Library', onClick: async () => {
+      button({ label: 'Save to Library', onClick: async () => { if (requireAuth(() => {})) return;
         if (!swatches.length) { emit('toast', 'Extract or add colors first'); return; }
         const { supabase } = await import('../../lib/supabase');
         if (!supabase) { emit('toast', 'Sign in to save'); return; }

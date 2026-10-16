@@ -17,7 +17,7 @@ export const tool: LatheTool = {
   defaults,
   accepts: ACCEPT,
 
-  mount({ defaults: d, stage, inspector, statusbar, assets, settings, emit }) {
+  mount({ defaults: d, stage, inspector, statusbar, assets, settings, emit, requireAuth }) {
     const min = d.rasterMin as number, max = d.rasterMax as number;
     const state = {
       fmts: settings.get<Fmt[]>('formats', d.formats as Fmt[]),
@@ -87,7 +87,7 @@ export const tool: LatheTool = {
     const status = note('');
     status.setAttribute('role', 'status');
     status.setAttribute('aria-live', 'polite');
-    out.body.append(zipBtn, status, button({ label: 'Save to Library', onClick: async () => {
+    out.body.append(zipBtn, status, button({ label: 'Save to Library', onClick: async () => { if (requireAuth(() => {})) return;
       if (!src) { emit('toast', 'Load a logo first'); return; }
       const { supabase } = await import('../../lib/supabase');
       if (!supabase) { emit('toast', 'Sign in to save'); return; }

@@ -21,7 +21,7 @@ export const tool: LatheTool = {
   defaults,
   accepts: ['text/plain', 'font/*'],
 
-  mount({ defaults: d, stage, inspector, statusbar, assets, settings, emit }) {
+  mount({ defaults: d, stage, inspector, statusbar, assets, settings, emit, requireAuth }) {
     const state = {
       input: settings.get('input', ''),
       standard: settings.get<Standard>('standard', d.standard as Standard),
@@ -110,7 +110,7 @@ export const tool: LatheTool = {
     advSec.body.append(
       slider({ label: 'Below-threshold opacity', min: 0, max: 100, value: Math.round((d.dimOpacity as number) * 100), format: v => (v / 100).toFixed(2), onChange: v => { (d as Record<string, unknown>).dimOpacity = v / 100; render(); } }).el,
     );
-    out.body.append(button({ label: 'Save to Library', onClick: async () => {
+    out.body.append(button({ label: 'Save to Library', onClick: async () => { if (requireAuth(() => {})) return;
       const { supabase } = await import('../../lib/supabase');
       if (!supabase) { emit('toast', 'Sign in to save'); return; }
       const { data: { user } } = await supabase.auth.getUser();

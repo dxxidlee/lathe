@@ -29,7 +29,7 @@ const el = <K extends keyof HTMLElementTagNameMap>(tag: K, cls?: string, text?: 
   const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e;
 };
 
-export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, settings, emit, onActivate }: MountContext, modeEl?: HTMLElement): MountResult {
+export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, settings, emit, onActivate, requireAuth }: MountContext, modeEl?: HTMLElement): MountResult {
   let query = settings.get('brandQuery', '');
   let cap: BrandCapture | null = null;
   let capError: string | null = null;
@@ -199,7 +199,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   scroller.append(report);
   root.append(bar, spacer, scroller);
   stage.appendChild(root);
-  bar.addEventListener('submit', e => { e.preventDefault(); void run(q.value); });
+  bar.addEventListener('submit', e => { e.preventDefault(); if (requireAuth(() => void run(q.value))) return; void run(q.value); });
 
   /* ---------------- content grid (stable across repaints) ---------------- */
   const contentGrid = el('div', 'ab__content-grid');
@@ -349,6 +349,7 @@ export function mountBrand({ defaults: d, stage, inspector, statusbar, assets, s
   const selSec = section('Selection');
   const selCount = el('div', 'ab__sel-count');
   const buildSlideBtn = button({ label: 'Build slide', primary: true, onClick: async () => {
+    if (requireAuth(() => buildSlideBtn.click())) return;
     if (!selected.size) { emit('toast', 'Select at least one image'); return; }
     if (!cap) { emit('toast', 'Capture a brand first'); return; }
 

@@ -22,7 +22,7 @@ export const tool: LatheTool = {
   defaults,
   accepts: ['font/*', 'text/plain', 'application/font-woff', 'application/x-font-ttf', 'application/x-font-otf', 'application/vnd.ms-opentype'],
 
-  mount({ defaults: d, stage, inspector, statusbar, assets, settings, emit, onActivate }) {
+  mount({ defaults: d, stage, inspector, statusbar, assets, settings, emit, onActivate, requireAuth }) {
     const [cw, ch] = String(d.canvas).split('x').map(Number);
     const s: Spec = {
       text: settings.get('text', d.text as string), font: d.font as string, weight: settings.get('weight', d.weight as number),
@@ -99,7 +99,7 @@ export const tool: LatheTool = {
     const oStats = statList();
     let lastBlob: Blob | null = null, lastName = '';
     const send = sendControl({ from: 'kinetic-type', type: () => (lastBlob ? lastBlob.type : null), get: async () => (lastBlob ? assets.add(lastBlob, { name: lastName, source: 'export', origin: 'kinetic-type' }) : null), emit });
-    oSec.body.append(oRow, oStats.el, note(`One full cycle at ${fps} fps. GIF ${d.gifWidth} px wide; WebM at the canvas size, recorded in real time.`), send.el, button({ label: 'Save to Library', onClick: async () => {
+    oSec.body.append(oRow, oStats.el, note(`One full cycle at ${fps} fps. GIF ${d.gifWidth} px wide; WebM at the canvas size, recorded in real time.`), send.el, button({ label: 'Save to Library', onClick: async () => { if (requireAuth(() => {})) return;
       const { supabase } = await import('../../lib/supabase');
       if (!supabase) { emit('toast', 'Sign in to save'); return; }
       const { data: { user } } = await supabase.auth.getUser();
