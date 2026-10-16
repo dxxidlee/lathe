@@ -1,115 +1,108 @@
-/* ==========================================================================
-   Home: a construction drawing on chartreuse with every tool on it.
-   ========================================================================== */
-
-/* Bar and foot float over a full-page drawing area with equal top and bottom insets, so the
-   drawing is centred on the page itself. */
+/* Home: construction graph on chartreuse */
 .home {
   position: relative; height: 100dvh; overflow: hidden;
   background: var(--lathe); color: var(--black);
+  display: flex; flex-direction: column;
 }
 
+/* ---- Top bar ---- */
 .home__bar {
-  position: absolute; top: 0; left: 0; right: 0; z-index: 1; height: var(--hero-bar-h);
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 var(--s-6);
-  color: var(--black);
+  height: var(--topbar-h); padding: 0 var(--space-3);
+  position: relative; z-index: 2;
 }
-.home__bar-mark { color: inherit; text-decoration: none; font-size: var(--fs-title); display: inline-flex; }
-.home__bar-links { display: flex; align-items: center; gap: var(--s-6); font-size: var(--fs-body); }
-.home__bar-links a, .home__link { color: inherit; text-decoration: none; border: 0; background: none; padding: 0; font: inherit; cursor: pointer; }
-.home__bar-links a:hover, .home__link:hover { text-decoration: underline; text-underline-offset: var(--s-1); }
-.home__search {
-  display: inline-flex; align-items: center; gap: var(--s-3);
-  border: 0; background: none; color: inherit; font-size: var(--fs-body); padding: 0; cursor: pointer;
+.home__bar .topbar__mark { color: var(--black); }
+.home__bar .topbar__mark:hover { background: rgba(0,0,0,0.08); }
+.home__login {
+  height: var(--control-h); padding: 0 var(--space-4);
+  border: none; border-radius: var(--radius-control);
+  background: var(--black); color: var(--lathe);
+  font: var(--weight-medium) var(--text-body) var(--font);
+  cursor: pointer;
 }
-.home__search .l-kbd { color: inherit; border-color: currentColor; }
+.home__login:hover { opacity: 0.85; }
 
-/* ---- Graph ---- */
-.graph-wrap { position: absolute; inset: 0; padding: calc(var(--hero-bar-h) + var(--s-6)) var(--s-6); overflow: hidden; }
-.graph { display: block; width: 100%; height: 100%; }
-.home[data-view="list"] .graph { display: none; }
-
-.graph__line, .graph__route {
-  fill: none; stroke: var(--black); stroke-width: var(--stroke-thin);
-  vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round;
-  transition: stroke-opacity 180ms ease, opacity 180ms ease;
+/* ---- Graph (desktop) ---- */
+.home__graph {
+  flex: 1; display: flex; align-items: center; justify-content: center;
+  padding: 0 var(--space-6); position: relative;
 }
-.graph__line { stroke-opacity: var(--o-64); }
-.graph__line--dashed { stroke-dasharray: 9 7; }
-.graph__mark { stroke-opacity: 1; }
-.graph__mark.graph__draw { animation-duration: 2200ms; }
-.graph__route { stroke-opacity: var(--o-64); }
-
-/* Draw in: solid strokes trace their length; dashed axes are revealed by a tracing mask. */
-.graph__draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: graph-draw 1100ms cubic-bezier(.6, 0, .2, 1) forwards; }
-.graph__reveal { fill: none; stroke: var(--white); stroke-width: var(--s-4); stroke-dasharray: 1; stroke-dashoffset: 1; animation: graph-draw 1300ms cubic-bezier(.6, 0, .2, 1) forwards; }
-/* Arrowheads and labels fade in on stroke/fill opacity, leaving `opacity` free for the hover fade
-   (a finished animation would otherwise pin it). */
-.graph__head { stroke-opacity: 0; animation: graph-head 400ms ease forwards; }
-.graph__label { fill-opacity: 0; animation: graph-label 400ms ease forwards; }
-@keyframes graph-draw { to { stroke-dashoffset: 0; } }
-@keyframes graph-head { to { stroke-opacity: var(--o-64); } }
-@keyframes graph-label { to { fill-opacity: 1; } }
-/* A wide invisible stroke along each route, so routes are easy to hover. */
-.graph__hit { fill: none; stroke: transparent; stroke-width: var(--s-5); pointer-events: stroke; vector-effect: non-scaling-stroke; }
-
+.graph { max-height: 100%; }
+.graph__structure { pointer-events: none; }
+.graph__line { fill: none; stroke: var(--black); stroke-width: 1; opacity: 0.15; }
+.graph__line--dashed { stroke-dasharray: 6 6; }
+.graph__mark { stroke-width: 1.5; opacity: 0.2; }
+.graph__route { fill: none; stroke: var(--black); stroke-width: 1.2; opacity: 0.3; transition: opacity 200ms ease, stroke-width 200ms ease; }
+.graph__head { fill: none; stroke: var(--black); stroke-width: 1.2; stroke-linecap: round; stroke-linejoin: round; opacity: 0.3; transition: opacity 200ms ease; }
 .graph__label {
-  fill: var(--black); font-size: var(--fs-body); font-weight: var(--w-medium);
-  letter-spacing: var(--track-title); cursor: pointer;
+  fill: var(--black); opacity: 0.3; font: 500 13px var(--font);
+  cursor: default; outline: none; transition: opacity 200ms ease;
 }
-.graph__tag { fill: var(--black-40); font-size: var(--fs-small); font-weight: var(--w-regular); font-variant-numeric: tabular-nums; }
-.graph__tool { cursor: pointer; outline: none; }
-.graph__tool.is-planned .graph__label { fill: var(--black-64); }
+.graph__label.is-active { text-decoration: underline; }
 
-/* Hover or focus: the tool's route and label in full, everything else recedes. */
-.graph.is-hovering .graph__line { stroke-opacity: var(--o-16); }
-.graph.is-hovering .graph__mark { stroke-opacity: var(--o-40); }
-.graph.is-hovering .graph__tool:not(.is-active) .graph__route { opacity: var(--o-16); }
-.graph.is-hovering .graph__tool:not(.is-active) .graph__label { opacity: var(--o-40); }
-.graph__tool.is-active .graph__route { stroke-width: var(--stroke-med); }
-.graph__tool.is-active .graph__draw { stroke-opacity: 1; animation: none; stroke-dashoffset: 0; }
-.graph__tool.is-active .graph__head { stroke-opacity: 1; animation: none; }
-.graph__tool.is-active .graph__label { fill: var(--black); text-decoration: underline; text-underline-offset: var(--s-1); }
+/* Draw-in animation */
+.graph__draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: graph-draw 1.2s ease forwards; }
+@keyframes graph-draw { to { stroke-dashoffset: 0; } }
+.graph__head { opacity: 0; animation: graph-fade 0.4s ease forwards; }
+.graph__label { opacity: 0; animation: graph-fade 0.4s ease forwards; }
+@keyframes graph-fade { to { opacity: 0.3; } }
 
-@media (prefers-reduced-motion: reduce) {
-  .graph__draw, .graph__reveal { animation: none; stroke-dashoffset: 0; }
-  .graph__head { animation: none; stroke-opacity: var(--o-64); }
-  .graph__label { animation: none; fill-opacity: 1; }
+/* Hover states */
+.graph.is-hovering .graph__route,
+.graph.is-hovering .graph__head,
+.graph.is-hovering .graph__label { opacity: 0.12; }
+.graph__tool.is-active .graph__route,
+.graph__tool.is-active .graph__head { opacity: 1; stroke-width: 2; }
+.graph__tool.is-active .graph__label { opacity: 1; }
+
+/* ---- Tooltip ---- */
+.home__tooltip {
+  position: fixed; bottom: var(--space-8); left: 50%; transform: translateX(-50%);
+  max-width: 520px; width: calc(100% - var(--space-8));
+  padding: var(--space-4) var(--space-5);
+  background: var(--black); color: var(--lathe); border-radius: var(--radius-panel);
+  font-size: 13px; line-height: 1.5; z-index: 3;
+  animation: tooltip-in 200ms ease;
 }
+@keyframes tooltip-in { from { opacity: 0; transform: translateX(-50%) translateY(8px); } }
+.home__tooltip-row + .home__tooltip-row { margin-top: var(--space-2); }
+.home__tooltip-label { opacity: 0.5; margin-right: var(--space-2); }
 
-/* ---- List (the "Tools" view, and small screens) ---- */
-.toollist { display: none; height: 100%; overflow-y: auto; padding: var(--s-4) 0; }
-.home[data-view="list"] .toollist { display: grid; grid-template-columns: repeat(auto-fill, minmax(calc(var(--card-w) * 1.4), 1fr)); gap: var(--s-7) var(--s-6); align-content: start; }
-.toollist__label { margin: 0 0 var(--s-2); padding-bottom: var(--s-2); border-bottom: var(--hairline) solid var(--black); font-size: var(--fs-small); font-weight: var(--w-regular); color: var(--black-64); }
-.toollist ul { list-style: none; margin: 0; padding: 0; }
-.toollist__tool { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0 var(--s-3); padding: var(--s-3) 0; border-bottom: var(--hairline) solid var(--black-16); color: var(--black); text-decoration: none; }
-.toollist__tool:hover { background: var(--black); color: var(--lathe); }
-.toollist__tool:hover .toollist__blurb { color: var(--lathe); }
-.toollist__name { font-size: var(--fs-title); font-weight: var(--w-medium); letter-spacing: var(--track-title); }
-.toollist__blurb { grid-column: 1; color: var(--black-64); font-size: var(--fs-small); }
-.toollist__status { grid-row: 1; grid-column: 2; align-self: center; font-size: var(--fs-small); }
-.toollist__tool.is-planned .toollist__name { color: var(--black-64); }
-
-/* ---- Foot ---- */
-.home__foot {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 1;
-  display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-6);
-  padding: var(--s-4) var(--s-6); font-size: var(--fs-body); min-height: calc(var(--s-4) * 2 + var(--fs-body) * 1.4);
-  background: var(--lathe);
-}
-.home__foot-main { font-weight: var(--w-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.home__foot-dim { color: var(--black-64); font-weight: var(--w-regular); }
+/* ---- Mobile list ---- */
+.home__list { display: none; }
 
 @media (max-width: 767px) {
-  .home__link { display: none; }
-}
+  .home__graph { display: none; }
+  .home__tooltip { display: none; }
+  .home__list {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    flex: 1; gap: var(--space-1); padding: var(--space-4) var(--space-6);
+    overflow-y: auto;
+  }
+  .home__list-item {
+    width: 100%; text-align: center; padding: var(--space-3) 0;
+    background: none; border: none; color: var(--black);
+    font: 400 17px var(--font); cursor: pointer; opacity: 0.6;
+  }
+  .home__list-item:active { opacity: 1; }
 
-/* The command palette over the home page takes the home page's colors: a chartreuse panel with
-   black type, the selection in black, and a light chartreuse veil instead of a dark one. */
-:root:has(.home) .l-scrim:has(.palette) {
-  --panel: var(--lathe); --ink: var(--black); --ink-2: var(--black-64); --ink-3: var(--black-40);
-  --hairline-color: var(--black-16); --fill: var(--black-8); --accent: var(--black); --on-accent: var(--lathe);
-  --scrim: var(--lathe-64);
+  /* Mobile overlay */
+  .home__overlay {
+    position: fixed; inset: 0; z-index: 10;
+    background: var(--lathe); color: var(--black);
+    display: flex; flex-direction: column;
+    padding: env(safe-area-inset-top, 0) var(--space-6) env(safe-area-inset-bottom, 0);
+  }
+  .home__overlay-head {
+    display: flex; align-items: center; gap: var(--space-3);
+    height: var(--topbar-h); flex-shrink: 0;
+  }
+  .home__overlay-close { background: none; border: none; color: var(--black); cursor: pointer; padding: var(--space-1); }
+  .home__overlay-title { font: 500 15px var(--font); }
+  .home__overlay-body {
+    flex: 1; display: flex; flex-direction: column; justify-content: center;
+    padding: var(--space-6) 0;
+  }
+  .home__overlay-body p { margin: 0 0 var(--space-5); font-size: 20px; line-height: 1.4; }
+  .home__overlay-label { display: block; opacity: 0.4; font-size: 13px; margin-bottom: var(--space-2); }
 }
-:root:has(.home) .l-scrim:has(.palette) .l-modal { border-color: var(--black); }
