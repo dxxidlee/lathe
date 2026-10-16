@@ -17,7 +17,14 @@ import { Make } from './routes/Make';
 import { Library } from './routes/Library';
 import { SharedBoard } from './routes/SharedBoard';
 import { BoardView } from './routes/BoardView';
+import { AuthModal } from './shell/AuthModal';
 import { useEffect, useState } from 'react';
+import './styles/auth.css';
+
+function AuthModalOverlay() {
+  const shell = useShell();
+  return <AuthModal onClose={() => shell.hideAuthModal()} onSuccess={() => { shell.authCallback.current?.(); shell.hideAuthModal(); }} />;
+}
 
 function ToolView() {
   const { toolId } = useParams();
@@ -109,6 +116,7 @@ function Overlays() {
     <>
       {shell.paletteOpen && <CommandPalette />}
       {shell.sheetOpen && <ShortcutSheet />}
+      {shell.authModalOpen && <AuthModalOverlay />}
       <div className="l-toasts" aria-live="polite">
         {shell.toasts.map(t => <div className="l-toast" key={t.id}>{t.message}</div>)}
       </div>
