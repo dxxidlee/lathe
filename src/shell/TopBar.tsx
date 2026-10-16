@@ -1,12 +1,28 @@
-import { createElement } from 'react';
+import { createElement, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { PanelLeft, Menu } from 'lucide-react';
 import { Wordmark } from '../brand/Wordmark';
 import { useShell } from './state';
 import { modKey } from '../lib/format';
 import { TabBar } from './TabBar';
-import { AuthMenu } from './AuthMenu';
+import { signOut } from '../lib/auth';
 import { findTool } from '../tools/registry';
+
+function UserMenu({ user }: { user: { email?: string | null } }) {
+  const [open, setOpen] = useState(false);
+  const initial = (user.email?.[0] ?? '?').toUpperCase();
+  return (
+    <div className="topbar__user" style={{ position: 'relative' }}>
+      <button type="button" className="topbar__avatar" onClick={() => setOpen(o => !o)} title="Account">{initial}</button>
+      {open && (
+        <div className="topbar__user-menu">
+          <div className="topbar__user-email">{user.email}</div>
+          <button type="button" onClick={() => { setOpen(false); void signOut(); }}>Sign out</button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function TopBar() {
   const shell = useShell();
@@ -23,7 +39,8 @@ export function TopBar() {
         aria-label={shell.railOpen ? 'Close rail' : 'Open rail'} title={`${mod}\\`}>
         {createElement(PanelLeft, { size: 16, strokeWidth: 1.5 })}
       </button>
-      <Link to="/" className="topbar__brand" aria-label="Lathe home"><Wordmark /></Link>
+      <Link to={shell.user ? '/t/library' : '/'} className="topbar__brand" aria-label="Lathe home"
+        onClick={() => { if (shell.user) shell.openTab('library'); }}><Wordmark /></Link>
       <TabBar tabs={shell.tabs} activeTabId={shell.activeTabId}
         onActivate={shell.openTab} onClose={shell.closeTab} onReorder={shell.reorderTabs} />
       {shell.isMobile && (
@@ -35,9 +52,13 @@ export function TopBar() {
         <span>Search</span>
         <span className="l-kbd">{mod}K</span>
       </button>
-      <AuthMenu />
+      {shell.user ? (
+        <UserMenu user={shell.user} />
+      ) : (
+        <button type="button" className="l-btn" onClick={() => shell.showAuthModal()}>Log in</button>
+      )}
       <div className="topbar__actions">
-        <button type="button" className="l-btn" onClick={shell.runExport} title={`Export (${mod}E)`}>Export</button>
+        <button type="button" className="l-btn" onClick={() => { if (!shell.user) { shell.showAuthModal(shell.runExport); return; } shell.runExport(); }} title={`Export (${mod}E)`}>Export</button>
       </div>
       {shell.isMobile && (
         <button type="button" className="topbar__menu-btn" onClick={shell.toggleMenu}>

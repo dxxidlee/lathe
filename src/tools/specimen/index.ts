@@ -36,7 +36,7 @@ export const tool: LatheTool = {
   defaults,
   accepts: ['font/*', 'application/font-woff', 'application/x-font-ttf', 'application/x-font-otf', 'application/vnd.ms-opentype'],
 
-  mount({ defaults: d, stage, inspector, statusbar, assets, settings, emit }) {
+  mount({ defaults: d, stage, inspector, statusbar, assets, settings, emit, requireAuth }) {
     let info: FontInfo | null = null;
     let source: Asset | undefined;
     let view = settings.get<View>('view', 'overview');
@@ -83,7 +83,7 @@ export const tool: LatheTool = {
     oRow.append(button({ label: 'Specimen PDF', primary: true, onClick: () => void exportPdf() }), button({ label: 'CSS scale tokens', onClick: () => void exportCss() }));
     const send = sendControl({ from: 'specimen', type: () => (source ? source.type || 'font/ttf' : null), get: async () => source ?? null, emit });
     oSec.body.append(oRow, note('The PDF draws every glyph from the font\'s own outlines, so it needs no font installed to print.'), send.el,
-      button({ label: 'Save to Library', onClick: async () => {
+      button({ label: 'Save to Library', onClick: async () => { if (requireAuth(() => {})) return;
         const { supabase } = await import('../../lib/supabase');
         if (!supabase) { emit('toast', 'Sign in to save'); return; }
         const { data: { user } } = await supabase.auth.getUser();

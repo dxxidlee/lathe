@@ -85,13 +85,7 @@ export interface EmitFn {
 }
 
 export interface MountContext {
-  /** Effective starting values keyed by DefaultEntry.key: the maker's manifest, with the
-      user's edits applied once the Defaults panel is editable (Milestone 4). Read these
-      instead of hardcoding values in the tool. */
   defaults: Record<string, unknown>;
-  /** Default keys whose value changed since this tool last mounted (an edit or a reset in the
-      Defaults panel). The shell already dropped top-level settings with the same key; tools that
-      keep composite state should drop their working copies of these too, so the new default shows. */
   changedDefaults: string[];
   stage: HTMLElement;
   inspector: HTMLElement;
@@ -99,8 +93,9 @@ export interface MountContext {
   assets: AssetsAPI;
   settings: SettingsAPI;
   emit: EmitFn;
-  /** Called when the tool's tab becomes active/inactive. Tools with animation loops or video should pause when inactive. */
   onActivate: (cb: (active: boolean) => void) => () => void;
+  /** If the user is signed out, opens the auth modal and calls `action` after login. Returns true if auth was needed. */
+  requireAuth: (action: () => void) => boolean;
 }
 
 export type Unmount = () => void;

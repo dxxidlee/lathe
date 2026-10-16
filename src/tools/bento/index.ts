@@ -25,7 +25,7 @@ export const tool: LatheTool = {
   defaults,
   accepts: ['image/*', DECK_MIME, BRAND_SLIDE_MIME, 'application/json'],
 
-  mount({ defaults: d, stage, inspector, statusbar, assets, settings, emit }) {
+  mount({ defaults: d, stage, inspector, statusbar, assets, settings, emit, requireAuth }) {
     const cfg: DrawConfig = {
       slideW: 13.333, slideH: 7.5, margin: d.margin as number, gutter: d.gutter as number, pad: d.padding as number,
       sizes: {
@@ -146,11 +146,11 @@ export const tool: LatheTool = {
       button({ label: '.svg', onClick: () => void run('svg') }),
       button({ label: 'Copy for Figma', onClick: () => void run('figma') }),
     );
-    outSec.body.append(outRow, status, button({ label: 'Save to Library', onClick: async () => {
+    const saveToLib = async () => {
       const { supabase } = await import('../../lib/supabase');
-      if (!supabase) { emit('toast', 'Sign in to save'); return; }
+      if (!supabase) return;
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { emit('toast', 'Sign in to save'); return; }
+      if (!user) return;
       const { cloudSaveItem, cloudUpdateItem } = await import('../../lib/cloud-library');
       // Capture thumbnail of the first slide
       let thumbnail: string | undefined;
@@ -181,7 +181,8 @@ export const tool: LatheTool = {
         if (id) deck.libraryId = id;
       }
       emit('toast', 'Saved to Library');
-    }}), note('Decks export with an auto-generated credits slide. Fonts: Helvetica Neue, with Arial declared as the fallback.'));
+    };
+    outSec.body.append(outRow, status, button({ label: 'Save to Library', onClick: () => { if (requireAuth(saveToLib)) return; void saveToLib(); } }), note('Decks export with an auto-generated credits slide. Fonts: Helvetica Neue, with Arial declared as the fallback.'));
     const advSec = advancedSection();
     advSec.body.append(
       note(`Font: ${cfg.font}`),

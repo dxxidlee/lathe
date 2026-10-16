@@ -14,7 +14,7 @@ export const tool: LatheTool = {
   defaults,
   accepts: ['image/*', 'video/*'],
 
-  mount({ defaults: d, changedDefaults, stage, inspector, statusbar, assets, settings, emit, onActivate }) {
+  mount({ defaults: d, changedDefaults, stage, inspector, statusbar, assets, settings, emit, onActivate, requireAuth }) {
     // A default edited in the Defaults panel replaces the matching value in the saved snapshot.
     const snap = settings.get<{ palette?: unknown; settings?: Record<string, number> } | null>('state', null);
     if (snap && changedDefaults.length) {
@@ -37,6 +37,7 @@ export const tool: LatheTool = {
     // Save to Library button in the inspector
     const saveSec = inspector.querySelector('[data-sec="presetio"] .section-body');
     if (saveSec) saveSec.appendChild(button({ label: 'Save to Library', onClick: async () => {
+      if (requireAuth(() => {})) return;
       const { supabase } = await import('../../lib/supabase');
       if (!supabase) { emit('toast', 'Sign in to save'); return; }
       const { data: { user } } = await supabase.auth.getUser();

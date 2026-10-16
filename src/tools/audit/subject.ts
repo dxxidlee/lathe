@@ -29,7 +29,7 @@ const shortType = (t: string | null) => {
   return normalizeType(raw);
 };
 
-export function mountSubject({ defaults: d, stage, inspector, statusbar, settings, emit }: MountContext, modeEl?: HTMLElement): MountResult {
+export function mountSubject({ defaults: d, stage, inspector, statusbar, settings, emit, requireAuth }: MountContext, modeEl?: HTMLElement): MountResult {
   let sources: SourceInfo[] = [];
   const disabled = new Set(settings.get<string[]>('disabledSources', []));
   const state = new Map<string, SourceState>();
@@ -90,7 +90,7 @@ export function mountSubject({ defaults: d, stage, inspector, statusbar, setting
   scroller.append(grid, empty, more);
   root.append(bar, tabs, scroller);
   stage.appendChild(root);
-  bar.addEventListener('submit', e => { e.preventDefault(); void search(q.value); });
+  bar.addEventListener('submit', e => { e.preventDefault(); if (requireAuth(() => void search(q.value))) return; void search(q.value); });
 
   /* ---------------- inspector ---------------- */
   const srcSec = section('Sources');

@@ -24,7 +24,7 @@ export const tool: LatheTool = {
   defaults,
   accepts: ['image/*'],
 
-  mount({ defaults: d, stage, inspector, statusbar, assets, settings, emit }) {
+  mount({ defaults: d, stage, inspector, statusbar, assets, settings, emit, requireAuth }) {
     const s = {
       method: settings.get<Method>('method', d.method as Method),
       threshold: settings.get<number>('threshold', d.threshold as number),
@@ -118,7 +118,7 @@ export const tool: LatheTool = {
     const svgBtn = button({ label: 'Export SVG', onClick: () => void exportSvg() });
     const oRow = document.createElement('div'); oRow.className = 'l-row'; oRow.append(pngBtn, svgBtn);
     const send = sendControl({ from: 'dither', type: () => (pixels ? 'image/png' : null), get: () => resultAsset(), emit });
-    oSec.body.append(oRow, note('PNG at the source size. SVG for halftones: dots and bands as vector paths.'), send.el, button({ label: 'Save to Library', onClick: async () => {
+    oSec.body.append(oRow, note('PNG at the source size. SVG for halftones: dots and bands as vector paths.'), send.el, button({ label: 'Save to Library', onClick: async () => { if (requireAuth(() => {})) return;
       if (!pixels) { emit('toast', 'Dither an image first'); return; }
       const { supabase } = await import('../../lib/supabase');
       if (!supabase) { emit('toast', 'Sign in to save'); return; }

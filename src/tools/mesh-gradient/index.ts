@@ -22,7 +22,7 @@ export const tool: LatheTool = {
   group: 'Offcuts',
   defaults,
 
-  mount({ defaults: d, changedDefaults, stage, inspector, statusbar, settings, emit, onActivate }) {
+  mount({ defaults: d, changedDefaults, stage, inspector, statusbar, settings, emit, onActivate, requireAuth }) {
     const PALETTES = d.palettes as Record<string, string[]>;
     let LOOP_S = d.loopSeconds as number;
     if (!(d.palette as string in PALETTES)) d.palette = Object.keys(PALETTES)[0];
@@ -135,7 +135,7 @@ export const tool: LatheTool = {
       button({ label: 'Randomize', onClick: () => randomize() }),
     );
     const status = note(''); status.setAttribute('role', 'status');
-    out.body.append(row, status, button({ label: 'Save to Library', onClick: async () => {
+    out.body.append(row, status, button({ label: 'Save to Library', onClick: async () => { if (requireAuth(() => {})) return;
       const { supabase } = await import('../../lib/supabase');
       if (!supabase) { emit('toast', 'Sign in to save'); return; }
       const { data: { user } } = await supabase.auth.getUser();

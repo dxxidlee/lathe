@@ -35,7 +35,7 @@ export const tool: LatheTool = {
   defaults,
   accepts: ['image/svg+xml', 'image/png', 'image/jpeg', 'image/webp'],
 
-  mount({ defaults: d, stage, inspector, statusbar, assets, settings, emit }) {
+  mount({ defaults: d, stage, inspector, statusbar, assets, settings, emit, requireAuth }) {
     let source: Asset | undefined;
     let svgText: string | null = null;
     let rendered: Rendered[] = [];
@@ -89,7 +89,7 @@ export const tool: LatheTool = {
     const zipBtn = button({ label: 'Export icon set (.zip)', primary: true, onClick: () => void exportZip() });
     const send = sendControl({ from: 'icons', type: () => (rendered.length ? 'image/png' : null), get: async () => { const r = rendered.find(x => x.size === 512 && x.kind === 'png') ?? rendered[rendered.length - 1]; return r ? assets.add(r.blob, { name: r.name, source: 'export', origin: 'icons' }) : null; }, emit });
     oSec.body.append(zipBtn, note('PNG sizes, favicon.ico, favicon.svg, apple-touch-icon.png, a maskable icon, manifest.webmanifest and an HTML snippet.'), send.el,
-      button({ label: 'Save to Library', onClick: async () => {
+      button({ label: 'Save to Library', onClick: async () => { if (requireAuth(() => {})) return;
         const { supabase } = await import('../../lib/supabase');
         if (!supabase) { emit('toast', 'Sign in to save'); return; }
         const { data: { user } } = await supabase.auth.getUser();

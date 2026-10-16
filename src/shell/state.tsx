@@ -52,6 +52,10 @@ interface ShellState {
   tabLabels: Record<string, string>;
   setTabLabel: (tabId: string, label: string) => void;
   user: AuthUser;
+  authModalOpen: boolean;
+  showAuthModal: (cb?: () => void) => void;
+  hideAuthModal: () => void;
+  authCallback: React.MutableRefObject<(() => void) | null>;
 }
 
 const Ctx = createContext<ShellState | null>(null);
@@ -62,12 +66,16 @@ export function ShellProvider({ children }: { children: ReactNode }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [tabs, setTabs] = useState<Tab[]>([{ id: 'make', pinned: true }]);
-  const [activeTabId, setActiveTabId] = useState('make');
+  const [tabs, setTabs] = useState<Tab[]>([{ id: 'library', pinned: true }]);
+  const [activeTabId, setActiveTabId] = useState('library');
   const [tabLabels, setTabLabelsRaw] = useState<Record<string, string>>({});
   const setTabLabel = useCallback((tabId: string, label: string) => {
     setTabLabelsRaw(prev => prev[tabId] === label ? prev : { ...prev, [tabId]: label });
   }, []);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const authCallback = useRef<(() => void) | null>(null);
+  const showAuthModal = useCallback((cb?: () => void) => { authCallback.current = cb ?? null; setAuthModalOpen(true); }, []);
+  const hideAuthModal = useCallback(() => { setAuthModalOpen(false); authCallback.current = null; }, []);
   const statusMap = useRef(new Map<string, StatusInfo>());
   const [status, setStatusRaw] = useState<StatusInfo>({});
   const activeTabRef = useRef(activeTabId);
@@ -219,9 +227,10 @@ export function ShellProvider({ children }: { children: ReactNode }) {
     tabs, activeTabId, openTab, closeTab, reorderTabs, nextTab, prevTab,
     tabLabels, setTabLabel,
     user,
+    authModalOpen, showAuthModal, hideAuthModal, authCallback,
   }), [railOpen, toggleRail, trayOpen, paletteOpen, sheetOpen, status, toasts, toast, runExport,
        isMobile, menuOpen, toggleMenu, tabSwitcherOpen, inspectorExpanded,
-       tabs, activeTabId, openTab, closeTab, reorderTabs, nextTab, prevTab, tabLabels, user]);
+       tabs, activeTabId, openTab, closeTab, reorderTabs, nextTab, prevTab, tabLabels, user, authModalOpen]);
 
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
 }
