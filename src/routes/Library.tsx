@@ -313,7 +313,7 @@ export function Library() {
         <div className="lib">
           {shell.user ? (
             <div className="lib__profile">
-              <div className="lib__avatar">{initial}</div>
+              <div className="lib__avatar">{shell.avatarUrl ? <img src={shell.avatarUrl} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} /> : initial}</div>
               <div className="lib__username">{username}</div>
               {memberSince && <div className="lib__member">Member since {memberSince}</div>}
               <div className="lib__stats">{boards.length} board{boards.length !== 1 ? 's' : ''} &middot; {items.length} saved</div>
