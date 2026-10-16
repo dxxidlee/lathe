@@ -1,7 +1,6 @@
 import { createElement, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { PanelLeft, Menu } from 'lucide-react';
-import { Wordmark } from '../brand/Wordmark';
+import { FolderOpen, Menu, Search } from 'lucide-react';
+import { Mark } from '../brand/Wordmark';
 import { useShell } from './state';
 import { modKey } from '../lib/format';
 import { TabBar } from './TabBar';
@@ -31,37 +30,46 @@ export function TopBar() {
   const mod = modKey();
   const activeEntry = findTool(shell.activeTabId);
   const activeLabel = shell.activeTabId === 'make' ? 'Make a tool'
-    : shell.activeTabId === 'library' ? 'Library'
     : shell.activeTabId.startsWith('board-') ? (shell.tabLabels[shell.activeTabId] ? `Board \u00b7 ${shell.tabLabels[shell.activeTabId]}` : 'Board')
     : shell.activeTabId.startsWith('deck-') ? (shell.tabLabels[shell.activeTabId] ? `Deck \u00b7 ${shell.tabLabels[shell.activeTabId]}` : 'Deck')
     : activeEntry?.name ?? shell.activeTabId;
+  const showingLibrary = shell.activeTabId === 'library';
   return (
     <header className="topbar">
-      <button type="button" className="topbar__rail-toggle" onClick={shell.isMobile ? shell.toggleMenu : shell.toggleRail}
-        aria-label={shell.railOpen ? 'Close rail' : 'Open rail'} title={`${mod}\\`}>
-        {createElement(PanelLeft, { size: 16, strokeWidth: 1.5 })}
+      {/* Logomark = tools menu toggle */}
+      <button type="button" className={`topbar__mark${shell.railOpen ? ' is-open' : ''}`}
+        onClick={shell.isMobile ? shell.toggleMenu : shell.toggleRail}
+        aria-label="Open tools menu" title={`Tools (${mod}\\)`}>
+        <Mark />
       </button>
-      <Link to={shell.user ? '/t/library' : '/'} className="topbar__brand" aria-label="Lathe home"
-        onClick={() => { if (shell.user) shell.openTab('library'); }}><Wordmark /></Link>
-      <TabBar tabs={shell.tabs} activeTabId={shell.activeTabId}
+
+      <TabBar tabs={shell.tabs.filter(t => t.id !== 'library')} activeTabId={showingLibrary ? '' : shell.activeTabId}
         onActivate={shell.openTab} onClose={shell.closeTab} onReorder={shell.reorderTabs} />
+
       {shell.isMobile && (
         <button type="button" className="topbar__tool-name" onClick={() => shell.setTabSwitcherOpen(true)}>
-          {activeLabel} &#x25BE;
+          {showingLibrary ? 'Library' : activeLabel} &#x25BE;
         </button>
       )}
-      <button type="button" className="topbar__search" onClick={() => shell.setPaletteOpen(true)}>
-        <span>Search</span>
-        <span className="l-kbd">{mod}K</span>
-      </button>
-      {shell.user ? (
-        <UserMenu user={shell.user} />
-      ) : (
-        <button type="button" className="l-btn" onClick={() => shell.showAuthModal()}>Log in</button>
-      )}
-      <div className="topbar__actions">
-        <button type="button" className="l-btn" onClick={() => { if (!shell.user) { shell.showAuthModal(shell.runExport); return; } shell.runExport(); }} title={`Export (${mod}E)`}>Export</button>
+
+      {/* Right cluster: Library · Search · Avatar */}
+      <div className="topbar__right">
+        <button type="button" className={`topbar__icon-btn${showingLibrary ? ' is-active' : ''}`}
+          onClick={() => shell.openTab('library')} title="Library">
+          {createElement(FolderOpen, { size: 16, strokeWidth: 1.5 })}
+        </button>
+
+        <button type="button" className="topbar__icon-btn" onClick={() => shell.setPaletteOpen(true)} title={`Search (${mod}K)`}>
+          {createElement(Search, { size: 16, strokeWidth: 1.5 })}
+        </button>
+
+        {shell.user ? (
+          <UserMenu user={shell.user} />
+        ) : (
+          <button type="button" className="l-btn" onClick={() => shell.showAuthModal()}>Log in</button>
+        )}
       </div>
+
       {shell.isMobile && (
         <button type="button" className="topbar__menu-btn" onClick={shell.toggleMenu}>
           {createElement(Menu, { size: 20, strokeWidth: 1.5 })}

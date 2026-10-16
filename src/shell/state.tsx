@@ -67,7 +67,7 @@ export function ShellProvider({ children }: { children: ReactNode }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
-  const [tabs, setTabs] = useState<Tab[]>([{ id: 'library', pinned: true }]);
+  const [tabs, setTabs] = useState<Tab[]>([]);
   const [activeTabId, setActiveTabId] = useState('library');
   const [tabLabels, setTabLabelsRaw] = useState<Record<string, string>>({});
   const setTabLabel = useCallback((tabId: string, label: string) => {
@@ -161,6 +161,7 @@ export function ShellProvider({ children }: { children: ReactNode }) {
   }, [toast]);
 
   const openTab = useCallback((toolId: string) => {
+    if (toolId === 'library') { setActiveTabId('library'); return; }
     setTabs(prev => {
       const existing = prev.find(t => t.id === toolId);
       if (existing) { setActiveTabId(toolId); return prev; }
@@ -181,7 +182,7 @@ export function ShellProvider({ children }: { children: ReactNode }) {
       setActiveTabId(cur => {
         if (cur !== id) return cur;
         // activate the tab to the left, or the first tab
-        return next[Math.min(idx, next.length - 1)]?.id ?? next[0]?.id ?? 'make';
+        return next[Math.min(idx, next.length - 1)]?.id ?? next[0]?.id ?? 'library';
       });
       return next;
     });

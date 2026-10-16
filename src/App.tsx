@@ -45,7 +45,8 @@ function ToolView() {
   }, [shell.activeTabId]);
 
   const isBoard = shell.activeTabId.startsWith('board-');
-  const activeEntry = shell.activeTabId === 'make' || shell.activeTabId === 'library' || isBoard ? undefined : findTool(shell.activeTabId);
+  const isLibrary = shell.activeTabId === 'library';
+  const activeEntry = shell.activeTabId === 'make' || isLibrary || isBoard ? undefined : findTool(shell.activeTabId);
   const drop = useStageDrop(activeEntry);
   const mobileMode = shell.isMobile ? (activeEntry?.mobile ?? 'full') : null;
 
@@ -60,9 +61,13 @@ function ToolView() {
       {shell.isMobile && shell.menuOpen && <MobileMenu />}
       {shell.isMobile && shell.tabSwitcherOpen && <MobileTabSwitcher />}
       <div className="shell__panes">
+        {/* Library renders outside the tab loop */}
+        {shell.activeTabId === 'library' && (
+          <div className="shell__pane" data-active-tab style={{ display: 'contents' }}><Library /></div>
+        )}
         {shell.tabs.map(tab => {
           const isActive = tab.id === shell.activeTabId;
-          const entry = tab.id === 'make' || tab.id === 'library' || tab.id.startsWith('board-') || tab.id.startsWith('deck-') ? undefined : findTool(tab.id);
+          const entry = tab.id === 'make' || tab.id.startsWith('board-') || tab.id.startsWith('deck-') ? undefined : findTool(tab.id);
           const deckTabEntry = tab.id.startsWith('deck-') ? findTool('deck') : undefined;
           const isDesktopOnly = shell.isMobile && entry && (entry.mobile === 'desktop');
           const Icon = entry ? toolIcon(entry.id) : null;
@@ -73,8 +78,6 @@ function ToolView() {
                 <ToolHost entry={deckTabEntry} active={isActive} deckId={tab.id.slice(5)} />
               ) : tab.id.startsWith('board-') ? (
                 <BoardView boardId={tab.id.slice(6)} />
-              ) : tab.id === 'library' ? (
-                <Library />
               ) : tab.id === 'make' ? (
                 <Make />
               ) : isDesktopOnly ? (
