@@ -1,6 +1,6 @@
 import type { DefaultsManifest } from '../types';
 export const defaults: DefaultsManifest = [
-  { key: 'text', label: 'Text', value: 'Tools for people who make tools.' },
+  { key: 'text', label: 'Text', value: 'Every default was someone else\'s decision.' },
   { key: 'preset', label: 'Preset', value: 'stagger', options: ['stagger', 'fall', 'drift', 'scramble', 'dissolve'] },
   { key: 'font', label: 'Typeface', value: '"Helvetica Neue", Helvetica, Arial, sans-serif', editable: false },
   { key: 'weight', label: 'Weight', value: 500, options: [300, 400, 500, 700] },

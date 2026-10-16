@@ -39,7 +39,7 @@ export function NavRail() {
                 </div>
                 {(!isOffcuts || offcutsOpen) && (
                   <ul className="nav__list">
-                    {tools.filter(t => !t.custom && !t.hidden).map(t => {
+                    {tools.filter(t => !t.custom && !t.hidden && !t.dev).map(t => {
                       const n = TOOLS.indexOf(t);
                       return (
                         <li key={t.id}>
