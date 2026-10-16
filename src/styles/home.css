@@ -35,11 +35,11 @@
   vector-effect: non-scaling-stroke; stroke-linecap: round; stroke-linejoin: round;
   transition: stroke-opacity 180ms ease, opacity 180ms ease;
 }
-.graph__line { stroke-opacity: var(--o-64); }
+.graph__line { stroke-opacity: 1; }
 .graph__line--dashed { stroke-dasharray: 9 7; }
 .graph__mark { stroke-opacity: 1; }
 .graph__mark.graph__draw { animation-duration: 2200ms; }
-.graph__route { stroke-opacity: var(--o-64); }
+.graph__route { stroke-opacity: 1; }
 
 /* Draw in: solid strokes trace their length; dashed axes are revealed by a tracing mask. */
 .graph__draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: graph-draw 1100ms cubic-bezier(.6, 0, .2, 1) forwards; }
@@ -49,7 +49,7 @@
 .graph__head { stroke-opacity: 0; animation: graph-head 400ms ease forwards; }
 .graph__label { fill-opacity: 0; animation: graph-label 400ms ease forwards; }
 @keyframes graph-draw { to { stroke-dashoffset: 0; } }
-@keyframes graph-head { to { stroke-opacity: var(--o-64); } }
+@keyframes graph-head { to { stroke-opacity: 1; } }
 @keyframes graph-label { to { fill-opacity: 1; } }
 /* A wide invisible stroke along each route, so routes are easy to hover. */
 .graph__hit { fill: none; stroke: transparent; stroke-width: var(--s-5); pointer-events: stroke; vector-effect: non-scaling-stroke; }
@@ -62,11 +62,12 @@
 .graph__tool { cursor: pointer; outline: none; }
 .graph__tool.is-planned .graph__label { fill: var(--black-64); }
 
-/* Hover or focus: the tool's route and label in full, everything else recedes. */
-.graph.is-hovering .graph__line { stroke-opacity: var(--o-16); }
-.graph.is-hovering .graph__mark { stroke-opacity: var(--o-40); }
-.graph.is-hovering .graph__tool:not(.is-active) .graph__route { opacity: var(--o-16); }
-.graph.is-hovering .graph__tool:not(.is-active) .graph__label { opacity: var(--o-40); }
+/* Hover or focus: the tool's route and label stay full, everything else recedes. */
+.graph.is-hovering .graph__line { stroke-opacity: 0.12; }
+.graph.is-hovering .graph__line--dashed { stroke-opacity: 0.1; }
+.graph.is-hovering .graph__mark { stroke-opacity: 0.2; }
+.graph.is-hovering .graph__tool:not(.is-active) .graph__route { opacity: 0.12; }
+.graph.is-hovering .graph__tool:not(.is-active) .graph__label { opacity: 0.25; }
 .graph__tool.is-active .graph__route { stroke-width: var(--stroke-med); }
 .graph__tool.is-active .graph__draw { stroke-opacity: 1; animation: none; stroke-dashoffset: 0; }
 .graph__tool.is-active .graph__head { stroke-opacity: 1; animation: none; }
@@ -101,8 +102,23 @@
 .home__foot-main { font-weight: var(--w-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .home__foot-dim { color: var(--black-64); font-weight: var(--w-regular); }
 
+/* ---- Hover tooltip ---- */
+.home__tooltip {
+  position: fixed; bottom: var(--s-8, 48px); left: 50%; transform: translateX(-50%);
+  max-width: 520px; width: calc(100% - var(--s-8, 48px));
+  padding: var(--s-4, 16px) var(--s-5, 20px);
+  background: var(--black); color: var(--lathe); border-radius: 8px;
+  font-size: 13px; line-height: 1.5; z-index: 3;
+  animation: tooltip-in 200ms ease;
+  pointer-events: none;
+}
+@keyframes tooltip-in { from { opacity: 0; transform: translateX(-50%) translateY(8px); } }
+.home__tooltip-row + .home__tooltip-row { margin-top: 8px; }
+.home__tooltip-label { opacity: 0.5; margin-right: 8px; }
+
 @media (max-width: 767px) {
   .home__link { display: none; }
+  .home__tooltip { display: none; }
 }
 
 /* The command palette over the home page takes the home page's colors: a chartreuse panel with

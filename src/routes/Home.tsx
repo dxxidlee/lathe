@@ -1,19 +1,19 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Wordmark } from '../brand/Wordmark';
-import { TOOLS } from '../tools/registry';
+import { TOOLS, isReady } from '../tools/registry';
 import { useShell } from '../shell/state';
-import { MAKE, MARK_TRANSFORM, STRUCTURE, VIEW, routesFor } from './home-graph';
+import { MAKE, MARK_TRANSFORM, STRUCTURE, VIEW, routesFor, TOOL_COPY } from './home-graph';
 import { AuthModal } from '../shell/AuthModal';
 import '../styles/auth.css';
 
 export function Home() {
   const shell = useShell();
   const navigate = useNavigate();
+  const [active, setActive] = useState<string | null>(null);
   const [showLogin, setShowLogin] = useState(false);
   useEffect(() => { document.title = 'Lathe'; }, []);
 
-  // Signed-in users go straight to the Library
   useEffect(() => {
     if (shell.user) { navigate('/t/library', { replace: true }); }
   }, [shell.user]);
@@ -33,6 +33,8 @@ export function Home() {
     void document.fonts?.ready.then(fit);
   }, [tools]);
 
+  const copy = active ? TOOL_COPY[active] : null;
+
   return (
     <div className="home" data-view="graph">
       <header className="home__bar">
@@ -43,7 +45,7 @@ export function Home() {
       </header>
 
       <main className="graph-wrap" style={{ touchAction: 'pinch-zoom pan-x pan-y' }}>
-        <svg className="graph" width="100%" viewBox={box} preserveAspectRatio="xMidYMid meet" aria-label="Lathe">
+        <svg className={`graph${active ? ' is-hovering' : ''}`} width="100%" viewBox={box} preserveAspectRatio="xMidYMid meet" aria-label="Lathe">
           <defs>
             {STRUCTURE.map((s, i) => s.dashed && (
               <mask id={`m${i}`} key={i} maskUnits="userSpaceOnUse"><path d={s.d} className="graph__reveal" style={{ animationDelay: `${i * 90}ms` }} pathLength={1} /></mask>
@@ -57,12 +59,16 @@ export function Home() {
                 ? <path key={i} d={s.d} transform={MARK_TRANSFORM} className="graph__line graph__mark graph__draw" pathLength={1} style={{ animationDelay: '250ms' }} />
                 : <path key={i} d={s.d} className="graph__line graph__draw" pathLength={1} style={{ animationDelay: `${300 + i * 110}ms` }} />)}
           </g>
-          {/* Labels only — not clickable */}
           {tools.map((t, i) => {
             const r = rs[i];
             const delay = 900 + i * 85;
+            const isActive = active === t.id;
             return (
-              <g key={t.id} className="graph__tool" data-tool={t.id}>
+              <g key={t.id} className={`graph__tool${isActive ? ' is-active' : ''}${isReady(t) ? '' : ' is-planned'}`}
+                onMouseEnter={() => setActive(t.id)} onMouseLeave={() => setActive(null)}
+                onFocus={() => setActive(t.id)} onBlur={() => setActive(null)}
+                data-tool={t.id} tabIndex={0} role="group" aria-label={t.name}>
+                <path d={r.line} className="graph__hit" />
                 <path d={r.line} className="graph__route graph__draw" pathLength={1} style={{ animationDelay: `${delay}ms` }} />
                 <path d={r.head} className="graph__route graph__head" style={{ animationDelay: `${delay + 900}ms` }} />
                 <text x={r.label.x} y={r.label.y} textAnchor={r.anchor} dominantBaseline={r.baseline} className="graph__label" style={{ animationDelay: `${delay + 700}ms` }}>
@@ -71,13 +77,25 @@ export function Home() {
               </g>
             );
           })}
-          <g className="graph__tool graph__tool--make" data-tool="make">
+          <g className={`graph__tool graph__tool--make${active === 'make' ? ' is-active' : ''}`}
+            onMouseEnter={() => setActive('make')} onMouseLeave={() => setActive(null)}
+            onFocus={() => setActive('make')} onBlur={() => setActive(null)}
+            data-tool="make" tabIndex={0} role="group" aria-label="Make a tool">
+            <path d={MAKE.line} className="graph__hit" />
             <path d={MAKE.line} className="graph__route graph__draw" pathLength={1} style={{ animationDelay: '700ms' }} />
             <path d={MAKE.head} className="graph__route graph__head" style={{ animationDelay: '1500ms' }} />
             <text x={MAKE.label.x} y={MAKE.label.y} textAnchor="middle" dominantBaseline="hanging" className="graph__label" style={{ animationDelay: '1400ms' }}>Make a tool</text>
           </g>
           </g>
         </svg>
+
+        {/* Hover tooltip */}
+        {copy && active && (
+          <div className="home__tooltip">
+            <div className="home__tooltip-row"><span className="home__tooltip-label">Problem</span> {copy.problem}</div>
+            <div className="home__tooltip-row"><span className="home__tooltip-label">Lathe</span> {copy.lathe}</div>
+          </div>
+        )}
       </main>
 
       {showLogin && <AuthModal onClose={() => setShowLogin(false)} onSuccess={() => navigate('/t/library')} />}
